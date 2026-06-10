@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'podcast-player-v2'; // bump on each significant deployment
+const CACHE = 'podcast-player-v3'; // bump on each significant deployment
 const PRECACHE = ['/podcast-player/', '/podcast-player/index.html', '/podcast-player/manifest.json'];
 
 // ── Install: pre-cache shell assets ──────────────────────────────────────
@@ -41,7 +41,7 @@ self.addEventListener('fetch', event => {
         const toCache = response.clone();
         caches.open(CACHE).then(cache => cache.put(event.request, toCache));
         return response;
-      }).catch(() => caches.match('/index.html'));
+      }).catch(() => caches.match('/podcast-player/index.html'));
     })
   );
 });

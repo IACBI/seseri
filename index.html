@@ -15,9 +15,16 @@
   font-src https://fonts.gstatic.com;
   img-src 'self' data: https:;
   media-src https:;
-  connect-src https://itunes.apple.com https://ax.itunes.apple.com;
+  connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.allorigins.win https://corsproxy.io;
 ">
 <title>Podcast Player</title>
+<meta name="description" content="Free, no-account, browser-based podcast player. Search via iTunes or paste an RSS feed URL — stream, resume and download episodes.">
+<meta property="og:title" content="Podcast Player">
+<meta property="og:description" content="Free, no-account, browser-based podcast player. Search via iTunes or paste an RSS feed URL.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://iacbi.github.io/podcast-player/">
+<meta property="og:image" content="https://iacbi.github.io/podcast-player/icons/icon-512.png">
+<meta name="twitter:card" content="summary">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#5b8af5">
 <meta name="mobile-web-app-capable" content="yes">
@@ -771,7 +778,9 @@ audio { display: none; }
       <div class="p-author" id="pAuthor">—</div>
     </div>
     <div class="p-epcount"><strong id="pEpCount">—</strong>bölüm</div>
-    <button class="settings-btn" onclick="openSettings()" data-i18n-title="settings_title" title="Ayarlar">⚙</button>
+    <button class="settings-btn" id="favBtn" onclick="toggleFav()" data-i18n-title="fav_btn" title="Abonelik ekle/çıkar" aria-label="Abonelik">☆</button>
+    <button class="settings-btn" id="shareBtn" onclick="sharePodcast()" data-i18n-title="share_btn" title="Linki paylaş" aria-label="Paylaş">⤴</button>
+    <button class="settings-btn" onclick="openSettings()" data-i18n-title="settings_title" title="Ayarlar" aria-label="Ayarlar">⚙</button>
   </div>
 
   <!-- Status -->
@@ -799,6 +808,12 @@ audio { display: none; }
       <button class="ctrl-btn" id="btnSkipFwd" onclick="seekRel(S.skipForward)">+<span id="lblSkipFwd">30</span>s</button>
       <button class="ctrl-btn" id="btnNext" onclick="nextEp()" disabled data-i18n="btn_next">Sonraki ⏭</button>
       <span class="spacer"></span>
+      <select class="speed-select" id="sleepSel" onchange="changeSleep()" data-i18n-title="sleep_timer" title="Uyku zamanlayıcısı (dk)">
+        <option value="0" selected>⏾ —</option>
+        <option value="15">⏾ 15</option>
+        <option value="30">⏾ 30</option>
+        <option value="60">⏾ 60</option>
+      </select>
       <select class="speed-select" id="speedSel" onchange="changeSpeed()">
         <option value="0.5">0.5×</option>
         <option value="0.75">0.75×</option>
@@ -830,10 +845,10 @@ audio { display: none; }
 
 <!-- ══════════ SETTINGS PANEL ══════════ -->
 <div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
-<div class="settings-panel" id="settingsPanel">
+<div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="settings-header">
-    <span class="settings-title" data-i18n="settings_heading">⚙ Ayarlar</span>
-    <button class="settings-close" onclick="closeSettings()">×</button>
+    <span class="settings-title" id="settingsTitle" data-i18n="settings_heading">⚙ Ayarlar</span>
+    <button class="settings-close" onclick="closeSettings()" aria-label="×">×</button>
   </div>
   <div class="settings-body">
 
@@ -1061,6 +1076,10 @@ const LANGS = {
     row_compact: 'Sıkı', row_spacious: 'Geniş',
     sort_asc: 'Eskiden → Yeniye', sort_desc: 'Yeniden → Eskiye', dir: 'ltr',
     audio_err: 'Ses dosyası yüklenemedi.',
+    dur_h: 'sa', dur_m: 'dk', storage_full: 'Depolama dolu — en eski ilerlemeler silindi.',
+    favs_title: '⭐ Aboneliklerim', fav_btn: 'Abonelik ekle/çıkar', share_btn: 'Linki paylaş',
+    link_copied: 'Link kopyalandı ✓', sleep_timer: 'Uyku zamanlayıcısı (dk)',
+    dl_label: 'Bölümü indir', rss_invalid: 'Geçersiz RSS beslemesi.',
   },
   en: {
     brand_sub: 'Free · No Account · iTunes API',
@@ -1090,6 +1109,10 @@ const LANGS = {
     row_compact: 'Compact', row_spacious: 'Spacious',
     sort_asc: 'Oldest → Newest', sort_desc: 'Newest → Oldest', dir: 'ltr',
     audio_err: 'Audio file could not be loaded.',
+    dur_h: 'h', dur_m: 'm', storage_full: 'Storage full — oldest progress was pruned.',
+    favs_title: '⭐ My Subscriptions', fav_btn: 'Add/remove subscription', share_btn: 'Share link',
+    link_copied: 'Link copied ✓', sleep_timer: 'Sleep timer (min)',
+    dl_label: 'Download episode', rss_invalid: 'Invalid RSS feed.',
   },
   de: {
     brand_sub: 'Kostenlos · Kein Konto · iTunes API',
@@ -1119,6 +1142,10 @@ const LANGS = {
     row_compact: 'Kompakt', row_spacious: 'Großzügig',
     sort_asc: 'Älteste → Neueste', sort_desc: 'Neueste → Älteste', dir: 'ltr',
     audio_err: 'Audiodatei konnte nicht geladen werden.',
+    dur_h: 'Std', dur_m: 'Min', storage_full: 'Speicher voll — älteste Fortschritte gelöscht.',
+    favs_title: '⭐ Meine Abos', fav_btn: 'Abo hinzufügen/entfernen', share_btn: 'Link teilen',
+    link_copied: 'Link kopiert ✓', sleep_timer: 'Schlaftimer (Min)',
+    dl_label: 'Episode herunterladen', rss_invalid: 'Ungültiger RSS-Feed.',
   },
   fr: {
     brand_sub: 'Gratuit · Sans compte · iTunes API',
@@ -1148,6 +1175,10 @@ const LANGS = {
     row_compact: 'Compact', row_spacious: 'Spacieux',
     sort_asc: 'Du plus ancien', sort_desc: 'Du plus récent', dir: 'ltr',
     audio_err: 'Impossible de charger le fichier audio.',
+    dur_h: 'h', dur_m: 'min', storage_full: 'Stockage plein — anciennes progressions supprimées.',
+    favs_title: '⭐ Mes abonnements', fav_btn: 'Ajouter/retirer un abonnement', share_btn: 'Partager le lien',
+    link_copied: 'Lien copié ✓', sleep_timer: 'Minuterie de sommeil (min)',
+    dl_label: "Télécharger l'épisode", rss_invalid: 'Flux RSS invalide.',
   },
   es: {
     brand_sub: 'Gratis · Sin cuenta · iTunes API',
@@ -1177,6 +1208,10 @@ const LANGS = {
     row_compact: 'Compacto', row_spacious: 'Espacioso',
     sort_asc: 'Más antiguo → Más reciente', sort_desc: 'Más reciente → Más antiguo', dir: 'ltr',
     audio_err: 'No se pudo cargar el archivo de audio.',
+    dur_h: 'h', dur_m: 'min', storage_full: 'Almacenamiento lleno — se eliminó el progreso antiguo.',
+    favs_title: '⭐ Mis suscripciones', fav_btn: 'Añadir/quitar suscripción', share_btn: 'Compartir enlace',
+    link_copied: 'Enlace copiado ✓', sleep_timer: 'Temporizador de sueño (min)',
+    dl_label: 'Descargar episodio', rss_invalid: 'Feed RSS no válido.',
   },
   ar: {
     brand_sub: 'مجاني · بدون حساب · iTunes API',
@@ -1206,6 +1241,10 @@ const LANGS = {
     row_compact: 'مضغوط', row_spacious: 'واسع',
     sort_asc: 'الأقدم → الأحدث', sort_desc: 'الأحدث → الأقدم', dir: 'rtl',
     audio_err: 'تعذّر تحميل ملف الصوت.',
+    dur_h: 'س', dur_m: 'د', storage_full: 'الذاكرة ممتلئة — حُذف التقدم الأقدم.',
+    favs_title: '⭐ اشتراكاتي', fav_btn: 'إضافة/إزالة اشتراك', share_btn: 'مشاركة الرابط',
+    link_copied: 'تم نسخ الرابط ✓', sleep_timer: 'مؤقت النوم (دقيقة)',
+    dl_label: 'تنزيل الحلقة', rss_invalid: 'خلاصة RSS غير صالحة.',
   },
   ja: {
     brand_sub: '無料 · アカウント不要 · iTunes API',
@@ -1235,6 +1274,10 @@ const LANGS = {
     row_compact: 'コンパクト', row_spacious: '広め',
     sort_asc: '古い順', sort_desc: '新しい順', dir: 'ltr',
     audio_err: 'オーディオファイルを読み込めませんでした。',
+    dur_h: '時間', dur_m: '分', storage_full: 'ストレージが満杯 — 古い履歴を削除しました。',
+    favs_title: '⭐ 登録済み', fav_btn: '登録/解除', share_btn: 'リンクを共有',
+    link_copied: 'リンクをコピーしました ✓', sleep_timer: 'スリープタイマー（分）',
+    dl_label: 'エピソードをダウンロード', rss_invalid: '無効なRSSフィードです。',
   },
   ru: {
     brand_sub: 'Бесплатно · Без аккаунта · iTunes API',
@@ -1264,6 +1307,10 @@ const LANGS = {
     row_compact: 'Компактный', row_spacious: 'Просторный',
     sort_asc: 'Сначала старые', sort_desc: 'Сначала новые', dir: 'ltr',
     audio_err: 'Не удалось загрузить аудиофайл.',
+    dur_h: 'ч', dur_m: 'мин', storage_full: 'Хранилище заполнено — старый прогресс удалён.',
+    favs_title: '⭐ Мои подписки', fav_btn: 'Добавить/убрать подписку', share_btn: 'Поделиться ссылкой',
+    link_copied: 'Ссылка скопирована ✓', sleep_timer: 'Таймер сна (мин)',
+    dl_label: 'Скачать эпизод', rss_invalid: 'Неверный RSS-канал.',
   },
 };
 // Active translations
@@ -1306,6 +1353,14 @@ function applyLang(lang) {
   if (hl) hl.value = lang;
   const sl = document.getElementById('s_lang');
   if (sl) sl.value = lang;
+  // Re-format cached episode dates/durations in the new language
+  if (episodes.length) {
+    for (const ep of episodes) {
+      ep._fmtDate = fmtDate(ep.releaseDate);
+      ep._fmtDur  = fmtDur(ep.trackTimeMillis);
+    }
+    render();
+  }
 }
 
 function onHomeLangChange() {
@@ -1327,11 +1382,26 @@ const store = {
   },
   set(key, val) {
     try { localStorage.setItem(key, JSON.stringify(val)); }
-    catch(e) { console.warn('storage write failed:', key, e.name); }
+    catch(e) {
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
+        pruneProgress();
+        try { localStorage.setItem(key, JSON.stringify(val)); return; } catch {}
+      }
+      console.warn('storage write failed:', key, e?.name);
+    }
   },
   rawGet(key) { try { return localStorage.getItem(key); } catch { return null; } },
   rawSet(key, val) { try { localStorage.setItem(key, val); } catch { /* quota/private */ } },
 };
+
+// Quota recovery: drop the oldest half of saved episode positions and warn once
+let _quotaWarned = false;
+function pruneProgress() {
+  const keys = Object.keys(prog);
+  for (const k of keys.slice(0, Math.ceil(keys.length / 2))) delete prog[k];
+  try { localStorage.setItem('pp_prog', JSON.stringify(prog)); } catch {}
+  if (!_quotaWarned) { _quotaWarned = true; setStatus('error', t('storage_full')); }
+}
 
 // ═══════════════════════════════════════
 // XSS-SAFE TEXT ESCAPING
@@ -1369,6 +1439,7 @@ const elFilterInput  = $('filterInput');
 // STATE
 // ═══════════════════════════════════════
 let episodes = [], filteredEps = [], currentIndex = -1, sortAsc = true;
+let currentTrackId = null; // id of the loaded episode — survives filter/sort changes
 let currentPodcastId = null;
 let prog = {};
 
@@ -1412,6 +1483,8 @@ function saveStateNow() {
 }
 window.addEventListener('beforeunload', saveStateNow);
 window.addEventListener('pagehide',     saveStateNow);
+// iOS Safari does not reliably fire beforeunload/pagehide on tab close
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveStateNow(); });
 
 // ═══════════════════════════════════════
 // SETTINGS PANEL
@@ -1533,7 +1606,15 @@ async function doSearch() {
   list.innerHTML = `<div class="empty-state">${esc(t('searching'))}</div>`;
 
   const id = extractId(raw);
-  if (id) { clearTimeout(searchTimeout); btn.disabled=false; btn.textContent='Ara →'; loadPodcast(id); return; }
+  if (id) { clearTimeout(searchTimeout); btn.disabled=false; btn.textContent=t('btn_search'); loadPodcast(id); return; }
+
+  // Direct RSS feed URL (non-iTunes podcasts)
+  if (/^https?:\/\//i.test(raw)) {
+    clearTimeout(searchTimeout); btn.disabled=false; btn.textContent=t('btn_search');
+    list.innerHTML = '';
+    loadRss(raw);
+    return;
+  }
 
   try {
     const res  = await fetch(
@@ -1544,7 +1625,7 @@ async function doSearch() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
-    btn.disabled=false; btn.textContent='Ara →';
+    btn.disabled=false; btn.textContent=t('btn_search');
     if (!data.results || !data.results.length) {
       list.innerHTML=`<div class="empty-state">${esc(t('no_results'))}</div>`;
       return;
@@ -1570,11 +1651,12 @@ async function doSearch() {
     }
     list.innerHTML = '';
     list.appendChild(frag);
+    _hasSearchResults = true;
 
   } catch(e) {
     clearTimeout(searchTimeout);
     if (e.name === 'AbortError') return; // user started new search or timeout
-    btn.disabled=false; btn.textContent='Ara →';
+    btn.disabled=false; btn.textContent=t('btn_search');
     list.innerHTML=`<div class="empty-state" style="color:var(--red)">Hata: ${esc(e.message)}</div>`;
   }
 }
@@ -1599,10 +1681,12 @@ async function loadPodcast(id) {
   currentPodcastId = String(id);
   $('searchScreen').style.display  = 'none';
   $('playerScreen').style.display  = 'flex';
+  history.replaceState(null, '', location.pathname + '?podcast=' + encodeURIComponent(id));
 
   setStatus('loading', t('status_loading'));
   elEpList.innerHTML = `<div class="empty-state">${esc(t('loading_eps'))}</div>`;
   currentIndex = -1;
+  currentTrackId = null;
   elNowTitle.textContent = t('pick_episode');
 
   try {
@@ -1622,7 +1706,14 @@ async function loadPodcast(id) {
       $('pAuthor').textContent = meta.artistName || '';
       $('pThumb').src          = meta.artworkUrl100  || '';
       document.title           = `${meta.collectionName||'Podcast'} – Player`;
+      currentMeta = {
+        id: currentPodcastId,
+        name: meta.collectionName || meta.trackName || '',
+        artist: meta.artistName || '',
+        art: meta.artworkUrl100 || '',
+      };
     }
+    updateFavBtn();
 
     const eps = data.results.filter(r => r.wrapperType==='podcastEpisode' || r.kind==='podcast-episode');
     if (!eps.length) throw new Error('Bölüm bulunamadı.');
@@ -1665,13 +1756,204 @@ function goBack() {
   saveStateNow();
   $('playerScreen').style.display = 'none';
   $('searchScreen').style.display = 'flex';
+  history.replaceState(null, '', location.pathname);
+  document.title = 'Podcast Player';
   episodes = []; filteredEps = []; currentIndex = -1;
+  currentTrackId = null;
+  currentMeta = null;
   elNowTitle.textContent = t('pick_episode');
   elProgressFill.style.width = '0%';
   elTCur.textContent = '0:00';
   elTTot.textContent = '0:00';
   elBtnPlay.textContent = '▶';
   elFilterInput.value = '';
+  if (!_hasSearchResults) renderFavs();
+}
+
+// ═══════════════════════════════════════
+// FAVORITES (subscriptions)
+// ═══════════════════════════════════════
+let favs = store.get('pp_favs', []);
+if (!Array.isArray(favs)) favs = [];
+let currentMeta = null;
+let _hasSearchResults = false;
+
+function isFav(id) { return favs.some(f => String(f.id) === String(id)); }
+
+function toggleFav() {
+  if (!currentPodcastId || !currentMeta) return;
+  if (isFav(currentPodcastId)) favs = favs.filter(f => String(f.id) !== String(currentPodcastId));
+  else favs.push(currentMeta);
+  store.set('pp_favs', favs);
+  updateFavBtn();
+}
+
+function updateFavBtn() {
+  $('favBtn').textContent = currentPodcastId && isFav(currentPodcastId) ? '★' : '☆';
+}
+
+function openFav(id) {
+  if (String(id).startsWith('rss:')) loadRss(String(id).slice(4));
+  else loadPodcast(id);
+}
+
+function renderFavs() {
+  const list = $('resultsList');
+  list.innerHTML = '';
+  if (!favs.length) return;
+  const head = document.createElement('div');
+  head.className = 'search-hint';
+  head.textContent = t('favs_title');
+  list.appendChild(head);
+  for (const f of favs) {
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    div.innerHTML = `
+      <img class="result-thumb" src="${esc(f.art||'')}" alt="" loading="lazy">
+      <div class="result-info">
+        <div class="result-name">${esc(f.name||'—')}</div>
+        <div class="result-author">${esc(f.artist||'')}</div>
+      </div>
+      <button class="ep-dl-btn" data-unfav="1" data-i18n-title="fav_btn" title="${esc(t('fav_btn'))}">★</button>`;
+    div.addEventListener('click', e => {
+      if (e.target.closest('[data-unfav]')) {
+        e.stopPropagation();
+        favs = favs.filter(x => String(x.id) !== String(f.id));
+        store.set('pp_favs', favs);
+        renderFavs();
+        return;
+      }
+      openFav(f.id);
+    });
+    list.appendChild(div);
+  }
+}
+
+// ═══════════════════════════════════════
+// SHARE / DEEP LINK
+// ═══════════════════════════════════════
+function sharePodcast() {
+  if (!currentPodcastId) return;
+  const id = String(currentPodcastId);
+  const url = location.origin + location.pathname +
+    (id.startsWith('rss:') ? '?rss=' + encodeURIComponent(id.slice(4)) : '?podcast=' + encodeURIComponent(id));
+  if (navigator.share) { navigator.share({ title: currentMeta?.name || 'Podcast', url }).catch(() => {}); return; }
+  navigator.clipboard?.writeText(url).then(() => setStatus('ok', t('link_copied'))).catch(() => {});
+}
+
+// ═══════════════════════════════════════
+// LOAD RSS FEED (non-iTunes podcasts, via CORS proxy)
+// ═══════════════════════════════════════
+function _xmlText(parent, tag) {
+  for (const el of parent.children) if (el.localName === tag) return el.textContent.trim();
+  return '';
+}
+function _parseDur(s) {
+  if (!s) return 0;
+  const p = s.split(':').map(Number);
+  if (p.some(isNaN)) return 0;
+  const sec = p.length === 3 ? p[0]*3600 + p[1]*60 + p[2] : p.length === 2 ? p[0]*60 + p[1] : p[0];
+  return sec * 1000;
+}
+
+// Public CORS proxies, tried in order (feeds rarely send CORS headers themselves)
+const RSS_PROXIES = [
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+];
+
+async function loadRss(url) {
+  if (_loadAbort) { _loadAbort.abort(); }
+  _loadAbort = new AbortController();
+  const loadSignal = _loadAbort.signal;
+  const loadTimeout = setTimeout(() => _loadAbort.abort(), 25000);
+
+  currentPodcastId = 'rss:' + url;
+  currentMeta = null;
+  $('searchScreen').style.display = 'none';
+  $('playerScreen').style.display = 'flex';
+  history.replaceState(null, '', location.pathname + '?rss=' + encodeURIComponent(url));
+
+  setStatus('loading', t('status_loading'));
+  elEpList.innerHTML = `<div class="empty-state">${esc(t('loading_eps'))}</div>`;
+  currentIndex = -1;
+  currentTrackId = null;
+  elNowTitle.textContent = t('pick_episode');
+  updateFavBtn();
+
+  try {
+    let xmlText = null, lastErr = null;
+    for (const proxy of RSS_PROXIES) {
+      try {
+        const res = await fetch(proxy(url), { signal: loadSignal, credentials: 'omit', mode: 'cors' });
+        if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+        xmlText = await res.text();
+        break;
+      } catch(e) {
+        if (e.name === 'AbortError') throw e;
+        lastErr = e;
+      }
+    }
+    clearTimeout(loadTimeout);
+    if (xmlText == null) throw lastErr || new Error(t('rss_invalid'));
+    const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+    const channel = doc.querySelector('channel');
+    if (doc.querySelector('parsererror') || !channel) throw new Error(t('rss_invalid'));
+
+    const chTitle  = _xmlText(channel, 'title') || 'Podcast';
+    const chAuthor = _xmlText(channel, 'author');
+    let chArt = '';
+    for (const el of channel.children) {
+      if (el.localName === 'image') chArt = el.getAttribute('href') || _xmlText(el, 'url') || chArt;
+    }
+    $('pTitle').textContent  = chTitle;
+    $('pAuthor').textContent = chAuthor;
+    $('pThumb').src          = chArt;
+    document.title           = `${chTitle} – Player`;
+    currentMeta = { id: currentPodcastId, name: chTitle, artist: chAuthor, art: chArt };
+    updateFavBtn();
+
+    const eps = [];
+    for (const item of channel.querySelectorAll('item')) {
+      let encUrl = '';
+      for (const el of item.children) if (el.localName === 'enclosure') encUrl = el.getAttribute('url') || '';
+      if (!/^https:\/\//i.test(encUrl)) continue; // CSP allows https media only
+      let durMs = 0;
+      for (const el of item.children) if (el.localName === 'duration') durMs = _parseDur(el.textContent.trim());
+      eps.push({
+        trackId: _xmlText(item, 'guid') || encUrl,
+        trackName: _xmlText(item, 'title'),
+        releaseDate: _xmlText(item, 'pubDate'),
+        episodeUrl: encUrl,
+        trackTimeMillis: durMs,
+      });
+    }
+    if (!eps.length) throw new Error(t('ep_not_found'));
+
+    for (const ep of eps) { ep._fmtDate = fmtDate(ep.releaseDate); ep._fmtDur = fmtDur(ep.trackTimeMillis); }
+
+    sortAsc = (S.defaultSort === 'asc');
+    episodes = eps.sort((a,b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+    if (!sortAsc) episodes.reverse();
+    elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+    filteredEps = episodes.slice();
+    elPEpCount.textContent = episodes.length;
+    setStatus('ok', t('status_ok', episodes.length));
+    elSpeedSel.value = S.defaultSpeed;
+    audio.playbackRate = S.defaultSpeed;
+    render();
+
+    const lastId = store.rawGet('pp_last_'+currentPodcastId);
+    if (lastId) {
+      const idx = episodes.findIndex(e => String(e.trackId) === lastId);
+      if (idx >= 0) loadEp(idx, false);
+    }
+  } catch(e) {
+    clearTimeout(loadTimeout);
+    if (e.name === 'AbortError') return;
+    setStatus('error', t('status_err') + e.message);
+    elEpList.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}<br><br>${t('retry')}</div>`;
+  }
 }
 
 // ═══════════════════════════════════════
@@ -1681,11 +1963,11 @@ function toggleSort() {
   sortAsc = !sortAsc;
   episodes.reverse();
   filteredEps.reverse();
-  if (currentIndex >= 0) {
-    const activeId = filteredEps[currentIndex]?.trackId;
-    currentIndex = filteredEps.findIndex(e => e.trackId === activeId);
+  if (currentTrackId != null) {
+    currentIndex = filteredEps.findIndex(e => String(e.trackId) === currentTrackId);
   }
   elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+  updateNavButtons();
   render();
 }
 
@@ -1697,9 +1979,18 @@ function filterEps() {
     filteredEps = q
       ? episodes.filter(e => (e.trackName||'').toLowerCase().includes(q))
       : episodes.slice();
-    currentIndex = -1;
+    // Re-locate the playing episode if it survives the filter
+    currentIndex = currentTrackId != null
+      ? filteredEps.findIndex(e => String(e.trackId) === currentTrackId)
+      : -1;
+    updateNavButtons();
     render();
   }, 200); // 200 ms debounce
+}
+
+function updateNavButtons() {
+  elBtnPrev.disabled = currentIndex <= 0;
+  elBtnNext.disabled = currentIndex < 0 || currentIndex >= filteredEps.length - 1;
 }
 
 // ═══════════════════════════════════════
@@ -1719,9 +2010,9 @@ function render() {
     const hasSaved = S.resumePos && (prog[id]||0) > 5;
     const active   = (i === currentIndex);
     const dlBtn    = S.showDl
-      ? `<div class="ep-actions"><button class="ep-dl-btn" data-idx="${i}">⬇</button></div>`
+      ? `<div class="ep-actions"><button class="ep-dl-btn" data-idx="${i}" aria-label="${esc(t('dl_label'))}">⬇</button></div>`
       : '';
-    parts[i] = `<div class="ep-item${active?' active':''}" data-idx="${i}">
+    parts[i] = `<div class="ep-item${active?' active':''}" data-idx="${i}" role="button" tabindex="0"${active?' aria-current="true"':''}>
       <span class="ep-num">${i+1}</span>
       <div class="ep-info">
         <div class="ep-name">${esc(ep.trackName||'Bölüm '+(i+1))}</div>
@@ -1748,6 +2039,13 @@ elEpList.addEventListener('click', e => {
   if (row) loadEp(parseInt(row.dataset.idx), true);
 });
 
+// Keyboard: Enter/Space activates the focused episode row
+elEpList.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest('.ep-item[data-idx]');
+  if (row) { e.preventDefault(); e.stopPropagation(); loadEp(parseInt(row.dataset.idx), true); }
+});
+
 // ═══════════════════════════════════════
 // PLAYBACK
 // ═══════════════════════════════════════
@@ -1756,6 +2054,7 @@ function loadEp(idx, autoplay) {
   currentIndex = idx;
   const ep  = filteredEps[idx];
   const id  = String(ep.trackId);
+  currentTrackId = id;
   const src = ep.episodeUrl || ep.previewUrl || '';
 
   elNowTitle.textContent = ep.trackName || `Bölüm ${idx+1}`;
@@ -1764,7 +2063,7 @@ function loadEp(idx, autoplay) {
 
   // Restore speed + position once browser has enough data
   // Using 'canplay' guarantees playbackRate sticks (load() resets it)
-  audio.addEventListener('canplay', () => {
+  const applyAudioPrefs = () => {
     audio.playbackRate = S.defaultSpeed;
     if (S.resumePos) {
       const saved = prog[id] || 0;
@@ -1772,11 +2071,24 @@ function loadEp(idx, autoplay) {
         audio.currentTime = saved;
       }
     }
-  }, { once: true });
+  };
+  if (audio.readyState >= 2) applyAudioPrefs();
+  else audio.addEventListener('canplay', applyAudioPrefs, { once: true });
+
+  // Lock-screen / headset controls metadata
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title:  ep.trackName || '',
+        artist: $('pAuthor').textContent || '',
+        album:  $('pTitle').textContent || '',
+        artwork: $('pThumb').src ? [{ src: $('pThumb').src }] : [],
+      });
+    } catch {}
+  }
 
   elSpeedSel.value = S.defaultSpeed;
-  elBtnPrev.disabled = (idx === 0);
-  elBtnNext.disabled = (idx === filteredEps.length - 1);
+  updateNavButtons();
   store.rawSet('pp_last_'+currentPodcastId, id);
 
   render(); // update active highlight
@@ -1791,12 +2103,12 @@ function togglePlay() {
 }
 
 function seekRel(s) {
-  if (!audio.src) return;
-  audio.currentTime = Math.max(0, Math.min(audio.currentTime + s, audio.duration || 0));
+  if (!audio.src || !Number.isFinite(audio.duration)) return;
+  audio.currentTime = Math.max(0, Math.min(audio.currentTime + s, audio.duration));
 }
 
 function prevEp() { if (currentIndex > 0) loadEp(currentIndex-1, !audio.paused); }
-function nextEp() { if (currentIndex < filteredEps.length-1) loadEp(currentIndex+1, !audio.paused); }
+function nextEp() { if (currentIndex >= 0 && currentIndex < filteredEps.length-1) loadEp(currentIndex+1, !audio.paused); }
 
 function changeSpeed() {
   S.defaultSpeed = parseFloat(elSpeedSel.value) || 1;
@@ -1804,6 +2116,38 @@ function changeSpeed() {
   $('s_defaultSpeed').value = S.defaultSpeed;
   saveState();
 }
+
+// ═══════════════════════════════════════
+// SLEEP TIMER
+// ═══════════════════════════════════════
+let _sleepTimer = null;
+function changeSleep() {
+  clearTimeout(_sleepTimer); _sleepTimer = null;
+  const min = parseInt($('sleepSel').value) || 0;
+  if (min > 0) {
+    _sleepTimer = setTimeout(() => {
+      audio.pause();
+      $('sleepSel').value = '0';
+      _sleepTimer = null;
+    }, min * 60000);
+  }
+}
+
+// ═══════════════════════════════════════
+// GLOBAL KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea' || e.target.isContentEditable) return;
+  if ($('playerScreen').style.display !== 'flex') return;
+  switch (e.key) {
+    case ' ':          e.preventDefault(); togglePlay(); break;
+    case 'ArrowLeft':  e.preventDefault(); seekRel(-S.skipBack); break;
+    case 'ArrowRight': e.preventDefault(); seekRel(S.skipForward); break;
+    case 'ArrowUp':    e.preventDefault(); prevEp(); break;
+    case 'ArrowDown':  e.preventDefault(); nextEp(); break;
+  }
+});
 
 // Progress bar — click
 elProgressWrap.addEventListener('click', e => {
@@ -1888,7 +2232,7 @@ function fmtDate(s) {
 function fmtDur(ms) {
   if (!ms) return '';
   const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
-  return h > 0 ? `${h}sa ${String(m).padStart(2,'0')}dk` : `${m}dk`;
+  return h > 0 ? `${h}${t('dur_h')} ${String(m).padStart(2,'0')}${t('dur_m')}` : `${m}${t('dur_m')}`;
 }
 
 function fmtTime(s) {
@@ -1911,6 +2255,27 @@ document.documentElement.style.setProperty('--list-row-height',  S.rowHeight);
 elLblSkipBack.textContent = S.skipBack;
 elLblSkipFwd.textContent  = S.skipForward;
 elSpeedSel.value          = S.defaultSpeed;
+
+// Lock-screen / headset media controls
+if ('mediaSession' in navigator) {
+  try {
+    const ms = navigator.mediaSession;
+    ms.setActionHandler('play',  () => audio.play().catch(() => {}));
+    ms.setActionHandler('pause', () => audio.pause());
+    ms.setActionHandler('seekbackward',  () => seekRel(-S.skipBack));
+    ms.setActionHandler('seekforward',   () => seekRel(S.skipForward));
+    ms.setActionHandler('previoustrack', prevEp);
+    ms.setActionHandler('nexttrack',     nextEp);
+  } catch {}
+}
+
+// Deep link: ?podcast=<id> or ?rss=<url>; otherwise show subscriptions
+const _params = new URLSearchParams(location.search);
+const _pid = _params.get('podcast'), _rssUrl = _params.get('rss');
+if (_pid && /^\d{4,14}$/.test(_pid)) loadPodcast(_pid);
+else if (_rssUrl && /^https?:\/\//i.test(_rssUrl)) loadRss(_rssUrl);
+else renderFavs();
+
 $('searchInput').focus();
 </script>
 
@@ -1918,7 +2283,7 @@ $('searchInput').focus();
 // ── Service Worker kaydı ──────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('sw.js')
       .then(reg  => console.log('[SW] kayıt OK, scope:', reg.scope))
       .catch(err => console.warn('[SW] kayıt başarısız:', err));
   });

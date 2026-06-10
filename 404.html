@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <!-- GitHub Pages SPA fallback — redirect all 404s to index.html so PWA routes work -->
 <script>
-  // Preserve the path/query in sessionStorage, then redirect to root
+  // Preserve the path/query in sessionStorage, then redirect to the app root
+  // (the site lives under the /podcast-player/ subdirectory on GitHub Pages)
   sessionStorage.setItem('redirect', location.href);
-  location.replace('/');
+  location.replace('/podcast-player/' + location.search);
 </script>
 </head>
 <body></body>

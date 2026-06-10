@@ -1,7 +1,7 @@
 {
   "name": "Podcast Player",
   "short_name": "Podcasts",
-  "description": "Ücretsiz, üyeliksiz podcast dinleyici — iTunes API",
+  "description": "Free, no-account, browser-based podcast player — iTunes API & RSS",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#111217",
