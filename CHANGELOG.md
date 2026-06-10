@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.1.1 — 2026-06-10
+
+### Fixed
+- Light theme redesigned for readability: new palette (white cards on a soft
+  grey canvas, darker text, stronger borders), accent-aware button text color
+  via a luma check, and an accent-tinted active-row highlight that stays
+  visible on white. Browser `theme-color` now follows the selected theme.
+  Dark theme remains the default on first launch.
+- Hardcoded blue hover/highlight colors (`.play-btn`, `.search-btn`, active
+  episode row) now follow the selected accent color instead of always blue.
+- "Oldest → Newest" option in the settings sort selector was missing its i18n
+  binding and stayed in Turkish after a language change.
+- `<html lang>` attribute now updates when the interface language changes
+  (better screen-reader pronunciation and font selection).
+
+### Changed
+- Author/copyright attribution updated to **𝓐.𝓒.𝓑** (LICENSE, READMEs,
+  `<meta name="author">`).
+- README (EN + TR) rewritten: feature/shortcut tables, badges, quick-start and
+  deployment sections, author section.
+- Service Worker cache bumped to `podcast-player-v4`.
+
 ## 1.1.0 — 2026-06-10
 
 ### Fixed
