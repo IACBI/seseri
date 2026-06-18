@@ -142,45 +142,59 @@ body {
   z-index: 0;
   animation: glow-breathe 9s var(--ease-out) infinite;
 }
-#searchScreen > * { position: relative; z-index: 1; }
+.brand, .search-wrap, .results-list { position: relative; z-index: 1; }
 
 .brand {
   text-align: center;
   animation: rise-in 0.7s var(--ease-out) both;
 }
 .brand-logo {
-  width: 68px; height: 68px;
+  width: 78px; height: 78px;
   background: var(--accent-grad);
-  border-radius: 20px;
+  border-radius: 23px;
   display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 18px;
-  box-shadow: 0 12px 36px -8px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.18);
+  margin: 0 auto 22px;
+  box-shadow: 0 16px 44px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.22);
+  animation: logo-float 6s ease-in-out infinite;
 }
-.brand-logo svg { width: 38px; height: 38px; display: block; fill: var(--accent-text); }
+.brand-logo svg {
+  width: 44px; height: 44px; display: block;
+  fill: var(--accent-text);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.18));
+}
 .brand-logo .wave-bar {
   transform-box: fill-box;
   transform-origin: center;
-  animation: eq-bounce 1.5s var(--ease-out) infinite;
+  animation: wave-flow 2.2s ease-in-out infinite;
+  will-change: transform;
 }
-.brand-logo .wave-bar:nth-child(1) { animation-delay: 0s; }
-.brand-logo .wave-bar:nth-child(2) { animation-delay: 0.15s; }
-.brand-logo .wave-bar:nth-child(3) { animation-delay: 0.3s; }
-.brand-logo .wave-bar:nth-child(4) { animation-delay: 0.45s; }
-.brand-logo .wave-bar:nth-child(5) { animation-delay: 0.6s; }
+/* Symmetric ripple radiating out from the centre bar — calm, organic, premium */
+.brand-logo .wave-bar:nth-child(4) { animation-delay: 0s; }
+.brand-logo .wave-bar:nth-child(3),
+.brand-logo .wave-bar:nth-child(5) { animation-delay: 0.16s; }
+.brand-logo .wave-bar:nth-child(2),
+.brand-logo .wave-bar:nth-child(6) { animation-delay: 0.32s; }
+.brand-logo .wave-bar:nth-child(1),
+.brand-logo .wave-bar:nth-child(7) { animation-delay: 0.48s; }
+
 .brand-name {
   font-family: var(--font-display);
-  font-size: 34px;
+  font-size: 42px;
   font-weight: 600;
-  color: var(--text);
-  letter-spacing: -1px;
+  letter-spacing: -1.4px;
   line-height: 1;
-}
-.brand-sub {
-  font-size: 12px;
-  color: var(--text3);
-  margin-top: 8px;
-  font-family: var(--font-mono);
-  letter-spacing: 0.3px;
+  margin: 0;
+  background: linear-gradient(110deg,
+    var(--text) 0%, var(--text) 36%,
+    #ffffff 45%, var(--accent) 52%, #ffffff 59%,
+    var(--text) 68%, var(--text) 100%);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: text-sheen 6s var(--ease-out) infinite;
 }
 
 .search-wrap {
@@ -905,6 +919,18 @@ audio { display: none; }
   0%, 100% { transform: scaleY(0.45); }
   50%      { transform: scaleY(1); }
 }
+@keyframes wave-flow {
+  0%, 100% { transform: scaleY(0.5); }
+  50%      { transform: scaleY(1); }
+}
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); box-shadow: 0 16px 44px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.22); }
+  50%      { transform: translateY(-4px); box-shadow: 0 22px 52px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.22); }
+}
+@keyframes text-sheen {
+  0%   { background-position: 150% 0; }
+  55%, 100% { background-position: -50% 0; }
+}
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -956,16 +982,17 @@ audio { display: none; }
 
   <div class="brand">
     <div class="brand-logo" aria-hidden="true">
-      <svg viewBox="0 0 32 32" fill="var(--accent-text)">
-        <rect class="wave-bar" x="4.5"  y="13" width="3" height="6"  rx="1.5"/>
-        <rect class="wave-bar" x="10"   y="9"  width="3" height="14" rx="1.5"/>
-        <rect class="wave-bar" x="15.5" y="5"  width="3" height="22" rx="1.5"/>
-        <rect class="wave-bar" x="21"   y="9"  width="3" height="14" rx="1.5"/>
-        <rect class="wave-bar" x="26.5" y="13" width="3" height="6"  rx="1.5"/>
+      <svg viewBox="0 0 32 32">
+        <rect class="wave-bar" x="3"  y="13"   width="2" height="6"  rx="1"/>
+        <rect class="wave-bar" x="7"  y="10.5" width="2" height="11" rx="1"/>
+        <rect class="wave-bar" x="11" y="8"    width="2" height="16" rx="1"/>
+        <rect class="wave-bar" x="15" y="5"    width="2" height="22" rx="1"/>
+        <rect class="wave-bar" x="19" y="8"    width="2" height="16" rx="1"/>
+        <rect class="wave-bar" x="23" y="10.5" width="2" height="11" rx="1"/>
+        <rect class="wave-bar" x="27" y="13"   width="2" height="6"  rx="1"/>
       </svg>
     </div>
-    <div class="brand-name">Seseri</div>
-    <div class="brand-sub" data-i18n="brand_sub">Ücretsiz · Üyeliksiz · iTunes API</div>
+    <h1 class="brand-name" aria-label="Seseri">Seseri</h1>
   </div>
 
   <div class="search-wrap">
@@ -975,7 +1002,6 @@ audio { display: none; }
         onkeydown="if(event.key==='Enter') doSearch()" />
       <button class="search-btn" id="searchBtn" onclick="doSearch()" data-i18n="btn_search">Ara →</button>
     </div>
-    <div class="search-hint" data-i18n="search_hint">Örnek: Merdiven Altı Terapi · Barış Özcan ile 111 Hz</div>
   </div>
 
   <div class="results-list" id="resultsList"></div>
