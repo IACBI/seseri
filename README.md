@@ -1,8 +1,8 @@
-# 🎧 Podcast Player
+# Seseri
 
 **English** · [Türkçe](README.tr.md)
 
-Free, no-account, browser-based podcast player.
+Seseri — a free, no-account, browser-based podcast player.
 Uses the iTunes Search API or any RSS feed URL — no backend, no sign-up, no tracking.
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-live-brightgreen)](https://iacbi.github.io/podcast-player/)

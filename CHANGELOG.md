@@ -1,5 +1,42 @@
 # Changelog
 
+## 2.0.0 — 2026-06-18
+
+### Changed
+- **Rebrand to “Seseri.”** The app's display name is now *Seseri* everywhere it
+  is user-facing: page title, brand mark, meta/Open Graph tags, PWA manifest
+  (`name`/`short_name`), `document.title`, privacy policy and both READMEs. The
+  GitHub Pages deploy path (`/podcast-player/`) is unchanged.
+- **New visual identity.** Custom animated sound-wave SVG logo (replacing the
+  headphone emoji) reused as the favicon; a signature electric-violet accent
+  with depth gradients and glow over a deeper “studio” dark canvas; refreshed
+  accent swatches. Three-role type system: Space Grotesk (display), DM Sans
+  (body), DM Mono (labels/data). Dark, Light and OLED themes re-tuned to the
+  new palette.
+- Service Worker cache bumped to `seseri-v1`.
+
+### Added
+- Motion design: hero stagger-in with ambient glow, search↔player screen
+  transitions, staggered episode-list reveal, shimmering skeleton loaders, a
+  now-playing equalizer (animates only during playback), and spring button
+  feedback. All animations honor `prefers-reduced-motion`.
+- First-run interface language is auto-detected from `navigator.language`
+  (falls back to Turkish).
+- Responsive player controls wrap cleanly on narrow screens.
+
+### Fixed
+- Strings that bypassed the i18n system and stayed Turkish in every language
+  are now localized in all 8 languages: episode-count unit, loading/skeleton
+  text, error prefix, the “no episodes found” message, and the episode-name
+  fallback (new `ep_fallback` key). Language switching no longer relies on a
+  fragile hardcoded string comparison.
+
+### Security
+- RSS/iTunes artwork URLs are validated as `https` before being assigned to an
+  `<img>` (matches the CSP `img-src` policy); thumbnails use
+  `loading="lazy"` + `decoding="async"`; external links in the privacy policy
+  use `rel="noopener noreferrer"`.
+
 ## 1.1.1 — 2026-06-10
 
 ### Fixed
