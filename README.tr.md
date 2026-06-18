@@ -1,8 +1,8 @@
-# 🎧 Podcast Player
+# Seseri
 
 [English](README.md) · **Türkçe**
 
-Ücretsiz, üyeliksiz, tarayıcı tabanlı podcast dinleyici.
+Seseri — ücretsiz, üyeliksiz, tarayıcı tabanlı podcast dinleyici.
 iTunes Search API veya herhangi bir RSS besleme URL'si kullanır — arka uç yok, hesap yok, takip yok.
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-live-brightgreen)](https://iacbi.github.io/podcast-player/)

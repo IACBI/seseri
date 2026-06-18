@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'podcast-player-v4'; // bump on each significant deployment
+const CACHE = 'seseri-v1'; // bump on each significant deployment
 const PRECACHE = ['/podcast-player/', '/podcast-player/index.html', '/podcast-player/manifest.json'];
 
 // ── Install: pre-cache shell assets ──────────────────────────────────────

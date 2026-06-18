@@ -17,3 +17,5 @@ gradle.properties
 # IDE
 .idea/
 *.iml
+# Tooling
+.claude/
