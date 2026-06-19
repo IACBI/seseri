@@ -6,8 +6,8 @@
   "orientation": "portrait",
   "background_color": "#0d0e13",
   "theme_color": "#0d0e13",
-  "start_url": "/podcast-player/",
-  "scope": "/podcast-player/",
+  "start_url": "./",
+  "scope": "./",
   "lang": "tr",
   "icons": [
     {
