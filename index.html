@@ -622,11 +622,11 @@ audio { display: none; }
 .wave.scrubbing .wave-head,
 #pPlayer.playing .wave-head { transform: translate(-1px, -50%) scaleY(1); }
 #pPlayer.playing .wave-head { animation: head-pulse 1.7s var(--ease-out) infinite; }
-/* gentle per-bar life on the played region while playing */
-#pPlayer.playing .wave-fill i { animation: wave-breathe 2s var(--ease-out) infinite; }
-.wave-fill i:nth-child(2n)   { animation-delay: .12s; }
-.wave-fill i:nth-child(3n)   { animation-delay: .26s; }
-.wave-fill i:nth-child(5n)   { animation-delay: .4s; }
+/* gentle per-bar life on the played region while playing — only every other
+   bar animates, which keeps the "living" feel at roughly half the layer cost */
+#pPlayer.playing .wave-fill i:nth-child(2n) { animation: wave-breathe 2s var(--ease-out) infinite; }
+#pPlayer.playing .wave-fill i:nth-child(4n) { animation-delay: .22s; }
+#pPlayer.playing .wave-fill i:nth-child(6n) { animation-delay: .4s; }
 /* hover/scrub time tooltip */
 .wave-tip {
   position: absolute;
@@ -790,6 +790,9 @@ audio { display: none; }
   cursor: pointer;
   transition: background 0.2s var(--ease-out), padding-left 0.22s var(--ease-out);
   position: relative;
+  /* Skip rendering rows scrolled out of view (big win on 100+ episode feeds) */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 var(--list-row-height);
 }
 .ep-list.entering .ep-item { animation: rise-in 0.45s var(--ease-out) both; }
 .ep-list.entering .ep-item:nth-child(1)  { animation-delay: 0.00s; }
@@ -885,12 +888,10 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
 .settings-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(6,7,11,0.5);
+  background: rgba(6,7,11,0.55);
   z-index: 100;
   opacity: 0;
   visibility: hidden;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   transition: opacity 0.32s var(--ease-out), visibility 0.32s;
 }
 .settings-overlay.open { opacity: 1; visibility: visible; }
@@ -900,14 +901,17 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
   top: 0; right: 0; bottom: 0;
   width: 340px;
   max-width: 88vw;
-  background: var(--glass);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  /* Solid surface (no backdrop-filter): a drawer slides over content, and
+     animating translateX on a blurred element re-rasterizes the whole backdrop
+     every frame — the main cause of the settings FPS drop. */
+  background: var(--surface);
   border-left: 1px solid var(--border2);
   box-shadow: var(--shadow-lg);
   z-index: 101;
   transform: translateX(100%);
   transition: transform 0.42s var(--ease-out);
+  will-change: transform;
+  contain: layout paint;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -934,9 +938,7 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
   flex-shrink: 0;
   position: sticky;
   top: 0;
-  background: var(--glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--surface);
   z-index: 2;
 }
 .settings-title { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
