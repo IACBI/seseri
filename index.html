@@ -63,6 +63,11 @@
   --red: #f06a6a;
   --yellow: #e6bb4f;
 
+  /* ─ Wordmark sheen + hero vignette — overridden per-theme so they never
+       collapse into the background (white sheen vanishes on a white canvas) ─ */
+  --wm-shine: #ffffff;
+  --hero-vignette: rgba(0,0,0,0.18);
+
   /* ─ Translucent chrome (recomputed per-theme by .theme-* below) ─ */
   --glass: rgba(20,21,29,0.72);
   --glass-2: rgba(28,30,40,0.6);
@@ -109,6 +114,10 @@ html.theme-light {
   --shadow-sm: 0 1px 2px rgba(20,24,40,0.06), 0 2px 10px -6px rgba(20,24,40,0.12);
   --shadow-md: 0 6px 20px -10px rgba(20,24,40,0.16), 0 2px 6px -4px rgba(20,24,40,0.10);
   --shadow-lg: 0 30px 70px -24px rgba(30,36,60,0.28);
+  /* On a light canvas the sheen must be a coloured shimmer, not white (which
+     would erase the letters); a faint cool vignette keeps depth without mud. */
+  --wm-shine: var(--accent-dim);
+  --hero-vignette: rgba(24,28,48,0.05);
 }
 html.theme-oled {
   --glass: rgba(8,8,11,0.78);
@@ -187,7 +196,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 42%, transparent 55%, rgba(0,0,0,0.18) 100%);
+  background: radial-gradient(ellipse 80% 60% at 50% 42%, transparent 55%, var(--hero-vignette) 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -246,7 +255,7 @@ body {
   margin: 0;
   background: linear-gradient(110deg,
     var(--text) 0%, var(--text) 38%,
-    #ffffff 46%, var(--accent) 52%, #ffffff 58%,
+    var(--wm-shine) 46%, var(--accent) 52%, var(--wm-shine) 58%,
     var(--text) 66%, var(--text) 100%);
   background-size: 250% 100%;
   background-position: 150% 0;
@@ -1956,7 +1965,7 @@ function applyTheme(theme) {
     oled:  ['#000000', '#08080a', '#0e0e12', '#16161c', '#202027', '#2c2c36', '#f2f2f6', '#8a8a99', '#46465a'],
     // Light: crisp white cards on a soft cool-grey canvas, deep readable ink,
     // hairline borders that still outline inputs/cards on white
-    light: ['#f4f5f8', '#ecedf2', '#ffffff', '#f7f8fb', '#e7e9f0', '#d3d7e1', '#14161d', '#51566a', '#888ea1'],
+    light: ['#f4f5f8', '#ecedf2', '#ffffff', '#f7f8fb', '#e7e9f0', '#d3d7e1', '#14161d', '#4c5165', '#6e7488'],
   };
   const keys = ['--bg','--bg2','--surface','--surface2','--border','--border2','--text','--text2','--text3'];
   const vals = themes[theme] || themes.dark;
