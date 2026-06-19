@@ -78,10 +78,31 @@
   --font-body: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'DM Mono', ui-monospace, monospace;
 
-  /* ─ Motion ─ */
+  /* ─ Motion — easings + a tuned duration scale (route transitions through these) ─ */
   --ease-spring: cubic-bezier(0.34, 1.42, 0.64, 1);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --d-fast: 0.13s;
+  --d-base: 0.22s;
+  --d-slow: 0.42s;
+
+  /* ─ Spacing scale (4-pt rhythm) ─ */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  /* ─ Type scale ─ */
+  --fs-xs: 10.5px;
+  --fs-sm: 12px;
+  --fs-md: 13.5px;
+  --fs-lg: 16px;
+  --fs-xl: 22px;
+  --fs-2xl: 46px;
 
   /* ─ Radii ─ */
   --r-xs: 8px;
@@ -90,10 +111,14 @@
   --r-lg: 18px;
   --r-xl: 24px;
 
-  /* ─ Elevation ─ */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.25), 0 2px 8px -4px rgba(0,0,0,0.35);
-  --shadow-md: 0 4px 14px -6px rgba(0,0,0,0.5), 0 2px 6px -4px rgba(0,0,0,0.4);
-  --shadow-lg: 0 24px 60px -20px rgba(0,0,0,0.62);
+  /* ─ Elevation — layered, diffuse ramp for depth on ink ─ */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.30), 0 2px 8px -5px rgba(0,0,0,0.45);
+  --shadow-md: 0 2px 6px -3px rgba(0,0,0,0.40), 0 8px 24px -10px rgba(0,0,0,0.55);
+  --shadow-lg: 0 8px 24px -12px rgba(0,0,0,0.50), 0 30px 70px -24px rgba(0,0,0,0.65);
+
+  /* ─ Waveform scrubber (signature) ─ */
+  --wave-track: var(--border2);
+  --wave-played: var(--accent);
 
   /* ─ Settings (JS-overridable) ─ */
   --player-font-size: 14px;
@@ -491,7 +516,7 @@ body {
 
 /* Player block */
 .p-player {
-  padding: 18px 22px 20px;
+  padding: var(--s-5) var(--s-5) var(--s-5);
   border-bottom: 1px solid var(--border);
   background: var(--glass-2);
   backdrop-filter: blur(14px);
@@ -503,8 +528,8 @@ body {
 .p-now-head {
   display: flex;
   align-items: center;
-  gap: 9px;
-  margin-bottom: 7px;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
 }
 .p-now-label {
   font-size: 9.5px;
@@ -529,54 +554,100 @@ body {
 .now-eq i:nth-child(4) { animation-delay: 0.12s; height: 45%; }
 .p-now-title {
   font-family: var(--font-display);
-  font-size: var(--player-font-size);
-  font-weight: 500;
+  font-size: calc(var(--player-font-size) + 2px);
+  font-weight: 600;
   color: var(--text);
-  margin-bottom: 16px;
-  line-height: 1.4;
+  margin-bottom: var(--s-4);
+  line-height: 1.35;
   min-height: 20px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: opacity var(--d-base) var(--ease-out), transform var(--d-base) var(--ease-out);
 }
+.p-now-title.swapping { opacity: 0; transform: translateY(6px); }
 
 audio { display: none; }
 
-/* Progress */
-.progress-wrap {
+/* Waveform scrubber — the signature: sound made visible */
+.wave {
+  position: relative;
   width: 100%;
-  height: 5px;
-  background: var(--border2);
-  border-radius: 3px;
+  height: 46px;
+  margin-bottom: var(--s-2);
   cursor: pointer;
-  margin-bottom: 7px;
-  position: relative;
-  transition: height 0.18s var(--ease-out), margin 0.18s var(--ease-out);
+  touch-action: none;
+  outline: none;
+  border-radius: var(--r-xs);
+  transition: transform var(--d-fast) var(--ease-out);
 }
-.progress-wrap:hover { height: 8px; margin-bottom: 4px; }
-.progress-fill {
-  height: 100%;
-  background: var(--accent-grad);
-  border-radius: 3px;
-  width: 0%;
-  pointer-events: none;
-  transition: width 0.12s linear;
-  position: relative;
-  box-shadow: 0 0 12px -2px var(--accent-glow);
-}
-.progress-fill::after {
-  content: '';
+.wave:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
+.wave-layer {
   position: absolute;
-  right: -4px; top: 50%;
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-glow), var(--shadow-sm);
-  transform: translateY(-50%) scale(0);
-  transition: transform 0.2s var(--ease-spring);
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
 }
-.progress-wrap:hover .progress-fill::after { transform: translateY(-50%) scale(1); }
+.wave-layer i {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 18%;
+  border-radius: 1.5px;
+  transform-origin: center;
+  transition: height var(--d-base) var(--ease-out);
+}
+.wave-base i { background: var(--wave-track); }
+.wave-fill {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--d-base) linear;
+  will-change: clip-path;
+}
+.wave-fill i { background: var(--wave-played); }
+/* leading-edge playhead */
+.wave-head {
+  position: absolute;
+  top: 50%; left: 0;
+  width: 2px; height: 76%;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: translate(-1px, -50%) scaleY(0);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  transition: transform var(--d-fast) var(--ease-spring), left var(--d-base) linear;
+  pointer-events: none;
+}
+.wave:hover .wave-head,
+.wave.scrubbing .wave-head,
+#pPlayer.playing .wave-head { transform: translate(-1px, -50%) scaleY(1); }
+#pPlayer.playing .wave-head { animation: head-pulse 1.7s var(--ease-out) infinite; }
+/* gentle per-bar life on the played region while playing */
+#pPlayer.playing .wave-fill i { animation: wave-breathe 2s var(--ease-out) infinite; }
+.wave-fill i:nth-child(2n)   { animation-delay: .12s; }
+.wave-fill i:nth-child(3n)   { animation-delay: .26s; }
+.wave-fill i:nth-child(5n)   { animation-delay: .4s; }
+/* hover/scrub time tooltip */
+.wave-tip {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 0;
+  transform: translateX(-50%);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: var(--r-xs);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--d-fast) var(--ease-out);
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  z-index: 3;
+}
+.wave:hover .wave-tip, .wave.scrubbing .wave-tip { opacity: 1; }
 .time-row {
   display: flex;
   justify-content: space-between;
@@ -754,6 +825,15 @@ audio { display: none; }
   font-variant-numeric: tabular-nums;
 }
 .ep-item.active .ep-num { color: var(--accent); }
+/* Mini equalizer that replaces the index on the active row */
+.ep-eq { display: inline-flex; align-items: flex-end; justify-content: flex-end; gap: 2px; height: 13px; width: 100%; }
+.ep-eq i { width: 3px; height: 35%; background: var(--accent); border-radius: 1px; transform-origin: bottom; }
+.ep-eq i:nth-child(1) { height: 55%; }
+.ep-eq i:nth-child(2) { height: 100%; }
+.ep-eq i:nth-child(3) { height: 72%; }
+body.is-playing .ep-item.active .ep-eq i { animation: eq-bounce 0.9s var(--ease-out) infinite; }
+body.is-playing .ep-item.active .ep-eq i:nth-child(2) { animation-delay: 0.15s; }
+body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
 .ep-info { flex: 1; min-width: 0; }
 .ep-name {
   font-size: 12.5px;
@@ -1035,12 +1115,20 @@ audio { display: none; }
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes glow-breathe {
-  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.92); }
-  50%      { opacity: 0.95; transform: translate(-50%, -50%) scale(1.06); }
+  0%, 100% { opacity: 0.38; transform: translate(-50%, -50%) scale(0.94); }
+  50%      { opacity: 0.7;  transform: translate(-50%, -50%) scale(1.05); }
 }
 @keyframes eq-bounce {
   0%, 100% { transform: scaleY(0.42); }
   50%      { transform: scaleY(1); }
+}
+@keyframes wave-breathe {
+  0%, 100% { transform: scaleY(0.9); }
+  50%      { transform: scaleY(1.12); }
+}
+@keyframes head-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent-glow); }
+  50%      { box-shadow: 0 0 9px 3px var(--accent-glow); }
 }
 @keyframes wave-flow {
   0%, 100% { transform: scaleY(0.5); }
@@ -1171,8 +1259,12 @@ audio { display: none; }
     </div>
     <div class="p-now-title" id="nowTitle" data-i18n="pick_episode">Bir bölüm seçin</div>
     <audio id="audio"></audio>
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-fill" id="progressFill"></div>
+    <div class="wave" id="progressWrap" role="slider" tabindex="0"
+         aria-label="Konum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="wave-layer wave-base" id="waveBase"></div>
+      <div class="wave-layer wave-fill" id="waveFill"></div>
+      <div class="wave-head" id="waveHead"></div>
+      <div class="wave-tip" id="waveTip">0:00</div>
     </div>
     <div class="time-row">
       <span id="tCur">0:00</span>
@@ -1806,8 +1898,11 @@ const audio          = $('audio');
 const elDot          = $('dot');
 const elStatusText   = $('statusText');
 const elNowTitle     = $('nowTitle');
-const elProgressFill = $('progressFill');
 const elProgressWrap = $('progressWrap');
+const elWaveBase     = $('waveBase');
+const elWaveFill     = $('waveFill');
+const elWaveHead     = $('waveHead');
+const elWaveTip      = $('waveTip');
 const elTCur         = $('tCur');
 const elTTot         = $('tTot');
 const elBtnPlay      = $('btnPlay');
@@ -2180,7 +2275,7 @@ function goBack() {
   currentTrackId = null;
   currentMeta = null;
   elNowTitle.textContent = t('pick_episode');
-  elProgressFill.style.width = '0%';
+  setWaveProgress(0);
   elTCur.textContent = '0:00';
   elTTot.textContent = '0:00';
   elBtnPlay.textContent = '▶';
@@ -2459,7 +2554,7 @@ function render() {
       ? `<div class="ep-actions"><button class="ep-dl-btn" data-idx="${i}" aria-label="${esc(t('dl_label'))}">⬇</button></div>`
       : '';
     parts[i] = `<div class="ep-item${active?' active':''}" data-idx="${i}" role="button" tabindex="0"${active?' aria-current="true"':''}>
-      <span class="ep-num">${i+1}</span>
+      <span class="ep-num">${active ? '<span class="ep-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : (i+1)}</span>
       <div class="ep-info">
         <div class="ep-name">${esc(ep.trackName||t('ep_fallback', i+1))}</div>
         <div class="ep-date-dur">${ep._fmtDate}${ep._fmtDur?' · '+ep._fmtDur:''}${hasSaved?` <span class="ep-saved-badge">${esc(t('ep_saved_badge'))}</span>`:''}</div>
@@ -2511,6 +2606,18 @@ elEpList.addEventListener('keydown', e => {
   if (row) { e.preventDefault(); e.stopPropagation(); loadEp(parseInt(row.dataset.idx), true); }
 });
 
+// Crossfade the now-playing title when the track changes
+let _titleTimer = null;
+function setNowTitle(text) {
+  if (elNowTitle.textContent === text) return;
+  elNowTitle.classList.add('swapping');
+  clearTimeout(_titleTimer);
+  _titleTimer = setTimeout(() => {
+    elNowTitle.textContent = text;
+    elNowTitle.classList.remove('swapping');
+  }, 150);
+}
+
 // ═══════════════════════════════════════
 // PLAYBACK
 // ═══════════════════════════════════════
@@ -2522,7 +2629,9 @@ function loadEp(idx, autoplay) {
   currentTrackId = id;
   const src = ep.episodeUrl || ep.previewUrl || '';
 
-  elNowTitle.textContent = ep.trackName || t('ep_fallback', idx+1);
+  setNowTitle(ep.trackName || t('ep_fallback', idx+1));
+  buildWaveform(id);          // fresh per-episode amplitude waveform
+  setWaveProgress(0);
   audio.src = src;
   audio.load();
 
@@ -2535,6 +2644,11 @@ function loadEp(idx, autoplay) {
       if (saved > 5 && isFinite(audio.duration) && saved < audio.duration - 2) {
         audio.currentTime = saved;
       }
+    }
+    if (isFinite(audio.duration) && audio.duration) {
+      setWaveProgress((audio.currentTime / audio.duration) * 100);
+      elTCur.textContent = fmtTime(audio.currentTime);
+      elTTot.textContent = fmtTime(audio.duration);
     }
   };
   if (audio.readyState >= 2) applyAudioPrefs();
@@ -2614,12 +2728,78 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Progress bar — click
-elProgressWrap.addEventListener('click', e => {
-  if (!audio.duration) return;
+// ── Waveform scrubber ─────────────────────────────────────────────────────
+const WAVE_BARS = 56;
+// Deterministic PRNG (mulberry32 + a string hash) so each episode gets a stable,
+// real-looking amplitude waveform without any audio analysis (impossible on
+// cross-origin podcast MP3s anyway).
+function _waveSeed(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+function buildWaveform(id) {
+  const rand = _waveSeed(String(id || 'seseri'));
+  let bars = '';
+  for (let i = 0; i < WAVE_BARS; i++) {
+    // blend a slow swell with per-bar noise so it reads like a real recording
+    const t = i / (WAVE_BARS - 1);
+    const swell = 0.4 + 0.6 * Math.abs(Math.sin(t * Math.PI + rand() * 0.5));
+    const h = Math.max(0.14, Math.min(1, swell * (0.5 + rand() * 0.75)));
+    bars += `<i style="height:${(h * 100).toFixed(1)}%"></i>`;
+  }
+  elWaveBase.innerHTML = bars;
+  elWaveFill.innerHTML = bars;
+}
+// Reveal the played portion via clip, move the playhead, sync aria.
+function setWaveProgress(pct) {
+  pct = Math.max(0, Math.min(100, pct || 0));
+  elWaveFill.style.clipPath = `inset(0 ${(100 - pct).toFixed(2)}% 0 0)`;
+  elWaveHead.style.left = pct + '%';
+  elProgressWrap.setAttribute('aria-valuenow', Math.round(pct));
+}
+function _waveFrac(clientX) {
   const rect = elProgressWrap.getBoundingClientRect();
-  audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+  return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+}
+function _waveSeek(clientX) {
+  if (!audio.duration) return;
+  const frac = _waveFrac(clientX);
+  audio.currentTime = frac * audio.duration;
+  setWaveProgress(frac * 100);
+}
+function _waveShowTip(clientX) {
+  const frac = _waveFrac(clientX);
+  elWaveTip.style.left = (frac * 100) + '%';
+  elWaveTip.textContent = audio.duration ? fmtTime(frac * audio.duration) : '0:00';
+}
+let _scrubbing = false;
+elProgressWrap.addEventListener('pointerdown', e => {
+  if (!audio.duration) return;
+  _scrubbing = true;
+  elProgressWrap.classList.add('scrubbing');
+  try { elProgressWrap.setPointerCapture(e.pointerId); } catch {}
+  _waveSeek(e.clientX); _waveShowTip(e.clientX);
 });
+elProgressWrap.addEventListener('pointermove', e => {
+  _waveShowTip(e.clientX);
+  if (_scrubbing) _waveSeek(e.clientX);
+});
+function _endScrub() { _scrubbing = false; elProgressWrap.classList.remove('scrubbing'); }
+elProgressWrap.addEventListener('pointerup', _endScrub);
+elProgressWrap.addEventListener('pointercancel', _endScrub);
+elProgressWrap.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); seekRel(-S.skipBack); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); seekRel(S.skipForward); }
+});
+buildWaveform('seseri'); // placeholder bars until the first episode loads
 
 // timeupdate — throttled to ~4 fps for DOM updates; progress saved via saveState throttle
 let _lastUiUpdate = 0;
@@ -2630,7 +2810,7 @@ audio.addEventListener('timeupdate', () => {
 
   const cur = audio.currentTime, dur = audio.duration;
   const pct = dur ? (cur / dur * 100) : 0;
-  elProgressFill.style.width = pct + '%';
+  if (!_scrubbing) setWaveProgress(pct);
   elTCur.textContent = fmtTime(cur);
   elTTot.textContent = fmtTime(dur);
 
@@ -2643,12 +2823,13 @@ audio.addEventListener('timeupdate', () => {
 audio.addEventListener('ended', () => {
   if (S.autoNext && currentIndex < filteredEps.length-1) loadEp(currentIndex+1, true);
 });
-audio.addEventListener('play',  () => { elBtnPlay.textContent = '⏸'; elPlayer.classList.add('playing'); });
-audio.addEventListener('pause', () => { elBtnPlay.textContent = '▶'; elPlayer.classList.remove('playing'); });
+audio.addEventListener('play',  () => { elBtnPlay.textContent = '⏸'; elPlayer.classList.add('playing'); document.body.classList.add('is-playing'); });
+audio.addEventListener('pause', () => { elBtnPlay.textContent = '▶'; elPlayer.classList.remove('playing'); document.body.classList.remove('is-playing'); });
 audio.addEventListener('error', () => {
   setStatus('error', t('audio_err') || 'Ses dosyası yüklenemedi.');
   elBtnPlay.textContent = '▶';
   elPlayer.classList.remove('playing');
+  document.body.classList.remove('is-playing');
 });
 
 // ═══════════════════════════════════════
