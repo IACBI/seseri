@@ -757,22 +757,20 @@ audio { display: none; }
 #pPlayer.idle .wave { opacity: 0.4; pointer-events: none; filter: grayscale(0.5); }
 #pPlayer.idle .time-row { opacity: 0.45; }
 
-/* YouTube embed — compact 16:9 frame, shown only for YouTube feeds */
+/* YouTube embed — audio-only: the player is kept rendered (so audio plays) but
+   moved off-screen, so YouTube feeds look like a normal audio podcast (cover art
+   + waveform) instead of a video. NOTE: the official embed still streams video in
+   the background — there is no audio-only stream — but lowest quality is requested
+   to keep the data use down. Never display:none (that can stop playback). */
 .yt-frame {
-  display: none;
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto var(--s-3);
-  aspect-ratio: 16 / 9;
-  border-radius: 12px;
+  position: absolute;
+  width: 1px; height: 1px;
+  left: -9999px; top: 0;
   overflow: hidden;
-  background: #000;
-  box-shadow: var(--shadow-md);
+  opacity: 0;
+  pointer-events: none;
 }
 .yt-frame iframe, .yt-frame #ytHost { width: 100%; height: 100%; border: 0; display: block; }
-#pPlayer.yt-mode .yt-frame { display: block; }
-/* In YouTube mode the cosmetic waveform stays as a slim scrubber under the video */
-#pPlayer.yt-mode.idle .yt-frame { display: none; }
 
 .spacer { flex: 1; }
 
@@ -3381,8 +3379,11 @@ async function _ytLoadEp(ep, autoplay) {
   if (!feedIsYT || currentTrackId !== String(ep.trackId)) return; // user moved on while loading
   const saved = (S.resumePos && (prog[String(ep.trackId)] || 0) > 5) ? prog[String(ep.trackId)] : 0;
   try {
-    const opts = { videoId: ep.ytId, startSeconds: saved };
+    // suggestedQuality:'small' = request the lowest video rendition to cut data
+    // (audio is what we use; the video is hidden off-screen).
+    const opts = { videoId: ep.ytId, startSeconds: saved, suggestedQuality: 'small' };
     if (autoplay) ytPlayer.loadVideoById(opts); else ytPlayer.cueVideoById(opts);
+    try { ytPlayer.setPlaybackQuality('small'); } catch {}
     pbSetRate(S.defaultSpeed);
   } catch {
     setStatus('error', t('yt_embed_blocked'));
