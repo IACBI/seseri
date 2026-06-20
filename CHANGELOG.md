@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.3.0 — 2026-06-20
+
+### Changed
+- **YouTube playback now uses a real audio stream when possible.** YouTube shows
+  are resolved through public **Piped / Invidious** instances to a direct audio
+  URL played by the normal `<audio>` element — so they behave like any podcast:
+  **ad-free, background / lock-screen playback, resume, download**, the full
+  episode list (up to ~200) **with real dates and durations**, lowest-bitrate
+  audio to save data. Several instances are tried in parallel.
+- **Graceful fallback.** If no Piped/Invidious instance serves the content (these
+  public servers are often rate-limited or blocked by YouTube), the app falls back
+  to the keyless feed (latest ~15) and the official `youtube-nocookie` IFrame
+  embed for playback — in which case the embed's limits apply (possible ads, no
+  mobile-background, no download). The video stays hidden (audio-only presentation).
+
+### Notes
+- Background playback, ad-free and per-episode dates depend on a healthy
+  third-party instance; availability is outside the app's control.
+
 ## 2.2.0 — 2026-06-20
 
 ### Added
