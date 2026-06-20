@@ -7,8 +7,9 @@
   are resolved through public **Piped / Invidious** instances to a direct audio
   URL played by the normal `<audio>` element — so they behave like any podcast:
   **ad-free, background / lock-screen playback, resume, download**, the full
-  episode list (up to ~200) **with real dates and durations**, lowest-bitrate
-  audio to save data. Several instances are tried in parallel.
+  episode list (up to ~200) **with real dates and durations**, highest-bitrate
+  audio. Several instances are tried in parallel. On the embed fallback, missing
+  episode titles are filled from noembed (keyless CORS oembed).
 - **Graceful fallback.** If no Piped/Invidious instance serves the content (these
   public servers are often rate-limited or blocked by YouTube), the app falls back
   to the keyless feed (latest ~15) and the official `youtube-nocookie` IFrame
