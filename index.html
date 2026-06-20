@@ -2090,6 +2090,7 @@ let feedIsYT = false;   // the currently-open feed is a YouTube playlist/channel
 let ytPlayer = null;    // YT.Player instance (created lazily on first YT play)
 let ytReady = null;     // promise that resolves once the IFrame API + player are ready
 let _ytPoll = null;     // progress polling interval id (YT has no 'timeupdate' event)
+let _ytLimited = true;  // true = only the latest ~15 (feed); false = full playlist enumerated
 
 let S = {
   defaultSpeed: 1,
@@ -2813,6 +2814,7 @@ async function loadYouTube(info) {
     if (info.type === 'video') {
       // Single video → one-item feed. Title is filled from the player once it loads;
       // the thumbnail URL is deterministic (no extra request).
+      _ytLimited = false;
       chTitle = t('yt_video');
       eps = [{
         trackId: info.id, trackName: t('yt_video'), releaseDate: '',
@@ -2826,16 +2828,39 @@ async function loadYouTube(info) {
       const parsed = await fetchYtFeed(feedUrl, loadSignal);
       chTitle  = parsed.title || 'YouTube';
       chAuthor = parsed.author || '';
-      for (const it of parsed.items) {
-        eps.push({
-          trackId: it.videoId,
-          trackName: it.title,
-          releaseDate: it.published,
-          ytId: it.videoId,
-          episodeUrl: '',
-          trackTimeMillis: 0,
-          art: it.thumb || `https://i.ytimg.com/vi/${it.videoId}/hqdefault.jpg`,
-        });
+      const meta = new Map();                       // videoId → feed metadata (latest ~15)
+      for (const it of parsed.items) meta.set(it.videoId, it);
+      const feedNewestId = parsed.items[0] && parsed.items[0].videoId;
+
+      // For playlists, try to enumerate the FULL list (up to ~200) via the player.
+      // Older items beyond the feed have no title/date until played. Falls back to
+      // the feed-only list if the player can't enumerate (blocked / timed out).
+      let fullIds = null;
+      if (info.type === 'playlist') {
+        try { fullIds = await _ytPlaylistIds(info.id, loadSignal); }
+        catch (e) { if (loadSignal.aborted) throw e; fullIds = null; }
+      }
+
+      const mk = (id) => {
+        const it = meta.get(id);
+        return {
+          trackId: id, trackName: it ? it.title : '', releaseDate: it ? it.published : '',
+          ytId: id, episodeUrl: '', trackTimeMillis: 0,
+          art: (it && it.thumb) || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+        };
+      };
+
+      if (fullIds && fullIds.length > parsed.items.length) {
+        _ytLimited = false;
+        // Normalize to newest-first (feed order) so the common tail below can flip
+        // it to oldest-first. If the playlist starts with the feed's newest video
+        // it is already newest-first; otherwise reverse it.
+        let newestFirst = fullIds.slice();
+        if (!(feedNewestId && fullIds[0] === feedNewestId)) newestFirst.reverse();
+        for (const id of newestFirst) eps.push(mk(id));
+      } else {
+        _ytLimited = true;
+        for (const it of parsed.items) eps.push(mk(it.videoId));
       }
       chArt = eps.length ? eps[0].art : '';
     }
@@ -2857,7 +2882,7 @@ async function loadYouTube(info) {
     elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
     filteredEps = episodes.slice();
     elPEpCount.textContent = episodes.length;
-    setStatus('ok', t('status_ok', episodes.length) + ' · ' + t('yt_limit_note'));
+    setStatus('ok', t('status_ok', episodes.length) + (_ytLimited ? ' · ' + t('yt_limit_note') : ''));
     elSpeedSel.value = S.defaultSpeed;
     _animateNextRender = true;
     render();
@@ -3326,6 +3351,8 @@ function _ensureYtPlayer() {
       },
     });
   }));
+  // Don't poison the cached promise on failure — allow a later retry.
+  ytReady.catch(() => { ytReady = null; _ytApiLoading = null; });
   return ytReady;
 }
 
@@ -3334,17 +3361,41 @@ function _ytStartPoll() {
   _ytPoll = setInterval(() => { if (feedIsYT && !pbPaused()) _updateProgressUI(); }, 250);
 }
 
+// Enumerate a full playlist's video IDs (up to ~200) via the IFrame player. Cues
+// the playlist (no autoplay) and polls getPlaylist() until populated. Rejects on
+// timeout / cancellation so the caller can fall back to the feed-only list.
+async function _ytPlaylistIds(playlistId, signal, timeoutMs = 10000) {
+  await _ensureYtPlayer();
+  if (signal && signal.aborted) throw new DOMException('aborted', 'AbortError');
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const finish = (fn, val) => { if (done) return; done = true; clearTimeout(to); clearInterval(iv); if (signal) signal.removeEventListener('abort', onAbort); fn(val); };
+    const onAbort = () => finish(reject, new DOMException('aborted', 'AbortError'));
+    const to = setTimeout(() => finish(reject, new Error('playlist timeout')), timeoutMs);
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+    try { ytPlayer.cuePlaylist({ list: playlistId, listType: 'playlist', suggestedQuality: 'small' }); }
+    catch (e) { finish(reject, e); return; }
+    const iv = setInterval(() => {
+      let ids = null;
+      try { ids = ytPlayer.getPlaylist(); } catch {}
+      if (Array.isArray(ids) && ids.length) finish(resolve, ids.slice());
+    }, 300);
+  });
+}
+
 function _onYtState(e) {
   if (!feedIsYT) return;
   const Y = window.YT && YT.PlayerState;
   if (!Y) return;
   if (e.data === Y.PLAYING) {
-    // Fill the now-playing title for single-video feeds (no feed metadata)
+    // Fill the title for items that have none yet (single video, or older
+    // full-playlist entries beyond the feed) from the now-playing video data.
     try {
+      const ep = currentIndex >= 0 ? filteredEps[currentIndex] : null;
+      const needsTitle = ep && (!ep.trackName || ep.trackName === t('yt_video'));
       const d = ytPlayer.getVideoData && ytPlayer.getVideoData();
-      if (d && d.title && currentIndex >= 0 && filteredEps[currentIndex] &&
-          filteredEps[currentIndex].trackName === t('yt_video')) {
-        filteredEps[currentIndex].trackName = d.title;
+      if (needsTitle && d && d.title) {
+        ep.trackName = d.title;
         setNowTitle(d.title);
         render();
       }
@@ -3389,7 +3440,7 @@ async function _ytLoadEp(ep, autoplay) {
     setStatus('error', t('yt_embed_blocked'));
     return;
   }
-  setStatus('ok', t('status_ok', episodes.length) + ' · ' + t('yt_limit_note'));
+  setStatus('ok', t('status_ok', episodes.length) + (_ytLimited ? ' · ' + t('yt_limit_note') : ''));
 }
 
 // ═══════════════════════════════════════
