@@ -24,7 +24,7 @@ sign-up, no tracking. One HTML file, zero dependencies.
 | | |
 |---|---|
 | 🔍 **Podcast search** | by name, Apple Podcasts link, or a direct RSS feed URL |
-| ▶️ **YouTube shows** | paste a YouTube playlist / channel / video link — official `youtube-nocookie` embed, keyless (latest ~15; no download, mobile background limited) |
+| ▶️ **YouTube shows** | paste a YouTube playlist / channel / video link — streamed as audio via public Piped/Invidious instances (ad-free, background, download, full list with dates), with an official `youtube-nocookie` embed fallback when those servers are down |
 | 🌊 **Waveform scrubber** | a per-episode waveform you can drag to seek, with a live playhead and time tooltip |
 | 🎛 **Full player** | play/pause, previous/next, skip back/forward, speed control (0.5×–2.5×) |
 | ⏯ **Resume playback** | episode progress is saved to `localStorage` |
@@ -128,7 +128,7 @@ arka uç yok, kayıt yok, takip yok. Tek HTML dosyası, sıfır bağımlılık.
 | | |
 |---|---|
 | 🔍 **Podcast arama** | isim, Apple Podcasts linki veya doğrudan RSS besleme URL'si ile |
-| ▶️ **YouTube yayınları** | YouTube playlist / kanal / video linki yapıştır — resmi `youtube-nocookie` embed, anahtarsız (son ~15; indirme yok, mobilde arka plan kısıtlı) |
+| ▶️ **YouTube yayınları** | YouTube playlist / kanal / video linki yapıştır — herkese açık Piped/Invidious sunucuları üzerinden ses olarak (reklamsız, arka plan, indirme, tarihli tam liste); sunucular kapalıysa resmi `youtube-nocookie` embed'e düşer |
 | 🌊 **Dalga-form çubuğu** | bölüme özel, sürükleyerek konumlandırılabilen dalga-form; canlı oynatma başı ve zaman ipucu |
 | 🎛 **Tam oynatıcı** | oynat/duraklat, önceki/sonraki, ileri/geri atlama, hız kontrolü (0.5×–2.5×) |
 | ⏯ **Kaldığın yerden devam** | bölüm ilerlemesi `localStorage`'a kaydedilir |
