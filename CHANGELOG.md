@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.2.0 — 2026-06-20
+
+### Added
+- **YouTube shows (link-based).** Paste a YouTube **playlist, channel or video**
+  link into the search box to listen to shows that publish on YouTube. The episode
+  list is built from YouTube's keyless Atom feed (the same CORS-proxy path used for
+  RSS), and playback uses YouTube's official privacy-friendly IFrame embed
+  (`youtube-nocookie.com`) — no API key, no third-party stream servers. The
+  existing transport (play/pause, skip, scrubber, speed, prev/next, sleep timer,
+  resume, lock-screen controls, deep links `?yt=…`, subscriptions) all work through
+  a shared playback layer, so audio podcasts behave exactly as before.
+
+### Notes / limitations (YouTube items only)
+- YouTube's feed exposes only the **latest ~15 entries** (shown newest-aligned).
+- **Download** is not offered for YouTube items (YouTube Terms); the per-row
+  download button is hidden for these feeds.
+- **Background audio** follows YouTube's own rules: it keeps playing in an
+  unfocused desktop tab / installed PWA, but mobile browsers pause when the screen
+  locks or the app is backgrounded — there is no compliant way to override that.
+- A video whose owner disabled embedding can't be played; the player reports it.
+
+### Security
+- Content Security Policy tightened to the minimum needed for the embed:
+  `script-src` adds only `https://www.youtube.com` (the IFrame API loader) and a
+  new `frame-src` allows only `youtube-nocookie.com` / `youtube.com`. Service
+  Worker cache bumped to `seseri-v3`.
+
 ## 2.1.0 — 2026-06-20
 
 ### Added

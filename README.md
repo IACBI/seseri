@@ -5,9 +5,9 @@
 [![PWA](https://img.shields.io/badge/PWA-ready-5b8af5)](manifest.json)
 [![No dependencies](https://img.shields.io/badge/dependencies-0-success)](#technology)
 
-A free, no-account, browser-based podcast player. Search with the iTunes API or
-paste any RSS feed URL — no backend, no sign-up, no tracking. One HTML file, zero
-dependencies.
+A free, no-account, browser-based podcast player. Search with the iTunes API,
+paste any RSS feed URL, or drop a YouTube playlist/channel link — no backend, no
+sign-up, no tracking. One HTML file, zero dependencies.
 
 **▶ Live:** https://iacbi.github.io/seseri/
 
@@ -24,6 +24,7 @@ dependencies.
 | | |
 |---|---|
 | 🔍 **Podcast search** | by name, Apple Podcasts link, or a direct RSS feed URL |
+| ▶️ **YouTube shows** | paste a YouTube playlist / channel / video link — official `youtube-nocookie` embed, keyless (latest ~15; no download, mobile background limited) |
 | 🌊 **Waveform scrubber** | a per-episode waveform you can drag to seek, with a live playhead and time tooltip |
 | 🎛 **Full player** | play/pause, previous/next, skip back/forward, speed control (0.5×–2.5×) |
 | ⏯ **Resume playback** | episode progress is saved to `localStorage` |
@@ -116,9 +117,9 @@ Security reports: [SECURITY.md](SECURITY.md). Release history: [CHANGELOG.md](CH
 
 ## Türkçe
 
-Ücretsiz, üyeliksiz, tarayıcı tabanlı bir podcast dinleyici. iTunes API ile ara
-veya herhangi bir RSS besleme URL'si yapıştır — arka uç yok, kayıt yok, takip yok.
-Tek HTML dosyası, sıfır bağımlılık.
+Ücretsiz, üyeliksiz, tarayıcı tabanlı bir podcast dinleyici. iTunes API ile ara,
+herhangi bir RSS besleme URL'si veya bir YouTube playlist/kanal linki yapıştır —
+arka uç yok, kayıt yok, takip yok. Tek HTML dosyası, sıfır bağımlılık.
 
 **▶ Canlı:** https://iacbi.github.io/seseri/
 
@@ -127,6 +128,7 @@ Tek HTML dosyası, sıfır bağımlılık.
 | | |
 |---|---|
 | 🔍 **Podcast arama** | isim, Apple Podcasts linki veya doğrudan RSS besleme URL'si ile |
+| ▶️ **YouTube yayınları** | YouTube playlist / kanal / video linki yapıştır — resmi `youtube-nocookie` embed, anahtarsız (son ~15; indirme yok, mobilde arka plan kısıtlı) |
 | 🌊 **Dalga-form çubuğu** | bölüme özel, sürükleyerek konumlandırılabilen dalga-form; canlı oynatma başı ve zaman ipucu |
 | 🎛 **Tam oynatıcı** | oynat/duraklat, önceki/sonraki, ileri/geri atlama, hız kontrolü (0.5×–2.5×) |
 | ⏯ **Kaldığın yerden devam** | bölüm ilerlemesi `localStorage`'a kaydedilir |
