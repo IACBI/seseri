@@ -11,11 +11,11 @@ dependencies.
 
 **▶ Live:** https://iacbi.github.io/seseri/
 
-**Language / Dil:** **[English](#english)** · **[Türkçe](#turkce)**
+**Language / Dil:** **[English](#lang-en)** · **[Türkçe](#lang-tr)**
 
 ---
 
-<a id="english"></a>
+<a id="lang-en"></a>
 
 ## English
 
@@ -112,7 +112,7 @@ Security reports: [SECURITY.md](SECURITY.md). Release history: [CHANGELOG.md](CH
 
 ---
 
-<a id="turkce"></a>
+<a id="lang-tr"></a>
 
 ## Türkçe
 
