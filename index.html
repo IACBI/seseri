@@ -16,7 +16,7 @@
   img-src 'self' data: https:;
   media-src https:;
   frame-src https://www.youtube-nocookie.com https://www.youtube.com;
-  connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.rss2json.com https://api.allorigins.win https://api.codetabs.com https://corsproxy.io https://pipedapi.kavin.rocks https://api.piped.private.coffee https://pipedapi.adminforge.de https://pipedapi.leptons.xyz https://pipedapi.reallyaweso.me https://pipedapi.r4fo.com https://piapi.ggtyler.dev https://invidious.nerdvpn.de https://inv.nadeko.net https://invidious.jing.rocks https://invidious.f5.si https://yewtu.be;
+  connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.rss2json.com https://api.allorigins.win https://api.codetabs.com https://corsproxy.io https://pipedapi.kavin.rocks https://api.piped.private.coffee https://pipedapi.adminforge.de https://pipedapi.leptons.xyz https://pipedapi.reallyaweso.me https://pipedapi.r4fo.com https://piapi.ggtyler.dev https://invidious.nerdvpn.de https://inv.nadeko.net https://invidious.jing.rocks https://invidious.f5.si https://yewtu.be https://noembed.com;
 ">
 <title>Seseri</title>
 <meta name="author" content="𝓐.𝓒.𝓑">
@@ -2745,15 +2745,37 @@ async function ytServiceList(info, signal) {
   return null;
 }
 
-// Resolve a browser-playable audio stream URL for a video via Piped (lowest
-// bitrate = least data). Returns null if no instance serves it.
+// Resolve a browser-playable audio stream URL for a video via Piped (highest
+// bitrate = best audio quality). Returns null if no instance serves it.
 async function ytServiceAudioUrl(videoId, signal) {
   try {
     const { json } = await _svcFirst(PIPED_APIS, '/streams/' + encodeURIComponent(videoId), signal,
       j => Array.isArray(j.audioStreams) && j.audioStreams.length);
-    const a = json.audioStreams.slice().sort((x, y) => (x.bitrate || 0) - (y.bitrate || 0));
+    const a = json.audioStreams.slice().sort((x, y) => (y.bitrate || 0) - (x.bitrate || 0));
     return (a[0] && a[0].url) || null;
   } catch (e) { if (signal && signal.aborted) throw e; return null; }
+}
+
+// Background-fill real titles for episodes that only have a placeholder (the embed
+// fallback's "Bölüm N"). Uses noembed (CORS oembed, keyless). For shows that put the
+// date in the title, this also surfaces the date. Throttled; re-renders in batches.
+async function _fillEmbedTitles(signal) {
+  const targets = episodes.filter(e => e.ytId && !e.trackName);
+  if (!targets.length) return;
+  let i = 0, since = 0;
+  const reRender = () => { if (feedIsYT && !(signal && signal.aborted)) render(); };
+  const worker = async () => {
+    while (i < targets.length) {
+      if (signal && signal.aborted) return;
+      const ep = targets[i++];
+      try {
+        const r = await _svcJson('https://noembed.com/embed?url=https://www.youtube.com/watch?v=' + encodeURIComponent(ep.ytId), signal, 8000);
+        if (r && r.title) { ep.trackName = r.title; if (++since >= 6) { since = 0; reRender(); } }
+      } catch {}
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]); // concurrency 4
+  reRender();
 }
 
 // Fetch JSON from the iTunes API, working around its CDN CORS bug.
@@ -3006,6 +3028,9 @@ async function loadYouTube(info) {
     elSpeedSel.value = S.defaultSpeed;
     _animateNextRender = true;
     render();
+
+    // Embed fallback may have title-less items ("Bölüm N") — fill real titles in bg
+    if (episodes.some(e => e.ytId && !e.trackName)) _fillEmbedTitles(loadSignal);
 
     const lastId = store.rawGet('pp_last_'+currentPodcastId);
     if (lastId) {
