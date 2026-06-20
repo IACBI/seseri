@@ -16,7 +16,7 @@
   img-src 'self' data: https:;
   media-src https:;
   frame-src https://www.youtube-nocookie.com https://www.youtube.com;
-  connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.allorigins.win https://corsproxy.io;
+  connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.allorigins.win https://api.codetabs.com https://corsproxy.io;
 ">
 <title>Seseri</title>
 <meta name="author" content="𝓐.𝓒.𝓑">
@@ -2578,8 +2578,32 @@ function _parseDur(s) {
 // Public CORS proxies, tried in order (feeds rarely send CORS headers themselves)
 const RSS_PROXIES = [
   u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
   u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
 ];
+
+// Fetch a (text) feed through the CORS proxies. All proxies are tried *in
+// parallel* and the first one that returns a non-empty body wins — so a single
+// slow or hanging proxy never blocks the load. Each attempt has its own timeout;
+// if every proxy fails the call rejects (visible error, never an endless spinner).
+// AbortError is surfaced only when the caller's signal cancelled the whole load.
+function fetchTextProxied(url, outerSignal, perTimeout = 15000) {
+  if (outerSignal && outerSignal.aborted) return Promise.reject(new DOMException('aborted', 'AbortError'));
+  const attempts = RSS_PROXIES.map(proxy => {
+    const ctrl = new AbortController();
+    const onAbort = () => ctrl.abort();
+    if (outerSignal) outerSignal.addEventListener('abort', onAbort, { once: true });
+    const to = setTimeout(() => ctrl.abort(), perTimeout);
+    return fetch(proxy(url), { signal: ctrl.signal, credentials: 'omit', mode: 'cors' })
+      .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.text(); })
+      .then(txt => { if (!txt || !txt.trim()) throw new Error('empty response'); return txt; })
+      .finally(() => { clearTimeout(to); if (outerSignal) outerSignal.removeEventListener('abort', onAbort); });
+  });
+  return Promise.any(attempts).catch(() => {
+    if (outerSignal && outerSignal.aborted) throw new DOMException('aborted', 'AbortError');
+    throw new Error('fetch failed');
+  });
+}
 
 // Fetch JSON from the iTunes API, working around its CDN CORS bug.
 // iTunes echoes the request Origin into Access-Control-Allow-Origin, but the
@@ -2719,7 +2743,6 @@ async function loadYouTube(info) {
   if (_loadAbort) { _loadAbort.abort(); }
   _loadAbort = new AbortController();
   const loadSignal = _loadAbort.signal;
-  const loadTimeout = setTimeout(() => _loadAbort.abort(), 25000);
 
   _ytStop();
   feedIsYT = true;
@@ -2754,16 +2777,7 @@ async function loadYouTube(info) {
     } else {
       const feedUrl = 'https://www.youtube.com/feeds/videos.xml?' +
         (info.type === 'playlist' ? 'playlist_id=' : 'channel_id=') + encodeURIComponent(info.id);
-      let xmlText = null, lastErr = null;
-      for (const proxy of RSS_PROXIES) {
-        try {
-          const res = await fetch(proxy(feedUrl), { signal: loadSignal, credentials: 'omit', mode: 'cors' });
-          if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
-          xmlText = await res.text();
-          break;
-        } catch(e) { if (e.name === 'AbortError') throw e; lastErr = e; }
-      }
-      if (xmlText == null) throw lastErr || new Error(t('yt_invalid'));
+      const xmlText = await fetchTextProxied(feedUrl, loadSignal);
       const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
       const feed = doc.querySelector('feed');
       if (doc.querySelector('parsererror') || !feed) throw new Error(t('yt_invalid'));
@@ -2790,7 +2804,6 @@ async function loadYouTube(info) {
       }
       chArt = eps.length ? eps[0].art : '';
     }
-    clearTimeout(loadTimeout);
     if (!eps.length) throw new Error(t('ep_not_found'));
 
     $('pTitle').textContent  = chTitle;
@@ -2820,7 +2833,6 @@ async function loadYouTube(info) {
       if (idx >= 0) loadEp(idx, false);
     }
   } catch(e) {
-    clearTimeout(loadTimeout);
     if (e.name === 'AbortError') return;
     setStatus('error', t('status_err') + e.message);
     elEpList.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}<br><br>${t('retry')}</div>`;
