@@ -10,11 +10,12 @@
      ancak bu single-page HTML mimarisiyle çalışmak için sunucu tarafı gerektirir. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
-  script-src 'self' 'unsafe-inline';
+  script-src 'self' 'unsafe-inline' https://www.youtube.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src https://fonts.gstatic.com;
   img-src 'self' data: https:;
   media-src https:;
+  frame-src https://www.youtube-nocookie.com https://www.youtube.com;
   connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.allorigins.win https://corsproxy.io;
 ">
 <title>Seseri</title>
@@ -756,6 +757,23 @@ audio { display: none; }
 #pPlayer.idle .wave { opacity: 0.4; pointer-events: none; filter: grayscale(0.5); }
 #pPlayer.idle .time-row { opacity: 0.45; }
 
+/* YouTube embed — compact 16:9 frame, shown only for YouTube feeds */
+.yt-frame {
+  display: none;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto var(--s-3);
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: var(--shadow-md);
+}
+.yt-frame iframe, .yt-frame #ytHost { width: 100%; height: 100%; border: 0; display: block; }
+#pPlayer.yt-mode .yt-frame { display: block; }
+/* In YouTube mode the cosmetic waveform stays as a slim scrubber under the video */
+#pPlayer.yt-mode.idle .yt-frame { display: none; }
+
 .spacer { flex: 1; }
 
 /* Custom select chrome — matches the button cluster (no native arrow) */
@@ -1322,7 +1340,7 @@ body.settings-open .dot.loading { animation-play-state: paused; }
   <div class="search-wrap">
     <div class="search-row">
       <input class="search-input" id="searchInput" type="text"
-        placeholder="Podcast adı veya Apple Podcasts linki..." data-i18n-ph="search_placeholder"
+        placeholder="Podcast adı, Apple Podcasts veya YouTube linki..." data-i18n-ph="search_placeholder"
         onkeydown="if(event.key==='Enter') doSearch()" />
       <button class="search-btn" id="searchBtn" onclick="doSearch()" data-i18n="btn_search">Ara →</button>
     </div>
@@ -1362,6 +1380,8 @@ body.settings-open .dot.loading { animation-play-state: paused; }
     </div>
     <div class="p-now-title" id="nowTitle" data-i18n="pick_episode">Bir bölüm seçin</div>
     <audio id="audio"></audio>
+    <!-- YouTube embed host (shown only for YouTube feeds; the IFrame API replaces #ytHost) -->
+    <div class="yt-frame" id="ytFrame"><div id="ytHost"></div></div>
     <div class="wave" id="progressWrap" role="slider" tabindex="0"
          aria-label="Konum" data-i18n-aria="seek_label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div class="wave-layer wave-base" id="waveBase"></div>
@@ -1627,8 +1647,8 @@ body.settings-open .dot.loading { animation-play-state: paused; }
 const LANGS = {
   tr: {
     brand_sub: 'Ücretsiz · Üyeliksiz · iTunes API',
-    search_placeholder: 'Podcast adı veya Apple Podcasts linki...',
-    search_hint: "Örnek: Merdiven Altı Terapi · Barış Özcan ile 111 Hz",
+    search_placeholder: 'Podcast adı, Apple Podcasts veya YouTube linki...',
+    search_hint: "Örnek: Merdiven Altı Terapi · veya bir YouTube playlist/kanal linki yapıştır",
     btn_search: 'Ara →', btn_back: '← Geri', now_playing: 'ŞU AN ÇALIYOR', ep_fallback: (n) => `Bölüm ${n}`,
     pick_episode: 'Bir bölüm seçin', btn_prev: 'Önceki', btn_next: 'Sonraki',
     btn_sort: 'Sıra', filter_placeholder: 'Bölüm ara...', settings_title: 'Ayarlar',
@@ -1659,11 +1679,12 @@ const LANGS = {
     play: 'Oynat', pause: 'Duraklat', seek_label: 'Konum', speed_label: 'Oynatma hızı',
     sleep_set: (n) => `Uyku: ${n} dk`, sleep_done: 'Uyku zamanlayıcısı bitti',
     dl_label: 'Bölümü indir', rss_invalid: 'Geçersiz RSS beslemesi.',
+    yt_video: 'YouTube videosu', yt_invalid: 'Geçersiz YouTube bağlantısı.', yt_embed_blocked: 'Bu video gömülemiyor.', yt_limit_note: 'son ~15 bölüm',
   },
   en: {
     brand_sub: 'Free · No Account · iTunes API',
-    search_placeholder: 'Podcast name or Apple Podcasts link...',
-    search_hint: 'e.g. Serial · Radiolab · or paste an Apple Podcasts URL',
+    search_placeholder: 'Podcast name, Apple Podcasts or YouTube link...',
+    search_hint: 'e.g. Serial · Radiolab · or paste a YouTube playlist/channel link',
     btn_search: 'Search →', btn_back: '← Back', now_playing: 'NOW PLAYING', ep_fallback: (n) => `Episode ${n}`,
     pick_episode: 'Select an episode', btn_prev: 'Previous', btn_next: 'Next',
     btn_sort: 'Order', filter_placeholder: 'Filter episodes...', settings_title: 'Settings',
@@ -1694,6 +1715,7 @@ const LANGS = {
     play: 'Play', pause: 'Pause', seek_label: 'Seek', speed_label: 'Playback speed',
     sleep_set: (n) => `Sleep: ${n} min`, sleep_done: 'Sleep timer ended',
     dl_label: 'Download episode', rss_invalid: 'Invalid RSS feed.',
+    yt_video: 'YouTube video', yt_invalid: 'Invalid YouTube link.', yt_embed_blocked: 'This video can’t be embedded.', yt_limit_note: 'latest ~15',
   },
   de: {
     brand_sub: 'Kostenlos · Kein Konto · iTunes API',
@@ -1729,6 +1751,7 @@ const LANGS = {
     play: 'Abspielen', pause: 'Pause', seek_label: 'Suchen', speed_label: 'Wiedergabegeschwindigkeit',
     sleep_set: (n) => `Schlaf: ${n} Min`, sleep_done: 'Schlaftimer beendet',
     dl_label: 'Episode herunterladen', rss_invalid: 'Ungültiger RSS-Feed.',
+    yt_video: 'YouTube-Video', yt_invalid: 'Ungültiger YouTube-Link.', yt_embed_blocked: 'Dieses Video kann nicht eingebettet werden.', yt_limit_note: 'neueste ~15',
   },
   fr: {
     brand_sub: 'Gratuit · Sans compte · iTunes API',
@@ -1764,6 +1787,7 @@ const LANGS = {
     play: 'Lecture', pause: 'Pause', seek_label: 'Position', speed_label: 'Vitesse de lecture',
     sleep_set: (n) => `Sommeil : ${n} min`, sleep_done: 'Minuterie de sommeil terminée',
     dl_label: "Télécharger l'épisode", rss_invalid: 'Flux RSS invalide.',
+    yt_video: 'Vidéo YouTube', yt_invalid: 'Lien YouTube invalide.', yt_embed_blocked: 'Cette vidéo ne peut pas être intégrée.', yt_limit_note: '~15 plus récents',
   },
   es: {
     brand_sub: 'Gratis · Sin cuenta · iTunes API',
@@ -1799,6 +1823,7 @@ const LANGS = {
     play: 'Reproducir', pause: 'Pausar', seek_label: 'Posición', speed_label: 'Velocidad de reproducción',
     sleep_set: (n) => `Sueño: ${n} min`, sleep_done: 'Temporizador de sueño finalizado',
     dl_label: 'Descargar episodio', rss_invalid: 'Feed RSS no válido.',
+    yt_video: 'Vídeo de YouTube', yt_invalid: 'Enlace de YouTube no válido.', yt_embed_blocked: 'Este vídeo no se puede insertar.', yt_limit_note: 'últimos ~15',
   },
   ar: {
     brand_sub: 'مجاني · بدون حساب · iTunes API',
@@ -1834,6 +1859,7 @@ const LANGS = {
     play: 'تشغيل', pause: 'إيقاف مؤقت', seek_label: 'الموضع', speed_label: 'سرعة التشغيل',
     sleep_set: (n) => `النوم: ${n} دقيقة`, sleep_done: 'انتهى مؤقت النوم',
     dl_label: 'تنزيل الحلقة', rss_invalid: 'خلاصة RSS غير صالحة.',
+    yt_video: 'فيديو يوتيوب', yt_invalid: 'رابط يوتيوب غير صالح.', yt_embed_blocked: 'لا يمكن تضمين هذا الفيديو.', yt_limit_note: 'أحدث ~15',
   },
   ja: {
     brand_sub: '無料 · アカウント不要 · iTunes API',
@@ -1869,6 +1895,7 @@ const LANGS = {
     play: '再生', pause: '一時停止', seek_label: 'シーク', speed_label: '再生速度',
     sleep_set: (n) => `スリープ: ${n}分`, sleep_done: 'スリープタイマー終了',
     dl_label: 'エピソードをダウンロード', rss_invalid: '無効なRSSフィードです。',
+    yt_video: 'YouTube動画', yt_invalid: '無効なYouTubeリンクです。', yt_embed_blocked: 'この動画は埋め込めません。', yt_limit_note: '最新~15件',
   },
   ru: {
     brand_sub: 'Бесплатно · Без аккаунта · iTunes API',
@@ -1904,6 +1931,7 @@ const LANGS = {
     play: 'Воспроизвести', pause: 'Пауза', seek_label: 'Перемотка', speed_label: 'Скорость воспроизведения',
     sleep_set: (n) => `Сон: ${n} мин`, sleep_done: 'Таймер сна завершён',
     dl_label: 'Скачать эпизод', rss_invalid: 'Неверный RSS-канал.',
+    yt_video: 'Видео YouTube', yt_invalid: 'Неверная ссылка YouTube.', yt_embed_blocked: 'Это видео нельзя встроить.', yt_limit_note: 'последние ~15',
   },
 };
 // Active translations
@@ -2057,6 +2085,13 @@ let episodes = [], filteredEps = [], currentIndex = -1, sortAsc = true;
 let currentTrackId = null; // id of the loaded episode — survives filter/sort changes
 let currentPodcastId = null;
 let prog = {};
+
+// YouTube playback (link-based, official IFrame embed). When a YouTube feed is
+// open, transport is driven through the YT player instead of the <audio> element.
+let feedIsYT = false;   // the currently-open feed is a YouTube playlist/channel/video
+let ytPlayer = null;    // YT.Player instance (created lazily on first YT play)
+let ytReady = null;     // promise that resolves once the IFrame API + player are ready
+let _ytPoll = null;     // progress polling interval id (YT has no 'timeupdate' event)
 
 let S = {
   defaultSpeed: 1,
@@ -2250,6 +2285,10 @@ async function doSearch() {
   const id = extractId(raw);
   if (id) { clearTimeout(searchTimeout); btn.disabled=false; btn.textContent=t('btn_search'); loadPodcast(id); return; }
 
+  // YouTube link (playlist / channel / video) — checked before the generic RSS branch
+  const yt = extractYouTube(raw);
+  if (yt) { clearTimeout(searchTimeout); btn.disabled=false; btn.textContent=t('btn_search'); list.innerHTML=''; loadYouTube(yt); return; }
+
   // Direct RSS feed URL (non-iTunes podcasts)
   if (/^https?:\/\//i.test(raw)) {
     clearTimeout(searchTimeout); btn.disabled=false; btn.textContent=t('btn_search');
@@ -2308,6 +2347,29 @@ function extractId(s) {
   return null;
 }
 
+// Parse a YouTube link into { type, id }. Playlist and channel-id links become a
+// keyless Atom feed; a single video becomes a one-item feed. Only youtube.com /
+// youtu.be hosts are accepted (no scraping, no free-text name search).
+function extractYouTube(s) {
+  s = s.trim();
+  if (!/(^|\.)youtube\.com|youtu\.be/i.test(s)) return null;
+  const pl = s.match(/[?&]list=(PL[\w-]+|UU[\w-]+|FL[\w-]+|OL[\w-]+)/i);
+  if (pl) return { type: 'playlist', id: pl[1] };
+  const ch = s.match(/youtube\.com\/channel\/(UC[\w-]{20,})/i);
+  if (ch) return { type: 'channel', id: ch[1] };
+  const v = s.match(/[?&]v=([\w-]{11})/) || s.match(/youtu\.be\/([\w-]{11})/) || s.match(/youtube\.com\/(?:shorts|embed|live)\/([\w-]{11})/);
+  if (v) return { type: 'video', id: v[1] };
+  return null;
+}
+
+// Decode a ?yt= deep-link token (pl_/ch_/vid_ + id) back into { type, id }
+function ytFromToken(tok) {
+  const m = String(tok).match(/^(pl|ch|vid)_(.+)$/);
+  if (!m) return null;
+  const type = m[1] === 'pl' ? 'playlist' : m[1] === 'ch' ? 'channel' : 'video';
+  return { type, id: m[2] };
+}
+
 // ═══════════════════════════════════════
 // LOAD PODCAST
 // ═══════════════════════════════════════
@@ -2318,6 +2380,7 @@ async function loadPodcast(id) {
   const loadSignal = _loadAbort.signal;
   const loadTimeout = setTimeout(() => _loadAbort.abort(), 10000);
 
+  _ytStop(); feedIsYT = false; // leaving any YouTube feed → back to <audio>
   currentPodcastId = String(id);
   showScreen('playerScreen');
   setPlayerIdle(true);
@@ -2403,6 +2466,7 @@ function showScreen(id) {
 
 function goBack() {
   audio.pause();
+  _ytStop(); feedIsYT = false;
   saveStateNow();
   showScreen('searchScreen');
   history.replaceState(null, '', location.pathname);
@@ -2442,7 +2506,11 @@ function updateFavBtn() {
 }
 
 function openFav(id) {
-  if (String(id).startsWith('rss:')) loadRss(String(id).slice(4));
+  const s = String(id);
+  if (s.startsWith('yt:')) {
+    const p = s.split(':'); // yt:<type>:<id>
+    loadYouTube({ type: p[1], id: p.slice(2).join(':') });
+  } else if (s.startsWith('rss:')) loadRss(s.slice(4));
   else loadPodcast(id);
 }
 
@@ -2484,8 +2552,10 @@ function renderFavs() {
 function sharePodcast() {
   if (!currentPodcastId) return;
   const id = String(currentPodcastId);
-  const url = location.origin + location.pathname +
-    (id.startsWith('rss:') ? '?rss=' + encodeURIComponent(id.slice(4)) : '?podcast=' + encodeURIComponent(id));
+  const url = location.origin + location.pathname + (
+    id.startsWith('yt:')  ? '?yt='  + encodeURIComponent(currentMeta?.yt || '') :
+    id.startsWith('rss:') ? '?rss=' + encodeURIComponent(id.slice(4)) :
+                            '?podcast=' + encodeURIComponent(id));
   if (navigator.share) { navigator.share({ title: currentMeta?.name || 'Podcast', url }).catch(() => {}); return; }
   navigator.clipboard?.writeText(url).then(() => setStatus('ok', t('link_copied'))).catch(() => {});
 }
@@ -2545,6 +2615,7 @@ async function loadRss(url) {
   const loadSignal = _loadAbort.signal;
   const loadTimeout = setTimeout(() => _loadAbort.abort(), 25000);
 
+  _ytStop(); feedIsYT = false; // leaving any YouTube feed → back to <audio>
   currentPodcastId = 'rss:' + url;
   currentMeta = null;
   showScreen('playerScreen');
@@ -2635,6 +2706,128 @@ async function loadRss(url) {
 }
 
 // ═══════════════════════════════════════
+// LOAD YOUTUBE (link-based: playlist / channel / video, via keyless Atom feed)
+// ═══════════════════════════════════════
+// Recursively collect descendant elements by local (namespace-stripped) name
+function _ytFindAll(root, localName) {
+  const out = [];
+  (function walk(n) { for (const c of n.children) { if (c.localName === localName) out.push(c); walk(c); } })(root);
+  return out;
+}
+
+async function loadYouTube(info) {
+  if (_loadAbort) { _loadAbort.abort(); }
+  _loadAbort = new AbortController();
+  const loadSignal = _loadAbort.signal;
+  const loadTimeout = setTimeout(() => _loadAbort.abort(), 25000);
+
+  _ytStop();
+  feedIsYT = true;
+  const ytParam = (info.type === 'playlist' ? 'pl_' : info.type === 'channel' ? 'ch_' : 'vid_') + info.id;
+  currentPodcastId = 'yt:' + info.type + ':' + info.id;
+  currentMeta = null;
+  showScreen('playerScreen');
+  elPlayer.classList.add('yt-mode');
+  setPlayerIdle(true);
+  history.replaceState(null, '', location.pathname + '?yt=' + encodeURIComponent(ytParam));
+
+  setStatus('loading', t('status_loading'));
+  showSkeleton();
+  currentIndex = -1;
+  currentTrackId = null;
+  elNowTitle.textContent = t('pick_episode');
+  updateFavBtn();
+
+  try {
+    let eps = [], chTitle = 'YouTube', chAuthor = '', chArt = '';
+
+    if (info.type === 'video') {
+      // Single video → one-item feed. Title is filled from the player once it loads;
+      // the thumbnail URL is deterministic (no extra request).
+      chTitle = t('yt_video');
+      eps = [{
+        trackId: info.id, trackName: t('yt_video'), releaseDate: '',
+        ytId: info.id, episodeUrl: '', trackTimeMillis: 0,
+        art: `https://i.ytimg.com/vi/${info.id}/hqdefault.jpg`,
+      }];
+      chArt = eps[0].art;
+    } else {
+      const feedUrl = 'https://www.youtube.com/feeds/videos.xml?' +
+        (info.type === 'playlist' ? 'playlist_id=' : 'channel_id=') + encodeURIComponent(info.id);
+      let xmlText = null, lastErr = null;
+      for (const proxy of RSS_PROXIES) {
+        try {
+          const res = await fetch(proxy(feedUrl), { signal: loadSignal, credentials: 'omit', mode: 'cors' });
+          if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+          xmlText = await res.text();
+          break;
+        } catch(e) { if (e.name === 'AbortError') throw e; lastErr = e; }
+      }
+      if (xmlText == null) throw lastErr || new Error(t('yt_invalid'));
+      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      const feed = doc.querySelector('feed');
+      if (doc.querySelector('parsererror') || !feed) throw new Error(t('yt_invalid'));
+
+      chTitle  = _xmlText(feed, 'title') || 'YouTube';
+      const authorEl = _ytFindAll(feed, 'author')[0];
+      chAuthor = authorEl ? (_xmlText(authorEl, 'name') || '') : '';
+
+      for (const entry of feed.querySelectorAll('entry')) {
+        const vid = (_ytFindAll(entry, 'videoId')[0] || {}).textContent;
+        if (!vid) continue;
+        const thumb = (_ytFindAll(entry, 'thumbnail')[0] || {}).getAttribute
+          ? _ytFindAll(entry, 'thumbnail')[0].getAttribute('url')
+          : '';
+        eps.push({
+          trackId: vid.trim(),
+          trackName: _xmlText(entry, 'title'),
+          releaseDate: _xmlText(entry, 'published'),
+          ytId: vid.trim(),
+          episodeUrl: '',
+          trackTimeMillis: 0,
+          art: thumb || `https://i.ytimg.com/vi/${vid.trim()}/hqdefault.jpg`,
+        });
+      }
+      chArt = eps.length ? eps[0].art : '';
+    }
+    clearTimeout(loadTimeout);
+    if (!eps.length) throw new Error(t('ep_not_found'));
+
+    $('pTitle').textContent  = chTitle;
+    $('pAuthor').textContent = chAuthor;
+    $('pThumb').src          = httpsOnly(chArt);
+    document.title           = `${chTitle} – Seseri`;
+    currentMeta = { id: currentPodcastId, name: chTitle, artist: chAuthor, art: chArt, kind: 'yt', yt: ytParam };
+    updateFavBtn();
+
+    for (const ep of eps) { ep._fmtDate = fmtDate(ep.releaseDate); ep._fmtDur = ''; }
+
+    sortAsc = (S.defaultSort === 'asc');
+    // Feed is newest-first; normalize to oldest-first then honor the preference
+    episodes = eps.slice().reverse();
+    if (!sortAsc) episodes.reverse();
+    elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+    filteredEps = episodes.slice();
+    elPEpCount.textContent = episodes.length;
+    setStatus('ok', t('status_ok', episodes.length) + ' · ' + t('yt_limit_note'));
+    elSpeedSel.value = S.defaultSpeed;
+    _animateNextRender = true;
+    render();
+
+    const lastId = store.rawGet('pp_last_'+currentPodcastId);
+    if (lastId) {
+      const idx = episodes.findIndex(e => String(e.trackId) === lastId);
+      if (idx >= 0) loadEp(idx, false);
+    }
+  } catch(e) {
+    clearTimeout(loadTimeout);
+    if (e.name === 'AbortError') return;
+    setStatus('error', t('status_err') + e.message);
+    elEpList.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}<br><br>${t('retry')}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════
 // SORT & FILTER (debounced)
 // ═══════════════════════════════════════
 function toggleSort() {
@@ -2701,7 +2894,7 @@ function render() {
     const id      = String(ep.trackId);
     const hasSaved = S.resumePos && (prog[id]||0) > 5;
     const active   = (i === currentIndex);
-    const dlBtn    = S.showDl
+    const dlBtn    = (S.showDl && !feedIsYT)  // YouTube items can't be downloaded (ToS)
       ? `<div class="ep-actions"><button class="ep-dl-btn" data-idx="${i}" aria-label="${esc(t('dl_label'))}"><svg class="icon" aria-hidden="true"><use href="#ic-download"/></svg></button></div>`
       : '';
     parts[i] = `<div class="ep-item${active?' active':''}" data-idx="${i}" role="button" tabindex="0"${active?' aria-current="true"':''}>
@@ -2772,6 +2965,32 @@ function setNowTitle(text) {
 // ═══════════════════════════════════════
 // PLAYBACK
 // ═══════════════════════════════════════
+// Playback facade — one set of calls that dispatch to either the <audio> element
+// (iTunes/RSS feeds) or the YouTube IFrame player (link-based YouTube feeds), so
+// the transport controls, keyboard, waveform and Media Session stay source-agnostic.
+function _ytLive() { return feedIsYT && ytPlayer && typeof ytPlayer.getPlayerState === 'function'; }
+function pbPaused()   { return _ytLive() ? ytPlayer.getPlayerState() !== 1 : audio.paused; }
+function pbCurrent()  { try { return _ytLive() ? (ytPlayer.getCurrentTime() || 0) : audio.currentTime; } catch { return 0; } }
+function pbDuration() { try { return _ytLive() ? (ytPlayer.getDuration()  || 0) : audio.duration;    } catch { return 0; } }
+function pbPlay()     { if (_ytLive()) ytPlayer.playVideo(); else audio.play().catch(() => {}); }
+function pbPause()    { if (_ytLive()) ytPlayer.pauseVideo(); else audio.pause(); }
+function pbSeekTo(sec){ if (_ytLive()) ytPlayer.seekTo(Math.max(0, sec), true); else audio.currentTime = sec; }
+function pbSetRate(r) {
+  if (_ytLive()) {
+    // YouTube only accepts rates it advertises — snap to the nearest available one
+    let rates = [1]; try { rates = ytPlayer.getAvailablePlaybackRates() || rates; } catch {}
+    const near = rates.reduce((a, b) => Math.abs(b - r) < Math.abs(a - r) ? b : a, rates[0]);
+    try { ytPlayer.setPlaybackRate(near); } catch {}
+  } else { audio.playbackRate = r; }
+}
+// Stop the YouTube player and its progress poll (when leaving a YT feed)
+function _ytStop() {
+  if (_ytPoll) { clearInterval(_ytPoll); _ytPoll = null; }
+  if (ytPlayer) { try { ytPlayer.stopVideo(); } catch {} }
+  elPlayer.classList.remove('yt-mode', 'playing');
+  document.body.classList.remove('is-playing');
+}
+
 function loadEp(idx, autoplay) {
   if (idx < 0 || idx >= filteredEps.length) return;
   currentIndex = idx;
@@ -2784,27 +3003,35 @@ function loadEp(idx, autoplay) {
   setNowTitle(ep.trackName || t('ep_fallback', idx+1));
   buildWaveform(id);          // fresh per-episode amplitude waveform
   setWaveProgress(0);
-  audio.src = src;
-  audio.load();
+  elTCur.textContent = '0:00';
+  elTTot.textContent = '0:00';
 
-  // Restore speed + position once browser has enough data
-  // Using 'canplay' guarantees playbackRate sticks (load() resets it)
-  const applyAudioPrefs = () => {
-    audio.playbackRate = S.defaultSpeed;
-    if (S.resumePos) {
-      const saved = prog[id] || 0;
-      if (saved > 5 && isFinite(audio.duration) && saved < audio.duration - 2) {
-        audio.currentTime = saved;
+  if (feedIsYT) {
+    audio.pause();            // make sure no <audio> feed keeps playing underneath
+    _ytLoadEp(ep, autoplay);  // load into the IFrame player (restores saved position)
+  } else {
+    audio.src = src;
+    audio.load();
+
+    // Restore speed + position once browser has enough data
+    // Using 'canplay' guarantees playbackRate sticks (load() resets it)
+    const applyAudioPrefs = () => {
+      audio.playbackRate = S.defaultSpeed;
+      if (S.resumePos) {
+        const saved = prog[id] || 0;
+        if (saved > 5 && isFinite(audio.duration) && saved < audio.duration - 2) {
+          audio.currentTime = saved;
+        }
       }
-    }
-    if (isFinite(audio.duration) && audio.duration) {
-      setWaveProgress((audio.currentTime / audio.duration) * 100);
-      elTCur.textContent = fmtTime(audio.currentTime);
-      elTTot.textContent = fmtTime(audio.duration);
-    }
-  };
-  if (audio.readyState >= 2) applyAudioPrefs();
-  else audio.addEventListener('canplay', applyAudioPrefs, { once: true });
+      if (isFinite(audio.duration) && audio.duration) {
+        setWaveProgress((audio.currentTime / audio.duration) * 100);
+        elTCur.textContent = fmtTime(audio.currentTime);
+        elTTot.textContent = fmtTime(audio.duration);
+      }
+    };
+    if (audio.readyState >= 2) applyAudioPrefs();
+    else audio.addEventListener('canplay', applyAudioPrefs, { once: true });
+  }
 
   // Lock-screen / headset controls metadata
   if ('mediaSession' in navigator) {
@@ -2824,26 +3051,28 @@ function loadEp(idx, autoplay) {
 
   render(); // update active highlight
 
-  if (autoplay) audio.play().catch(() => {});
+  if (autoplay && !feedIsYT) audio.play().catch(() => {});
 }
 
 function togglePlay() {
-  if (!audio.src) return;
-  if (audio.paused) audio.play().catch(() => {});
-  else audio.pause();
+  if (!feedIsYT && !audio.src) return;
+  if (currentTrackId == null) return;
+  if (pbPaused()) pbPlay(); else pbPause();
 }
 
 function seekRel(s) {
-  if (!audio.src || !Number.isFinite(audio.duration)) return;
-  audio.currentTime = Math.max(0, Math.min(audio.currentTime + s, audio.duration));
+  const dur = pbDuration();
+  if (!feedIsYT && !audio.src) return;
+  if (!Number.isFinite(dur) || !dur) return;
+  pbSeekTo(Math.max(0, Math.min(pbCurrent() + s, dur)));
 }
 
-function prevEp() { if (currentIndex > 0) loadEp(currentIndex-1, !audio.paused); }
-function nextEp() { if (currentIndex >= 0 && currentIndex < filteredEps.length-1) loadEp(currentIndex+1, !audio.paused); }
+function prevEp() { if (currentIndex > 0) loadEp(currentIndex-1, !pbPaused()); }
+function nextEp() { if (currentIndex >= 0 && currentIndex < filteredEps.length-1) loadEp(currentIndex+1, !pbPaused()); }
 
 function changeSpeed() {
   S.defaultSpeed = parseFloat(elSpeedSel.value) || 1;
-  audio.playbackRate = S.defaultSpeed;
+  pbSetRate(S.defaultSpeed);
   $('s_defaultSpeed').value = S.defaultSpeed;
   saveState();
 }
@@ -2860,7 +3089,7 @@ function changeSleep() {
   if (min > 0) {
     flashStatus(t('sleep_set', min));
     _sleepTimer = setTimeout(() => {
-      audio.pause();
+      pbPause();
       sel.value = '0';
       sel.classList.remove('active');
       _sleepTimer = null;
@@ -2932,8 +3161,9 @@ function setWaveProgress(pct) {
   elWaveHead.style.left = pct + '%';
   elProgressWrap.setAttribute('aria-valuenow', Math.round(pct));
   // Announce the actual time, not just a 0–100 percentage
-  if (audio && audio.duration) {
-    elProgressWrap.setAttribute('aria-valuetext', fmtTime(audio.currentTime) + ' / ' + fmtTime(audio.duration));
+  const dur = pbDuration();
+  if (dur) {
+    elProgressWrap.setAttribute('aria-valuetext', fmtTime(pbCurrent()) + ' / ' + fmtTime(dur));
   }
 }
 function _waveFrac(clientX) {
@@ -2941,19 +3171,21 @@ function _waveFrac(clientX) {
   return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
 }
 function _waveSeek(clientX) {
-  if (!audio.duration) return;
+  const dur = pbDuration();
+  if (!dur) return;
   const frac = _waveFrac(clientX);
-  audio.currentTime = frac * audio.duration;
+  pbSeekTo(frac * dur);
   setWaveProgress(frac * 100);
 }
 function _waveShowTip(clientX) {
   const frac = _waveFrac(clientX);
+  const dur = pbDuration();
   elWaveTip.style.left = (frac * 100) + '%';
-  elWaveTip.textContent = audio.duration ? fmtTime(frac * audio.duration) : '0:00';
+  elWaveTip.textContent = dur ? fmtTime(frac * dur) : '0:00';
 }
 let _scrubbing = false;
 elProgressWrap.addEventListener('pointerdown', e => {
-  if (!audio.duration) return;
+  if (!pbDuration()) return;
   _scrubbing = true;
   elProgressWrap.classList.add('scrubbing');
   try { elProgressWrap.setPointerCapture(e.pointerId); } catch {}
@@ -2969,10 +3201,23 @@ elProgressWrap.addEventListener('pointercancel', _endScrub);
 elProgressWrap.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft')  { e.preventDefault(); seekRel(-S.skipBack); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); seekRel(S.skipForward); }
-  else if (e.key === 'Home') { e.preventDefault(); if (audio.duration) { audio.currentTime = 0; setWaveProgress(0); } }
-  else if (e.key === 'End')  { e.preventDefault(); if (audio.duration) audio.currentTime = Math.max(0, audio.duration - 1); }
+  else if (e.key === 'Home') { e.preventDefault(); if (pbDuration()) { pbSeekTo(0); setWaveProgress(0); } }
+  else if (e.key === 'End')  { const d = pbDuration(); if (d) { e.preventDefault(); pbSeekTo(Math.max(0, d - 1)); } }
 });
 buildWaveform('seseri'); // placeholder bars until the first episode loads
+
+// Update the scrubber, time labels and saved position — source-agnostic (audio or YT).
+function _updateProgressUI() {
+  const cur = pbCurrent(), dur = pbDuration();
+  const pct = dur ? (cur / dur * 100) : 0;
+  if (!_scrubbing) setWaveProgress(pct);
+  elTCur.textContent = fmtTime(cur);
+  elTTot.textContent = fmtTime(dur);
+  if (currentIndex >= 0 && cur > 5 && filteredEps[currentIndex]) {
+    prog[String(filteredEps[currentIndex].trackId)] = cur;
+    saveState(); // throttled — won't spam localStorage
+  }
+}
 
 // timeupdate — throttled to ~4 fps for DOM updates; progress saved via saveState throttle
 let _lastUiUpdate = 0;
@@ -2980,17 +3225,7 @@ audio.addEventListener('timeupdate', () => {
   const now = performance.now();
   if (now - _lastUiUpdate < 250) return; // ~4 fps is plenty for a time display
   _lastUiUpdate = now;
-
-  const cur = audio.currentTime, dur = audio.duration;
-  const pct = dur ? (cur / dur * 100) : 0;
-  if (!_scrubbing) setWaveProgress(pct);
-  elTCur.textContent = fmtTime(cur);
-  elTTot.textContent = fmtTime(dur);
-
-  if (currentIndex >= 0 && cur > 5 && filteredEps[currentIndex]) {
-    prog[String(filteredEps[currentIndex].trackId)] = cur;
-    saveState(); // throttled — won't spam localStorage
-  }
+  if (!feedIsYT) _updateProgressUI();
 });
 
 audio.addEventListener('ended', () => {
@@ -3010,6 +3245,102 @@ audio.addEventListener('error', () => {
   elPlayer.classList.remove('playing');
   document.body.classList.remove('is-playing');
 });
+
+// ═══════════════════════════════════════
+// YOUTUBE IFRAME PLAYER (lazy — official embed, loaded on first YouTube play)
+// ═══════════════════════════════════════
+let _ytApiLoading = null;
+function _loadYtApi() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (_ytApiLoading) return _ytApiLoading;
+  _ytApiLoading = new Promise((resolve, reject) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (typeof prev === 'function') { try { prev(); } catch {} } resolve(); };
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    s.async = true;
+    s.onerror = () => reject(new Error(t('yt_invalid')));
+    document.head.appendChild(s);
+  });
+  return _ytApiLoading;
+}
+
+// Create the YT.Player once; resolves ytReady when the player is usable.
+function _ensureYtPlayer() {
+  if (ytReady) return ytReady;
+  ytReady = _loadYtApi().then(() => new Promise(resolve => {
+    ytPlayer = new YT.Player('ytHost', {
+      host: 'https://www.youtube-nocookie.com',
+      playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+      events: {
+        onReady: () => resolve(),
+        onStateChange: _onYtState,
+        onError: () => { setStatus('error', t('yt_embed_blocked')); },
+      },
+    });
+  }));
+  return ytReady;
+}
+
+function _ytStartPoll() {
+  if (_ytPoll) return;
+  _ytPoll = setInterval(() => { if (feedIsYT && !pbPaused()) _updateProgressUI(); }, 250);
+}
+
+function _onYtState(e) {
+  if (!feedIsYT) return;
+  const Y = window.YT && YT.PlayerState;
+  if (!Y) return;
+  if (e.data === Y.PLAYING) {
+    // Fill the now-playing title for single-video feeds (no feed metadata)
+    try {
+      const d = ytPlayer.getVideoData && ytPlayer.getVideoData();
+      if (d && d.title && currentIndex >= 0 && filteredEps[currentIndex] &&
+          filteredEps[currentIndex].trackName === t('yt_video')) {
+        filteredEps[currentIndex].trackName = d.title;
+        setNowTitle(d.title);
+        render();
+      }
+    } catch {}
+    setPlayIcon(true);
+    elPlayer.classList.add('playing');
+    document.body.classList.add('is-playing');
+    _updateProgressUI();
+    _ytStartPoll();
+  } else if (e.data === Y.PAUSED) {
+    setPlayIcon(false);
+    elPlayer.classList.remove('playing');
+    document.body.classList.remove('is-playing');
+    _updateProgressUI();
+  } else if (e.data === Y.ENDED) {
+    setPlayIcon(false);
+    elPlayer.classList.remove('playing');
+    document.body.classList.remove('is-playing');
+    if (S.autoNext && currentIndex < filteredEps.length - 1) loadEp(currentIndex + 1, true);
+  }
+}
+
+// Load a YouTube episode into the IFrame player and restore its saved position.
+async function _ytLoadEp(ep, autoplay) {
+  setStatus('loading', t('status_loading'));
+  try {
+    await _ensureYtPlayer();
+  } catch {
+    setStatus('error', t('yt_embed_blocked'));
+    return;
+  }
+  if (!feedIsYT || currentTrackId !== String(ep.trackId)) return; // user moved on while loading
+  const saved = (S.resumePos && (prog[String(ep.trackId)] || 0) > 5) ? prog[String(ep.trackId)] : 0;
+  try {
+    const opts = { videoId: ep.ytId, startSeconds: saved };
+    if (autoplay) ytPlayer.loadVideoById(opts); else ytPlayer.cueVideoById(opts);
+    pbSetRate(S.defaultSpeed);
+  } catch {
+    setStatus('error', t('yt_embed_blocked'));
+    return;
+  }
+  setStatus('ok', t('status_ok', episodes.length) + ' · ' + t('yt_limit_note'));
+}
 
 // ═══════════════════════════════════════
 // DOWNLOAD
@@ -3087,8 +3418,8 @@ elSpeedSel.value          = S.defaultSpeed;
 if ('mediaSession' in navigator) {
   try {
     const ms = navigator.mediaSession;
-    ms.setActionHandler('play',  () => audio.play().catch(() => {}));
-    ms.setActionHandler('pause', () => audio.pause());
+    ms.setActionHandler('play',  () => pbPlay());
+    ms.setActionHandler('pause', () => pbPause());
     ms.setActionHandler('seekbackward',  () => seekRel(-S.skipBack));
     ms.setActionHandler('seekforward',   () => seekRel(S.skipForward));
     ms.setActionHandler('previoustrack', prevEp);
@@ -3096,11 +3427,12 @@ if ('mediaSession' in navigator) {
   } catch {}
 }
 
-// Deep link: ?podcast=<id> or ?rss=<url>; otherwise show subscriptions
+// Deep link: ?podcast=<id>, ?rss=<url>, ?yt=<pl_|ch_|vid_><id>; else show subscriptions
 const _params = new URLSearchParams(location.search);
-const _pid = _params.get('podcast'), _rssUrl = _params.get('rss');
+const _pid = _params.get('podcast'), _rssUrl = _params.get('rss'), _ytTok = _params.get('yt');
 if (_pid && /^\d{4,14}$/.test(_pid)) loadPodcast(_pid);
 else if (_rssUrl && /^https?:\/\//i.test(_rssUrl)) loadRss(_rssUrl);
+else if (_ytTok && ytFromToken(_ytTok)) loadYouTube(ytFromToken(_ytTok));
 else renderFavs();
 
 $('searchInput').focus();

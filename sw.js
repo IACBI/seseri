@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'seseri-v2'; // bump on each significant deployment
+const CACHE = 'seseri-v3'; // bump on each significant deployment
 
 // Resolve everything relative to THIS service worker's own location, so the
 // app keeps working under any base path (/seseri/, /podcast-player/, root, …)
