@@ -213,7 +213,9 @@ body {
   opacity: 0.9;
   pointer-events: none;
   z-index: 0;
-  filter: blur(8px);
+  /* radial gradients are already soft — no blur filter (a continuously
+     animated filter pass is expensive and steals frames from scrolling) */
+  will-change: transform, opacity;
   animation: glow-breathe 11s var(--ease-out) infinite;
 }
 /* Faint grid vignette for depth */
@@ -363,6 +365,8 @@ body {
   gap: 9px;
   max-height: 348px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 2px;
   margin: -2px;
   scrollbar-width: thin;
@@ -774,6 +778,7 @@ audio { display: none; }
   scrollbar-width: thin;
   scrollbar-color: var(--border2) transparent;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .ep-list::-webkit-scrollbar { width: 6px; }
 .ep-list::-webkit-scrollbar-track { background: transparent; }
@@ -896,6 +901,17 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
 }
 .settings-overlay.open { opacity: 1; visibility: visible; }
 
+/* While the drawer is open, freeze continuous background motion so scrolling
+   the panel runs at full frame rate (nothing behind it competes for the GPU) */
+body.settings-open #searchScreen::before,
+body.settings-open .brand-logo,
+body.settings-open .brand-name,
+body.settings-open .wave-fill i,
+body.settings-open .now-eq i,
+body.settings-open .ep-eq i,
+body.settings-open .play-btn::after,
+body.settings-open .dot.loading { animation-play-state: paused; }
+
 .settings-panel {
   position: fixed;
   top: 0; right: 0; bottom: 0;
@@ -911,10 +927,12 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
   transform: translateX(100%);
   transition: transform 0.42s var(--ease-out);
   will-change: transform;
-  contain: layout paint;
+  contain: paint;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: var(--border2) transparent;
 }
@@ -1995,11 +2013,13 @@ function openSettings() {
   });
   $('settingsOverlay').classList.add('open');
   $('settingsPanel').classList.add('open');
+  document.body.classList.add('settings-open');
 }
 
 function closeSettings() {
   $('settingsOverlay').classList.remove('open');
   $('settingsPanel').classList.remove('open');
+  document.body.classList.remove('settings-open');
 }
 
 function applySettings() {
