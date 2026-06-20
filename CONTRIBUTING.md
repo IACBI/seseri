@@ -6,8 +6,8 @@ no build step, no dependencies.
 ## Getting started
 
 ```bash
-git clone https://github.com/IACBI/podcast-player.git
-cd podcast-player
+git clone https://github.com/IACBI/seseri.git
+cd seseri
 python -m http.server 8080   # or: npx serve .
 ```
 

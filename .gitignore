@@ -1,21 +1,20 @@
+# Dependencies / build output (none are committed — this app has no build step)
 node_modules/
 dist/
-.DS_Store
+
+# Logs
 *.log
 npm-debug.log*
+
+# Environment
 .env
 .env.*
+
+# Editor / OS
 .vscode/
-thumbs.db
-# Keystore & sertifika — asla commit etme
-*.jks
-*.keystore
-*.p12
-*.pfx
-# Gradle şifreler
-gradle.properties
-# IDE
 .idea/
-*.iml
+.DS_Store
+thumbs.db
+
 # Tooling
 .claude/

@@ -15,8 +15,8 @@ This is a fully client-side application:
 
 - No backend, no accounts, no cookies — all data stays in `localStorage`.
 - External requests go only to `itunes.apple.com` (search/lookup),
-  `api.allorigins.win` / `corsproxy.io` (CORS proxies for RSS feeds),
-  Google Fonts, and the podcast hosts' own audio CDNs.
+  `api.allorigins.win` / `corsproxy.io` (CORS proxies for RSS feeds and as an
+  iTunes fallback), Google Fonts, and the podcast hosts' own audio CDNs.
 - A Content Security Policy is declared in `index.html`; all dynamic content
   is HTML-escaped before insertion.
 
