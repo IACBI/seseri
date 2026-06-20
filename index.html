@@ -16,7 +16,7 @@
   img-src 'self' data: https:;
   media-src https:;
   frame-src https://www.youtube-nocookie.com https://www.youtube.com;
-  connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.allorigins.win https://api.codetabs.com https://corsproxy.io;
+  connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.rss2json.com https://api.allorigins.win https://api.codetabs.com https://corsproxy.io;
 ">
 <title>Seseri</title>
 <meta name="author" content="𝓐.𝓒.𝓑">
@@ -2352,7 +2352,8 @@ function extractId(s) {
 // youtu.be hosts are accepted (no scraping, no free-text name search).
 function extractYouTube(s) {
   s = s.trim();
-  if (!/(^|\.)youtube\.com|youtu\.be/i.test(s)) return null;
+  // Match youtube.com with or without www/scheme (bare "youtube.com/…" too) and youtu.be
+  if (!/(?:^|[/.])(?:youtube\.com|youtu\.be)\b/i.test(s)) return null;
   const pl = s.match(/[?&]list=(PL[\w-]+|UU[\w-]+|FL[\w-]+|OL[\w-]+)/i);
   if (pl) return { type: 'playlist', id: pl[1] };
   const ch = s.match(/youtube\.com\/channel\/(UC[\w-]{20,})/i);
@@ -2605,6 +2606,53 @@ function fetchTextProxied(url, outerSignal, perTimeout = 15000) {
   });
 }
 
+// Fetch + normalize a YouTube Atom feed into { title, author, items[] }.
+// Primary path is rss2json — a CORS-enabled RSS→JSON service that works directly
+// from the browser (the generic CORS proxies have become unreliable). Falls back
+// to fetching the raw Atom XML through the proxies if rss2json is unavailable.
+function _ytIdFrom(s) { const m = String(s||'').match(/[\w-]{11}/); return m ? m[0] : ''; }
+
+async function fetchYtFeed(feedUrl, signal, perTimeout = 15000) {
+  // 1) rss2json (JSON, CORS)
+  try {
+    const ctrl = new AbortController();
+    const onAbort = () => ctrl.abort();
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+    const to = setTimeout(() => ctrl.abort(), perTimeout);
+    let j = null;
+    try {
+      const u = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(feedUrl);
+      const r = await fetch(u, { signal: ctrl.signal, credentials: 'omit', mode: 'cors' });
+      if (r.ok) j = await r.json();
+    } finally { clearTimeout(to); if (signal) signal.removeEventListener('abort', onAbort); }
+    if (j && j.status === 'ok' && Array.isArray(j.items) && j.items.length) {
+      const items = j.items.map(it => ({
+        videoId: _ytIdFrom(it.guid) || _ytIdFrom(it.link),
+        title: it.title || '', published: it.pubDate || '', thumb: it.thumbnail || '',
+      })).filter(x => x.videoId);
+      if (items.length) return { title: (j.feed && j.feed.title) || 'YouTube', author: (j.feed && j.feed.author) || '', items };
+    }
+  } catch (e) { if (signal && signal.aborted) throw e; /* else fall through to XML */ }
+
+  // 2) Fallback — raw Atom XML through the CORS proxies
+  const xml = await fetchTextProxied(feedUrl, signal);
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const feed = doc.querySelector('feed');
+  if (doc.querySelector('parsererror') || !feed) throw new Error(t('yt_invalid'));
+  const authorEl = _ytFindAll(feed, 'author')[0];
+  const items = [];
+  for (const entry of feed.querySelectorAll('entry')) {
+    const vid = ((_ytFindAll(entry, 'videoId')[0] || {}).textContent || '').trim();
+    if (!vid) continue;
+    const thEl = _ytFindAll(entry, 'thumbnail')[0];
+    items.push({
+      videoId: vid, title: _xmlText(entry, 'title'), published: _xmlText(entry, 'published'),
+      thumb: (thEl && thEl.getAttribute) ? thEl.getAttribute('url') : '',
+    });
+  }
+  return { title: _xmlText(feed, 'title') || 'YouTube', author: authorEl ? (_xmlText(authorEl, 'name') || '') : '', items };
+}
+
 // Fetch JSON from the iTunes API, working around its CDN CORS bug.
 // iTunes echoes the request Origin into Access-Control-Allow-Origin, but the
 // response gets cached by its CDN *without* varying on Origin — so a response
@@ -2777,29 +2825,18 @@ async function loadYouTube(info) {
     } else {
       const feedUrl = 'https://www.youtube.com/feeds/videos.xml?' +
         (info.type === 'playlist' ? 'playlist_id=' : 'channel_id=') + encodeURIComponent(info.id);
-      const xmlText = await fetchTextProxied(feedUrl, loadSignal);
-      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
-      const feed = doc.querySelector('feed');
-      if (doc.querySelector('parsererror') || !feed) throw new Error(t('yt_invalid'));
-
-      chTitle  = _xmlText(feed, 'title') || 'YouTube';
-      const authorEl = _ytFindAll(feed, 'author')[0];
-      chAuthor = authorEl ? (_xmlText(authorEl, 'name') || '') : '';
-
-      for (const entry of feed.querySelectorAll('entry')) {
-        const vid = (_ytFindAll(entry, 'videoId')[0] || {}).textContent;
-        if (!vid) continue;
-        const thumb = (_ytFindAll(entry, 'thumbnail')[0] || {}).getAttribute
-          ? _ytFindAll(entry, 'thumbnail')[0].getAttribute('url')
-          : '';
+      const parsed = await fetchYtFeed(feedUrl, loadSignal);
+      chTitle  = parsed.title || 'YouTube';
+      chAuthor = parsed.author || '';
+      for (const it of parsed.items) {
         eps.push({
-          trackId: vid.trim(),
-          trackName: _xmlText(entry, 'title'),
-          releaseDate: _xmlText(entry, 'published'),
-          ytId: vid.trim(),
+          trackId: it.videoId,
+          trackName: it.title,
+          releaseDate: it.published,
+          ytId: it.videoId,
           episodeUrl: '',
           trackTimeMillis: 0,
-          art: thumb || `https://i.ytimg.com/vi/${vid.trim()}/hqdefault.jpg`,
+          art: it.thumb || `https://i.ytimg.com/vi/${it.videoId}/hqdefault.jpg`,
         });
       }
       chArt = eps.length ? eps[0].art : '';
