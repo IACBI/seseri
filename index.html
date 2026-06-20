@@ -748,6 +748,13 @@ audio { display: none; }
 #pPlayer.playing .play-btn::after { opacity: 0.35; animation: ring-pulse 2s var(--ease-out) infinite; }
 .play-btn:hover { filter: brightness(1.08); box-shadow: 0 12px 28px -6px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.25); transform: translateY(-1px) scale(1.04); }
 .play-btn:active { transform: scale(0.92); }
+.play-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.play-btn:disabled:hover { filter: none; transform: none; box-shadow: none; }
+
+/* Idle player — a feed is open but nothing is loaded yet: present as a prompt */
+#pPlayer.idle .p-now-head { opacity: 0; }
+#pPlayer.idle .wave { opacity: 0.4; pointer-events: none; filter: grayscale(0.5); }
+#pPlayer.idle .time-row { opacity: 0.45; }
 
 .spacer { flex: 1; }
 
@@ -2313,6 +2320,7 @@ async function loadPodcast(id) {
 
   currentPodcastId = String(id);
   showScreen('playerScreen');
+  setPlayerIdle(true);
   history.replaceState(null, '', location.pathname + '?podcast=' + encodeURIComponent(id));
 
   setStatus('loading', t('status_loading'));
@@ -2540,6 +2548,7 @@ async function loadRss(url) {
   currentPodcastId = 'rss:' + url;
   currentMeta = null;
   showScreen('playerScreen');
+  setPlayerIdle(true);
   history.replaceState(null, '', location.pathname + '?rss=' + encodeURIComponent(url));
 
   setStatus('loading', t('status_loading'));
@@ -2662,6 +2671,20 @@ function updateNavButtons() {
   elBtnNext.disabled = currentIndex < 0 || currentIndex >= filteredEps.length - 1;
 }
 
+// Idle = a feed is open but no episode is loaded yet. Present the player as a
+// prompt ("pick an episode"), not a fake "now playing": hide the now-head,
+// de-emphasize the (non-seekable) waveform, and disable the transport.
+function setPlayerIdle(idle) {
+  elPlayer.classList.toggle('idle', idle);
+  elBtnPlay.disabled = idle;
+  const sb = $('btnSkipBack'), sf = $('btnSkipFwd');
+  if (sb) sb.disabled = idle;
+  if (sf) sf.disabled = idle;
+  elProgressWrap.setAttribute('aria-disabled', idle ? 'true' : 'false');
+  if (idle) elProgressWrap.removeAttribute('tabindex');
+  else elProgressWrap.setAttribute('tabindex', '0');
+}
+
 // ═══════════════════════════════════════
 // RENDER — incremental DOM update
 // ═══════════════════════════════════════
@@ -2757,6 +2780,7 @@ function loadEp(idx, autoplay) {
   currentTrackId = id;
   const src = ep.episodeUrl || ep.previewUrl || '';
 
+  setPlayerIdle(false); // an episode is now loaded — activate the transport
   setNowTitle(ep.trackName || t('ep_fallback', idx+1));
   buildWaveform(id);          // fresh per-episode amplitude waveform
   setWaveProgress(0);
