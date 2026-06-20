@@ -178,6 +178,23 @@ html.theme-oled {
 }
 ::selection { background: var(--accent-soft); color: var(--text); }
 
+/* ─ Icon system — one consistent SVG set referenced via <use> ─ */
+.icon {
+  width: 18px; height: 18px;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.icon-fill { fill: currentColor; stroke: none; }
+/* mirror directional icons in RTL */
+[dir="rtl"] .icon-flip { transform: scaleX(-1); }
+
 body {
   font-family: var(--font-body);
   background: var(--bg);
@@ -508,9 +525,12 @@ body {
   transition: border-color 0.18s, color 0.18s, background 0.18s, transform 0.16s var(--ease-spring);
   flex-shrink: 0;
 }
+.settings-btn .icon { width: 17px; height: 17px; }
 .settings-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
 .settings-btn:active { transform: scale(0.94); }
-#favBtn { font-size: 17px; }
+/* Favorited: accent-filled star + accent chrome */
+#favBtn.faved { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+#favBtn.faved .icon { fill: currentColor; }
 
 /* Status strip */
 .p-status {
@@ -679,6 +699,9 @@ audio { display: none; }
   gap: 9px;
 }
 .ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: var(--surface);
   border: 1px solid var(--border2);
   color: var(--text2);
@@ -691,6 +714,8 @@ audio { display: none; }
   white-space: nowrap;
   line-height: 1;
 }
+.ctrl-btn .icon { width: 15px; height: 15px; }
+.ctrl-skip { font-variant-numeric: tabular-nums; }
 .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
 .ctrl-btn:active { transform: scale(0.95); }
 .ctrl-btn:disabled { opacity: 0.28; cursor: not-allowed; }
@@ -710,6 +735,7 @@ audio { display: none; }
   box-shadow: 0 8px 22px -6px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.25);
   position: relative;
 }
+.play-btn .icon { width: 20px; height: 20px; }
 .play-btn::after {
   content: '';
   position: absolute;
@@ -725,19 +751,32 @@ audio { display: none; }
 
 .spacer { flex: 1; }
 
-.speed-select {
+/* Custom select chrome — matches the button cluster (no native arrow) */
+.sel-wrap { position: relative; display: inline-flex; align-items: center; }
+.sel-ic { position: absolute; left: 9px; width: 14px; height: 14px; color: var(--text2); pointer-events: none; }
+.seri-select {
+  appearance: none; -webkit-appearance: none;
+  direction: ltr;
   background: var(--surface);
   border: 1px solid var(--border2);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 11px;
-  padding: 8px 9px;
+  padding: 8px 26px 8px 11px;
   border-radius: var(--r-xs);
   cursor: pointer;
   outline: none;
-  transition: border-color 0.18s, color 0.18s;
+  transition: border-color 0.18s, color 0.18s, box-shadow 0.18s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa0b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
 }
-.speed-select:hover, .speed-select:focus { border-color: var(--accent); }
+.sleep-select { padding-left: 28px; } /* room for the moon icon */
+.seri-select:hover, .seri-select:focus { border-color: var(--accent); }
+.seri-select:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
+.sleep-select.active { border-color: var(--accent); color: var(--accent); }
+.sleep-wrap:has(.sleep-select.active) .sel-ic { color: var(--accent); }
 
 /* Sort / filter bar */
 .sort-bar {
@@ -754,6 +793,9 @@ audio { display: none; }
 .sort-left { display: flex; align-items: center; gap: 10px; }
 .sort-info { font-size: 11px; font-family: var(--font-mono); color: var(--text3); }
 .sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: var(--surface);
   border: 1px solid var(--border2);
   color: var(--text2);
@@ -764,6 +806,7 @@ audio { display: none; }
   border-radius: var(--r-xs);
   transition: border-color 0.18s, color 0.18s, transform 0.16s var(--ease-spring);
 }
+.sort-toggle .icon { width: 14px; height: 14px; }
 .sort-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .sort-toggle:active { transform: scale(0.95); }
 
@@ -893,8 +936,12 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
   opacity: 0;
 }
 .ep-item:hover .ep-dl-btn, .ep-dl-btn.done { opacity: 1; }
+.ep-dl-btn .icon { width: 15px; height: 15px; }
 .ep-dl-btn:hover { border-color: var(--green); color: var(--green); transform: translateY(-1px); }
 .ep-dl-btn.done { border-color: var(--green); color: var(--green); }
+/* Unfavorite button (in the subscriptions list) reads as a filled accent star */
+.ep-dl-btn.unfav { color: var(--accent); border-color: var(--accent); opacity: 1; }
+.ep-dl-btn.unfav:hover { border-color: var(--red); color: var(--red); }
 /* On touch devices the dl button is always visible (no hover) */
 @media (hover: none) { .ep-dl-btn { opacity: 1; } }
 
@@ -970,7 +1017,7 @@ body.settings-open .dot.loading { animation-play-state: paused; }
   background: var(--surface);
   z-index: 2;
 }
-.settings-title { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.settings-title { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
 .settings-close {
   background: none;
   border: none;
@@ -1216,6 +1263,24 @@ body.settings-open .dot.loading { animation-play-state: paused; }
 </head>
 <body>
 
+<!-- ══════════ ICON SPRITE (one consistent set, referenced via <use>) ══════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="ic-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+  <symbol id="ic-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></symbol>
+  <symbol id="ic-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="ic-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
+  <symbol id="ic-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="ic-prev" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></symbol>
+  <symbol id="ic-next" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></symbol>
+  <symbol id="ic-rewind" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+  <symbol id="ic-forward" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+  <symbol id="ic-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="ic-sort" viewBox="0 0 24 24"><polyline points="21 16 17 20 13 16"/><line x1="17" y1="20" x2="17" y2="4"/><polyline points="3 8 7 4 11 8"/><line x1="7" y1="4" x2="7" y2="20"/></symbol>
+  <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="ic-arrow-right" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+  <symbol id="ic-back" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+</svg>
+
 <!-- ══════════ SEARCH SCREEN ══════════ -->
 <div id="searchScreen">
   <!-- Language picker top-right -->
@@ -1271,9 +1336,9 @@ body.settings-open .dot.loading { animation-play-state: paused; }
       <div class="p-author" id="pAuthor">—</div>
     </div>
     <div class="p-epcount"><strong id="pEpCount">—</strong><span id="pEpUnit" data-i18n="ep_count_unit">bölüm</span></div>
-    <button class="settings-btn" id="favBtn" onclick="toggleFav()" data-i18n-title="fav_btn" title="Abonelik ekle/çıkar" aria-label="Abonelik">☆</button>
-    <button class="settings-btn" id="shareBtn" onclick="sharePodcast()" data-i18n-title="share_btn" title="Linki paylaş" aria-label="Paylaş">⤴</button>
-    <button class="settings-btn" onclick="openSettings()" data-i18n-title="settings_title" title="Ayarlar" aria-label="Ayarlar">⚙</button>
+    <button class="settings-btn" id="favBtn" onclick="toggleFav()" data-i18n-title="fav_btn" data-i18n-aria="fav_btn" title="Abonelik ekle/çıkar" aria-label="Abonelik"><svg class="icon" aria-hidden="true"><use href="#ic-star"/></svg></button>
+    <button class="settings-btn" id="shareBtn" onclick="sharePodcast()" data-i18n-title="share_btn" data-i18n-aria="share_btn" title="Linki paylaş" aria-label="Paylaş"><svg class="icon" aria-hidden="true"><use href="#ic-share"/></svg></button>
+    <button class="settings-btn" onclick="openSettings()" data-i18n-title="settings_title" data-i18n-aria="settings_title" title="Ayarlar" aria-label="Ayarlar"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg></button>
   </div>
 
   <!-- Status -->
@@ -1291,7 +1356,7 @@ body.settings-open .dot.loading { animation-play-state: paused; }
     <div class="p-now-title" id="nowTitle" data-i18n="pick_episode">Bir bölüm seçin</div>
     <audio id="audio"></audio>
     <div class="wave" id="progressWrap" role="slider" tabindex="0"
-         aria-label="Konum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+         aria-label="Konum" data-i18n-aria="seek_label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div class="wave-layer wave-base" id="waveBase"></div>
       <div class="wave-layer wave-fill" id="waveFill"></div>
       <div class="wave-head" id="waveHead"></div>
@@ -1302,35 +1367,40 @@ body.settings-open .dot.loading { animation-play-state: paused; }
       <span id="tTot">0:00</span>
     </div>
     <div class="controls">
-      <button class="ctrl-btn" id="btnPrev" onclick="prevEp()" disabled data-i18n="btn_prev">⏮ Önceki</button>
-      <button class="ctrl-btn" id="btnSkipBack" onclick="seekRel(-S.skipBack)">−<span id="lblSkipBack">15</span>s</button>
-      <button class="play-btn" id="btnPlay" onclick="togglePlay()">▶</button>
-      <button class="ctrl-btn" id="btnSkipFwd" onclick="seekRel(S.skipForward)">+<span id="lblSkipFwd">30</span>s</button>
-      <button class="ctrl-btn" id="btnNext" onclick="nextEp()" disabled data-i18n="btn_next">Sonraki ⏭</button>
+      <button class="ctrl-btn" id="btnPrev" onclick="prevEp()" disabled><svg class="icon" aria-hidden="true"><use href="#ic-prev"/></svg> <span data-i18n="btn_prev">Önceki</span></button>
+      <button class="ctrl-btn ctrl-skip" id="btnSkipBack" onclick="seekRel(-S.skipBack)"><svg class="icon" aria-hidden="true"><use href="#ic-rewind"/></svg> <span id="lblSkipBack">15</span></button>
+      <button class="play-btn" id="btnPlay" onclick="togglePlay()" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
+      <button class="ctrl-btn ctrl-skip" id="btnSkipFwd" onclick="seekRel(S.skipForward)"><svg class="icon" aria-hidden="true"><use href="#ic-forward"/></svg> <span id="lblSkipFwd">30</span></button>
+      <button class="ctrl-btn" id="btnNext" onclick="nextEp()" disabled><span data-i18n="btn_next">Sonraki</span> <svg class="icon" aria-hidden="true"><use href="#ic-next"/></svg></button>
       <span class="spacer"></span>
-      <select class="speed-select" id="sleepSel" onchange="changeSleep()" data-i18n-title="sleep_timer" title="Uyku zamanlayıcısı (dk)">
-        <option value="0" selected>⏾ —</option>
-        <option value="15">⏾ 15</option>
-        <option value="30">⏾ 30</option>
-        <option value="60">⏾ 60</option>
-      </select>
-      <select class="speed-select" id="speedSel" onchange="changeSpeed()">
-        <option value="0.5">0.5×</option>
-        <option value="0.75">0.75×</option>
-        <option value="1" selected>1×</option>
-        <option value="1.25">1.25×</option>
-        <option value="1.5">1.5×</option>
-        <option value="1.75">1.75×</option>
-        <option value="2">2×</option>
-        <option value="2.5">2.5×</option>
-      </select>
+      <span class="sel-wrap sleep-wrap">
+        <svg class="icon sel-ic" aria-hidden="true"><use href="#ic-moon"/></svg>
+        <select class="seri-select sleep-select" id="sleepSel" onchange="changeSleep()" data-i18n-title="sleep_timer" data-i18n-aria="sleep_timer" title="Uyku zamanlayıcısı (dk)">
+          <option value="0" selected>—</option>
+          <option value="15">15</option>
+          <option value="30">30</option>
+          <option value="60">60</option>
+        </select>
+      </span>
+      <span class="sel-wrap">
+        <select class="seri-select speed-select" id="speedSel" onchange="changeSpeed()" data-i18n-title="speed_label" title="Hız">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+          <option value="1.75">1.75×</option>
+          <option value="2">2×</option>
+          <option value="2.5">2.5×</option>
+        </select>
+      </span>
     </div>
   </div>
 
   <!-- Sort Bar -->
   <div class="sort-bar">
     <div class="sort-left">
-      <button class="sort-toggle" onclick="toggleSort()" data-i18n="btn_sort">⇅ Sıra</button>
+      <button class="sort-toggle" onclick="toggleSort()"><svg class="icon" aria-hidden="true"><use href="#ic-sort"/></svg> <span data-i18n="btn_sort">Sıra</span></button>
       <span class="sort-info" id="sortInfo" data-i18n="sort_asc">Eskiden → Yeniye</span>
     </div>
     <input class="search-filter" id="filterInput" type="text"
@@ -1347,7 +1417,7 @@ body.settings-open .dot.loading { animation-play-state: paused; }
 <div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
 <div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="settings-header">
-    <span class="settings-title" id="settingsTitle" data-i18n="settings_heading">⚙ Ayarlar</span>
+    <span class="settings-title"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg> <span id="settingsTitle" data-i18n="settings_heading">Ayarlar</span></span>
     <button class="settings-close" onclick="closeSettings()" aria-label="×">×</button>
   </div>
   <div class="settings-body">
@@ -1553,10 +1623,10 @@ const LANGS = {
     search_placeholder: 'Podcast adı veya Apple Podcasts linki...',
     search_hint: "Örnek: Merdiven Altı Terapi · Barış Özcan ile 111 Hz",
     btn_search: 'Ara →', btn_back: '← Geri', now_playing: 'ŞU AN ÇALIYOR', ep_fallback: (n) => `Bölüm ${n}`,
-    pick_episode: 'Bir bölüm seçin', btn_prev: '⏮ Önceki', btn_next: 'Sonraki ⏭',
-    btn_sort: '⇅ Sıra', filter_placeholder: 'Bölüm ara...', settings_title: 'Ayarlar',
-    settings_heading: '⚙ Ayarlar', sort_asc_label: 'Eskiden → Yeniye', sort_desc_label: 'Yeniden → Eskiye',
-    ep_saved_badge: '⏸ kaldığın yer', dl_btn: '⬇', status_loading: 'Bölümler yükleniyor...',
+    pick_episode: 'Bir bölüm seçin', btn_prev: 'Önceki', btn_next: 'Sonraki',
+    btn_sort: 'Sıra', filter_placeholder: 'Bölüm ara...', settings_title: 'Ayarlar',
+    settings_heading: 'Ayarlar', sort_asc_label: 'Eskiden → Yeniye', sort_desc_label: 'Yeniden → Eskiye',
+    ep_saved_badge: 'kaldığın yer', status_loading: 'Bölümler yükleniyor...',
     status_ok: (n) => `${n} bölüm yüklendi ✓`, status_err: 'Hata: ', searching: 'Aranıyor...',
     no_results: 'Sonuç bulunamadı.', ep_count_unit: 'bölüm', ep_not_found: 'Bölüm bulunamadı.',
     loading_eps: 'Yükleniyor...', retry: 'F5 ile yenileyin.',
@@ -1577,8 +1647,10 @@ const LANGS = {
     sort_asc: 'Eskiden → Yeniye', sort_desc: 'Yeniden → Eskiye', dir: 'ltr',
     audio_err: 'Ses dosyası yüklenemedi.',
     dur_h: 'sa', dur_m: 'dk', storage_full: 'Depolama dolu — en eski ilerlemeler silindi.',
-    favs_title: '⭐ Aboneliklerim', fav_btn: 'Abonelik ekle/çıkar', share_btn: 'Linki paylaş',
+    favs_title: 'Aboneliklerim', fav_btn: 'Abonelik ekle/çıkar', share_btn: 'Linki paylaş',
     link_copied: 'Link kopyalandı ✓', sleep_timer: 'Uyku zamanlayıcısı (dk)',
+    play: 'Oynat', pause: 'Duraklat', seek_label: 'Konum', speed_label: 'Oynatma hızı',
+    sleep_set: (n) => `Uyku: ${n} dk`, sleep_done: 'Uyku zamanlayıcısı bitti',
     dl_label: 'Bölümü indir', rss_invalid: 'Geçersiz RSS beslemesi.',
   },
   en: {
@@ -1586,10 +1658,10 @@ const LANGS = {
     search_placeholder: 'Podcast name or Apple Podcasts link...',
     search_hint: 'e.g. Serial · Radiolab · or paste an Apple Podcasts URL',
     btn_search: 'Search →', btn_back: '← Back', now_playing: 'NOW PLAYING', ep_fallback: (n) => `Episode ${n}`,
-    pick_episode: 'Select an episode', btn_prev: '⏮ Previous', btn_next: 'Next ⏭',
-    btn_sort: '⇅ Order', filter_placeholder: 'Filter episodes...', settings_title: 'Settings',
-    settings_heading: '⚙ Settings', sort_asc_label: 'Oldest → Newest', sort_desc_label: 'Newest → Oldest',
-    ep_saved_badge: '⏸ resume', dl_btn: '⬇', status_loading: 'Loading episodes...',
+    pick_episode: 'Select an episode', btn_prev: 'Previous', btn_next: 'Next',
+    btn_sort: 'Order', filter_placeholder: 'Filter episodes...', settings_title: 'Settings',
+    settings_heading: 'Settings', sort_asc_label: 'Oldest → Newest', sort_desc_label: 'Newest → Oldest',
+    ep_saved_badge: 'resume', status_loading: 'Loading episodes...',
     status_ok: (n) => `${n} episodes loaded ✓`, status_err: 'Error: ', searching: 'Searching...',
     no_results: 'No results found.', ep_count_unit: 'eps', ep_not_found: 'No episodes found.',
     loading_eps: 'Loading...', retry: 'Press F5 to retry.',
@@ -1610,8 +1682,10 @@ const LANGS = {
     sort_asc: 'Oldest → Newest', sort_desc: 'Newest → Oldest', dir: 'ltr',
     audio_err: 'Audio file could not be loaded.',
     dur_h: 'h', dur_m: 'm', storage_full: 'Storage full — oldest progress was pruned.',
-    favs_title: '⭐ My Subscriptions', fav_btn: 'Add/remove subscription', share_btn: 'Share link',
+    favs_title: 'My Subscriptions', fav_btn: 'Add/remove subscription', share_btn: 'Share link',
     link_copied: 'Link copied ✓', sleep_timer: 'Sleep timer (min)',
+    play: 'Play', pause: 'Pause', seek_label: 'Seek', speed_label: 'Playback speed',
+    sleep_set: (n) => `Sleep: ${n} min`, sleep_done: 'Sleep timer ended',
     dl_label: 'Download episode', rss_invalid: 'Invalid RSS feed.',
   },
   de: {
@@ -1619,10 +1693,10 @@ const LANGS = {
     search_placeholder: 'Podcast-Name oder Apple Podcasts Link...',
     search_hint: 'z.B. Fest & Flauschig · oder Apple Podcasts URL einfügen',
     btn_search: 'Suchen →', btn_back: '← Zurück', now_playing: 'JETZT LÄUFT', ep_fallback: (n) => `Folge ${n}`,
-    pick_episode: 'Episode auswählen', btn_prev: '⏮ Vorherige', btn_next: 'Nächste ⏭',
-    btn_sort: '⇅ Sortieren', filter_placeholder: 'Episoden filtern...', settings_title: 'Einstellungen',
-    settings_heading: '⚙ Einstellungen', sort_asc_label: 'Älteste → Neueste', sort_desc_label: 'Neueste → Älteste',
-    ep_saved_badge: '⏸ fortsetzen', dl_btn: '⬇', status_loading: 'Episoden werden geladen...',
+    pick_episode: 'Episode auswählen', btn_prev: 'Vorherige', btn_next: 'Nächste',
+    btn_sort: 'Sortieren', filter_placeholder: 'Episoden filtern...', settings_title: 'Einstellungen',
+    settings_heading: 'Einstellungen', sort_asc_label: 'Älteste → Neueste', sort_desc_label: 'Neueste → Älteste',
+    ep_saved_badge: 'fortsetzen', status_loading: 'Episoden werden geladen...',
     status_ok: (n) => `${n} Episoden geladen ✓`, status_err: 'Fehler: ', searching: 'Suche läuft...',
     no_results: 'Keine Ergebnisse gefunden.', ep_count_unit: 'Folgen', ep_not_found: 'Keine Episoden gefunden.',
     loading_eps: 'Lädt...', retry: 'F5 zum Wiederholen.',
@@ -1643,8 +1717,10 @@ const LANGS = {
     sort_asc: 'Älteste → Neueste', sort_desc: 'Neueste → Älteste', dir: 'ltr',
     audio_err: 'Audiodatei konnte nicht geladen werden.',
     dur_h: 'Std', dur_m: 'Min', storage_full: 'Speicher voll — älteste Fortschritte gelöscht.',
-    favs_title: '⭐ Meine Abos', fav_btn: 'Abo hinzufügen/entfernen', share_btn: 'Link teilen',
+    favs_title: 'Meine Abos', fav_btn: 'Abo hinzufügen/entfernen', share_btn: 'Link teilen',
     link_copied: 'Link kopiert ✓', sleep_timer: 'Schlaftimer (Min)',
+    play: 'Abspielen', pause: 'Pause', seek_label: 'Suchen', speed_label: 'Wiedergabegeschwindigkeit',
+    sleep_set: (n) => `Schlaf: ${n} Min`, sleep_done: 'Schlaftimer beendet',
     dl_label: 'Episode herunterladen', rss_invalid: 'Ungültiger RSS-Feed.',
   },
   fr: {
@@ -1652,10 +1728,10 @@ const LANGS = {
     search_placeholder: 'Nom du podcast ou lien Apple Podcasts...',
     search_hint: "ex. France Inter · ou collez une URL Apple Podcasts",
     btn_search: 'Chercher →', btn_back: '← Retour', now_playing: 'EN COURS', ep_fallback: (n) => `Épisode ${n}`,
-    pick_episode: 'Sélectionner un épisode', btn_prev: '⏮ Précédent', btn_next: 'Suivant ⏭',
-    btn_sort: '⇅ Trier', filter_placeholder: 'Filtrer les épisodes...', settings_title: 'Paramètres',
-    settings_heading: '⚙ Paramètres', sort_asc_label: 'Du plus ancien au plus récent', sort_desc_label: 'Du plus récent au plus ancien',
-    ep_saved_badge: '⏸ reprendre', dl_btn: '⬇', status_loading: 'Chargement des épisodes...',
+    pick_episode: 'Sélectionner un épisode', btn_prev: 'Précédent', btn_next: 'Suivant',
+    btn_sort: 'Trier', filter_placeholder: 'Filtrer les épisodes...', settings_title: 'Paramètres',
+    settings_heading: 'Paramètres', sort_asc_label: 'Du plus ancien au plus récent', sort_desc_label: 'Du plus récent au plus ancien',
+    ep_saved_badge: 'reprendre', status_loading: 'Chargement des épisodes...',
     status_ok: (n) => `${n} épisodes chargés ✓`, status_err: 'Erreur : ', searching: 'Recherche en cours...',
     no_results: 'Aucun résultat trouvé.', ep_count_unit: 'éps', ep_not_found: 'Aucun épisode trouvé.',
     loading_eps: 'Chargement...', retry: 'Appuyez sur F5 pour réessayer.',
@@ -1676,8 +1752,10 @@ const LANGS = {
     sort_asc: 'Du plus ancien', sort_desc: 'Du plus récent', dir: 'ltr',
     audio_err: 'Impossible de charger le fichier audio.',
     dur_h: 'h', dur_m: 'min', storage_full: 'Stockage plein — anciennes progressions supprimées.',
-    favs_title: '⭐ Mes abonnements', fav_btn: 'Ajouter/retirer un abonnement', share_btn: 'Partager le lien',
+    favs_title: 'Mes abonnements', fav_btn: 'Ajouter/retirer un abonnement', share_btn: 'Partager le lien',
     link_copied: 'Lien copié ✓', sleep_timer: 'Minuterie de sommeil (min)',
+    play: 'Lecture', pause: 'Pause', seek_label: 'Position', speed_label: 'Vitesse de lecture',
+    sleep_set: (n) => `Sommeil : ${n} min`, sleep_done: 'Minuterie de sommeil terminée',
     dl_label: "Télécharger l'épisode", rss_invalid: 'Flux RSS invalide.',
   },
   es: {
@@ -1685,10 +1763,10 @@ const LANGS = {
     search_placeholder: 'Nombre del podcast o enlace de Apple Podcasts...',
     search_hint: 'p.ej. Nadie Sabe Nada · o pega una URL de Apple Podcasts',
     btn_search: 'Buscar →', btn_back: '← Volver', now_playing: 'REPRODUCIENDO', ep_fallback: (n) => `Episodio ${n}`,
-    pick_episode: 'Selecciona un episodio', btn_prev: '⏮ Anterior', btn_next: 'Siguiente ⏭',
-    btn_sort: '⇅ Ordenar', filter_placeholder: 'Filtrar episodios...', settings_title: 'Ajustes',
-    settings_heading: '⚙ Ajustes', sort_asc_label: 'Más antiguo → Más reciente', sort_desc_label: 'Más reciente → Más antiguo',
-    ep_saved_badge: '⏸ continuar', dl_btn: '⬇', status_loading: 'Cargando episodios...',
+    pick_episode: 'Selecciona un episodio', btn_prev: 'Anterior', btn_next: 'Siguiente',
+    btn_sort: 'Ordenar', filter_placeholder: 'Filtrar episodios...', settings_title: 'Ajustes',
+    settings_heading: 'Ajustes', sort_asc_label: 'Más antiguo → Más reciente', sort_desc_label: 'Más reciente → Más antiguo',
+    ep_saved_badge: 'continuar', status_loading: 'Cargando episodios...',
     status_ok: (n) => `${n} episodios cargados ✓`, status_err: 'Error: ', searching: 'Buscando...',
     no_results: 'No se encontraron resultados.', ep_count_unit: 'eps', ep_not_found: 'No se encontraron episodios.',
     loading_eps: 'Cargando...', retry: 'Pulsa F5 para reintentar.',
@@ -1709,8 +1787,10 @@ const LANGS = {
     sort_asc: 'Más antiguo → Más reciente', sort_desc: 'Más reciente → Más antiguo', dir: 'ltr',
     audio_err: 'No se pudo cargar el archivo de audio.',
     dur_h: 'h', dur_m: 'min', storage_full: 'Almacenamiento lleno — se eliminó el progreso antiguo.',
-    favs_title: '⭐ Mis suscripciones', fav_btn: 'Añadir/quitar suscripción', share_btn: 'Compartir enlace',
+    favs_title: 'Mis suscripciones', fav_btn: 'Añadir/quitar suscripción', share_btn: 'Compartir enlace',
     link_copied: 'Enlace copiado ✓', sleep_timer: 'Temporizador de sueño (min)',
+    play: 'Reproducir', pause: 'Pausar', seek_label: 'Posición', speed_label: 'Velocidad de reproducción',
+    sleep_set: (n) => `Sueño: ${n} min`, sleep_done: 'Temporizador de sueño finalizado',
     dl_label: 'Descargar episodio', rss_invalid: 'Feed RSS no válido.',
   },
   ar: {
@@ -1718,10 +1798,10 @@ const LANGS = {
     search_placeholder: 'اسم البودكاست أو رابط Apple Podcasts...',
     search_hint: 'مثال: بودكاست عربي · أو الصق رابط Apple Podcasts',
     btn_search: '← بحث', btn_back: 'رجوع →', now_playing: 'يُشغَّل الآن', ep_fallback: (n) => `الحلقة ${n}`,
-    pick_episode: 'اختر حلقة', btn_prev: '⏮ السابقة', btn_next: 'التالية ⏭',
-    btn_sort: '⇅ ترتيب', filter_placeholder: 'تصفية الحلقات...', settings_title: 'الإعدادات',
-    settings_heading: '⚙ الإعدادات', sort_asc_label: 'الأقدم → الأحدث', sort_desc_label: 'الأحدث → الأقدم',
-    ep_saved_badge: '⏸ استئناف', dl_btn: '⬇', status_loading: 'جارٍ تحميل الحلقات...',
+    pick_episode: 'اختر حلقة', btn_prev: 'السابقة', btn_next: 'التالية',
+    btn_sort: 'ترتيب', filter_placeholder: 'تصفية الحلقات...', settings_title: 'الإعدادات',
+    settings_heading: 'الإعدادات', sort_asc_label: 'الأقدم → الأحدث', sort_desc_label: 'الأحدث → الأقدم',
+    ep_saved_badge: 'استئناف', status_loading: 'جارٍ تحميل الحلقات...',
     status_ok: (n) => `تم تحميل ${n} حلقة ✓`, status_err: 'خطأ: ', searching: 'جارٍ البحث...',
     no_results: 'لم يتم العثور على نتائج.', ep_count_unit: 'حلقة', ep_not_found: 'لا توجد حلقات.',
     loading_eps: 'جارٍ التحميل...', retry: 'اضغط F5 للمحاولة مجدداً.',
@@ -1742,8 +1822,10 @@ const LANGS = {
     sort_asc: 'الأقدم → الأحدث', sort_desc: 'الأحدث → الأقدم', dir: 'rtl',
     audio_err: 'تعذّر تحميل ملف الصوت.',
     dur_h: 'س', dur_m: 'د', storage_full: 'الذاكرة ممتلئة — حُذف التقدم الأقدم.',
-    favs_title: '⭐ اشتراكاتي', fav_btn: 'إضافة/إزالة اشتراك', share_btn: 'مشاركة الرابط',
+    favs_title: 'اشتراكاتي', fav_btn: 'إضافة/إزالة اشتراك', share_btn: 'مشاركة الرابط',
     link_copied: 'تم نسخ الرابط ✓', sleep_timer: 'مؤقت النوم (دقيقة)',
+    play: 'تشغيل', pause: 'إيقاف مؤقت', seek_label: 'الموضع', speed_label: 'سرعة التشغيل',
+    sleep_set: (n) => `النوم: ${n} دقيقة`, sleep_done: 'انتهى مؤقت النوم',
     dl_label: 'تنزيل الحلقة', rss_invalid: 'خلاصة RSS غير صالحة.',
   },
   ja: {
@@ -1751,10 +1833,10 @@ const LANGS = {
     search_placeholder: 'ポッドキャスト名またはApple Podcastsリンク...',
     search_hint: '例: COTEN RADIO · またはApple PodcastsのURLを貼り付け',
     btn_search: '検索 →', btn_back: '← 戻る', now_playing: '再生中', ep_fallback: (n) => `第${n}回`,
-    pick_episode: 'エピソードを選択', btn_prev: '⏮ 前へ', btn_next: '次へ ⏭',
-    btn_sort: '⇅ 並替', filter_placeholder: 'エピソードを絞り込む...', settings_title: '設定',
-    settings_heading: '⚙ 設定', sort_asc_label: '古い順', sort_desc_label: '新しい順',
-    ep_saved_badge: '⏸ 再開', dl_btn: '⬇', status_loading: 'エピソードを読み込み中...',
+    pick_episode: 'エピソードを選択', btn_prev: '前へ', btn_next: '次へ',
+    btn_sort: '並替', filter_placeholder: 'エピソードを絞り込む...', settings_title: '設定',
+    settings_heading: '設定', sort_asc_label: '古い順', sort_desc_label: '新しい順',
+    ep_saved_badge: '再開', status_loading: 'エピソードを読み込み中...',
     status_ok: (n) => `${n}件読み込み完了 ✓`, status_err: 'エラー: ', searching: '検索中...',
     no_results: '結果が見つかりませんでした。', ep_count_unit: '件', ep_not_found: 'エピソードが見つかりません。',
     loading_eps: '読み込み中...', retry: 'F5 で再試行してください。',
@@ -1775,8 +1857,10 @@ const LANGS = {
     sort_asc: '古い順', sort_desc: '新しい順', dir: 'ltr',
     audio_err: 'オーディオファイルを読み込めませんでした。',
     dur_h: '時間', dur_m: '分', storage_full: 'ストレージが満杯 — 古い履歴を削除しました。',
-    favs_title: '⭐ 登録済み', fav_btn: '登録/解除', share_btn: 'リンクを共有',
+    favs_title: '登録済み', fav_btn: '登録/解除', share_btn: 'リンクを共有',
     link_copied: 'リンクをコピーしました ✓', sleep_timer: 'スリープタイマー（分）',
+    play: '再生', pause: '一時停止', seek_label: 'シーク', speed_label: '再生速度',
+    sleep_set: (n) => `スリープ: ${n}分`, sleep_done: 'スリープタイマー終了',
     dl_label: 'エピソードをダウンロード', rss_invalid: '無効なRSSフィードです。',
   },
   ru: {
@@ -1784,10 +1868,10 @@ const LANGS = {
     search_placeholder: 'Название подкаста или ссылка Apple Podcasts...',
     search_hint: 'например: Медуза · или вставьте ссылку Apple Podcasts',
     btn_search: 'Найти →', btn_back: '← Назад', now_playing: 'СЕЙЧАС ИГРАЕТ', ep_fallback: (n) => `Эпизод ${n}`,
-    pick_episode: 'Выберите эпизод', btn_prev: '⏮ Назад', btn_next: 'Вперёд ⏭',
-    btn_sort: '⇅ Сортировка', filter_placeholder: 'Поиск эпизодов...', settings_title: 'Настройки',
-    settings_heading: '⚙ Настройки', sort_asc_label: 'Сначала старые', sort_desc_label: 'Сначала новые',
-    ep_saved_badge: '⏸ продолжить', dl_btn: '⬇', status_loading: 'Загрузка эпизодов...',
+    pick_episode: 'Выберите эпизод', btn_prev: 'Назад', btn_next: 'Вперёд',
+    btn_sort: 'Сортировка', filter_placeholder: 'Поиск эпизодов...', settings_title: 'Настройки',
+    settings_heading: 'Настройки', sort_asc_label: 'Сначала старые', sort_desc_label: 'Сначала новые',
+    ep_saved_badge: 'продолжить', status_loading: 'Загрузка эпизодов...',
     status_ok: (n) => `Загружено ${n} эпизодов ✓`, status_err: 'Ошибка: ', searching: 'Поиск...',
     no_results: 'Ничего не найдено.', ep_count_unit: 'эп.', ep_not_found: 'Эпизоды не найдены.',
     loading_eps: 'Загрузка...', retry: 'Нажмите F5 для повтора.',
@@ -1808,8 +1892,10 @@ const LANGS = {
     sort_asc: 'Сначала старые', sort_desc: 'Сначала новые', dir: 'ltr',
     audio_err: 'Не удалось загрузить аудиофайл.',
     dur_h: 'ч', dur_m: 'мин', storage_full: 'Хранилище заполнено — старый прогресс удалён.',
-    favs_title: '⭐ Мои подписки', fav_btn: 'Добавить/убрать подписку', share_btn: 'Поделиться ссылкой',
+    favs_title: 'Мои подписки', fav_btn: 'Добавить/убрать подписку', share_btn: 'Поделиться ссылкой',
     link_copied: 'Ссылка скопирована ✓', sleep_timer: 'Таймер сна (мин)',
+    play: 'Воспроизвести', pause: 'Пауза', seek_label: 'Перемотка', speed_label: 'Скорость воспроизведения',
+    sleep_set: (n) => `Сон: ${n} мин`, sleep_done: 'Таймер сна завершён',
     dl_label: 'Скачать эпизод', rss_invalid: 'Неверный RSS-канал.',
   },
 };
@@ -1817,7 +1903,8 @@ const LANGS = {
 let T = LANGS['tr'];
 
 function t(key, ...args) {
-  const val = T[key];
+  let val = T[key];
+  if (val === undefined) val = LANGS.en[key]; // graceful fallback to English
   if (typeof val === 'function') return val(...args);
   return val ?? key;
 }
@@ -1844,6 +1931,14 @@ function applyLang(lang) {
     const key = el.dataset.i18nTitle;
     if (T[key]) el.title = T[key];
   });
+  // ARIA labels (localized for assistive tech, not just the visible tooltip)
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    const key = el.dataset.i18nAria;
+    const v = t(key);
+    if (v) el.setAttribute('aria-label', v);
+  });
+  // Play/pause button label depends on state, not a static key
+  if (elBtnPlay) elBtnPlay.setAttribute('aria-label', audio && !audio.paused ? t('pause') : t('play'));
   // Update dynamic labels
   if (elSortInfo) elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
   // Re-localise the "pick an episode" placeholder only while nothing is loaded;
@@ -2311,7 +2406,7 @@ function goBack() {
   setWaveProgress(0);
   elTCur.textContent = '0:00';
   elTTot.textContent = '0:00';
-  elBtnPlay.textContent = '▶';
+  setPlayIcon(false);
   elFilterInput.value = '';
   if (!_hasSearchResults) renderFavs();
 }
@@ -2335,7 +2430,7 @@ function toggleFav() {
 }
 
 function updateFavBtn() {
-  $('favBtn').textContent = currentPodcastId && isFav(currentPodcastId) ? '★' : '☆';
+  $('favBtn').classList.toggle('faved', !!(currentPodcastId && isFav(currentPodcastId)));
 }
 
 function openFav(id) {
@@ -2349,7 +2444,7 @@ function renderFavs() {
   if (!favs.length) return;
   const head = document.createElement('div');
   head.className = 'search-hint';
-  head.textContent = t('favs_title');
+  head.innerHTML = '<svg class="icon icon-fill" aria-hidden="true" style="width:12px;height:12px;vertical-align:-1px;color:var(--accent)"><use href="#ic-star"/></svg> ' + esc(t('favs_title'));
   list.appendChild(head);
   for (const f of favs) {
     const div = document.createElement('div');
@@ -2360,7 +2455,7 @@ function renderFavs() {
         <div class="result-name">${esc(f.name||'—')}</div>
         <div class="result-author">${esc(f.artist||'')}</div>
       </div>
-      <button class="ep-dl-btn" data-unfav="1" data-i18n-title="fav_btn" title="${esc(t('fav_btn'))}">★</button>`;
+      <button class="ep-dl-btn unfav" data-unfav="1" data-i18n-title="fav_btn" title="${esc(t('fav_btn'))}" aria-label="${esc(t('fav_btn'))}"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-star"/></svg></button>`;
     div.addEventListener('click', e => {
       if (e.target.closest('[data-unfav]')) {
         e.stopPropagation();
@@ -2584,7 +2679,7 @@ function render() {
     const hasSaved = S.resumePos && (prog[id]||0) > 5;
     const active   = (i === currentIndex);
     const dlBtn    = S.showDl
-      ? `<div class="ep-actions"><button class="ep-dl-btn" data-idx="${i}" aria-label="${esc(t('dl_label'))}">⬇</button></div>`
+      ? `<div class="ep-actions"><button class="ep-dl-btn" data-idx="${i}" aria-label="${esc(t('dl_label'))}"><svg class="icon" aria-hidden="true"><use href="#ic-download"/></svg></button></div>`
       : '';
     parts[i] = `<div class="ep-item${active?' active':''}" data-idx="${i}" role="button" tabindex="0"${active?' aria-current="true"':''}>
       <span class="ep-num">${active ? '<span class="ep-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : (i+1)}</span>
@@ -2735,14 +2830,29 @@ function changeSpeed() {
 let _sleepTimer = null;
 function changeSleep() {
   clearTimeout(_sleepTimer); _sleepTimer = null;
-  const min = parseInt($('sleepSel').value) || 0;
+  const sel = $('sleepSel');
+  const min = parseInt(sel.value) || 0;
+  sel.classList.toggle('active', min > 0);
   if (min > 0) {
+    flashStatus(t('sleep_set', min));
     _sleepTimer = setTimeout(() => {
       audio.pause();
-      $('sleepSel').value = '0';
+      sel.value = '0';
+      sel.classList.remove('active');
       _sleepTimer = null;
+      flashStatus(t('sleep_done'));
     }, min * 60000);
   }
+}
+
+// Briefly show a message in the status strip, then restore the episode count
+let _statusRestore = null;
+function flashStatus(msg) {
+  setStatus('ok', msg);
+  clearTimeout(_statusRestore);
+  _statusRestore = setTimeout(() => {
+    if (episodes.length) setStatus('ok', t('status_ok', episodes.length));
+  }, 3000);
 }
 
 // ═══════════════════════════════════════
@@ -2797,6 +2907,10 @@ function setWaveProgress(pct) {
   elWaveFill.style.clipPath = `inset(0 ${(100 - pct).toFixed(2)}% 0 0)`;
   elWaveHead.style.left = pct + '%';
   elProgressWrap.setAttribute('aria-valuenow', Math.round(pct));
+  // Announce the actual time, not just a 0–100 percentage
+  if (audio && audio.duration) {
+    elProgressWrap.setAttribute('aria-valuetext', fmtTime(audio.currentTime) + ' / ' + fmtTime(audio.duration));
+  }
 }
 function _waveFrac(clientX) {
   const rect = elProgressWrap.getBoundingClientRect();
@@ -2831,6 +2945,8 @@ elProgressWrap.addEventListener('pointercancel', _endScrub);
 elProgressWrap.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft')  { e.preventDefault(); seekRel(-S.skipBack); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); seekRel(S.skipForward); }
+  else if (e.key === 'Home') { e.preventDefault(); if (audio.duration) { audio.currentTime = 0; setWaveProgress(0); } }
+  else if (e.key === 'End')  { e.preventDefault(); if (audio.duration) audio.currentTime = Math.max(0, audio.duration - 1); }
 });
 buildWaveform('seseri'); // placeholder bars until the first episode loads
 
@@ -2856,11 +2972,17 @@ audio.addEventListener('timeupdate', () => {
 audio.addEventListener('ended', () => {
   if (S.autoNext && currentIndex < filteredEps.length-1) loadEp(currentIndex+1, true);
 });
-audio.addEventListener('play',  () => { elBtnPlay.textContent = '⏸'; elPlayer.classList.add('playing'); document.body.classList.add('is-playing'); });
-audio.addEventListener('pause', () => { elBtnPlay.textContent = '▶'; elPlayer.classList.remove('playing'); document.body.classList.remove('is-playing'); });
+// Swap the play/pause icon (via <use href>) and keep its aria-label localized
+function setPlayIcon(playing) {
+  const u = elBtnPlay.querySelector('use');
+  if (u) u.setAttribute('href', playing ? '#ic-pause' : '#ic-play');
+  elBtnPlay.setAttribute('aria-label', playing ? t('pause') : t('play'));
+}
+audio.addEventListener('play',  () => { setPlayIcon(true); elPlayer.classList.add('playing'); document.body.classList.add('is-playing'); });
+audio.addEventListener('pause', () => { setPlayIcon(false); elPlayer.classList.remove('playing'); document.body.classList.remove('is-playing'); });
 audio.addEventListener('error', () => {
   setStatus('error', t('audio_err') || 'Ses dosyası yüklenemedi.');
-  elBtnPlay.textContent = '▶';
+  setPlayIcon(false);
   elPlayer.classList.remove('playing');
   document.body.classList.remove('is-playing');
 });
