@@ -40,8 +40,13 @@
 <meta name="apple-mobile-web-app-title" content="Seseri">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238b7cf6'/%3E%3Cg fill='%23fff'%3E%3Crect x='8' y='13' width='2.4' height='6' rx='1.2'/%3E%3Crect x='12' y='9' width='2.4' height='14' rx='1.2'/%3E%3Crect x='16' y='6' width='2.4' height='20' rx='1.2'/%3E%3Crect x='20' y='10' width='2.4' height='12' rx='1.2'/%3E%3Crect x='24' y='14' width='2.4' height='4' rx='1.2'/%3E%3C/g%3E%3C/svg%3E">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!-- Warm up the origins used on first paint / first search -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://itunes.apple.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
@@ -2865,7 +2870,8 @@ audio.addEventListener('error', () => {
 // ═══════════════════════════════════════
 function dlEp(idx, btn) {
   const ep  = filteredEps[idx];
-  const src = ep?.episodeUrl || ep?.previewUrl || '';
+  // https-only: never hand a non-https (or javascript:) URL to the <a> element
+  const src = httpsOnly(ep?.episodeUrl || ep?.previewUrl || '');
   if (!src) { alert(t('dl_not_found')); return; }
   btn.textContent = '⏳';
   // Sanitize filename: keep letters (including Turkish), digits, spaces, dashes
