@@ -4,6 +4,7 @@ import { initMediaSession } from './player/media-session';
 import { requestPersistence } from './player/offline';
 import { pbCurrent, pbDuration, pbPaused, pbSeekTo } from './player/engine';
 import { loadProgress, saveProgressNow, setQuotaListener } from './storage/progress';
+import { local } from './storage/local';
 import { loadSubscriptions } from './storage/subscriptions';
 import { loadSettings, settings } from './state/settings';
 import type { FeedRequest } from './feeds/types';
@@ -37,10 +38,15 @@ export function boot(): void {
 
   // ── screens & router ─────────────────────────────────────────────
   let lastFeedReq: FeedRequest | null = null;
+  // Remembered across sessions for the "Resume" app shortcut (?resume=1)
+  const rememberFeed = (req: FeedRequest): void => {
+    lastFeedReq = req;
+    local.set('pp_last_feed', req);
+  };
 
   const search = initSearchScreen({
     openFeed: (req) => {
-      lastFeedReq = req;
+      rememberFeed(req);
       player.openFeed(req);
       router.feedOpened(req);
     },
@@ -48,7 +54,7 @@ export function boot(): void {
 
   const player = initPlayerScreen({
     onFeedOpened: (req) => {
-      lastFeedReq = req;
+      rememberFeed(req);
       /* URL handled by the router (avoids double push) */
     },
     onClosed: () => search.show(),
@@ -60,7 +66,7 @@ export function boot(): void {
 
   const router = initRouter({
     showFeed: (req) => {
-      lastFeedReq = req;
+      rememberFeed(req);
       player.openFeed(req);
     },
     showHome: () => {
@@ -107,10 +113,20 @@ export function boot(): void {
 
   // ── initial route (deep links preserved) ─────────────────────────
   const route = parseLocation();
-  if (route.kind === 'feed') {
-    lastFeedReq = route.req;
-    player.openFeed(route.req);
-    router.feedOpened(route.req, false);
+  const resumeReq =
+    new URLSearchParams(location.search).get('resume') === '1'
+      ? local.get<FeedRequest | null>('pp_last_feed', null)
+      : null;
+  const initialReq =
+    route.kind === 'feed'
+      ? route.req
+      : resumeReq && ['itunes', 'rss', 'yt'].includes(resumeReq.kind)
+        ? resumeReq
+        : null;
+  if (initialReq) {
+    rememberFeed(initialReq);
+    player.openFeed(initialReq);
+    router.feedOpened(initialReq, false);
     search.renderFavs(); // desktop rail is visible alongside the feed
   } else {
     search.show();

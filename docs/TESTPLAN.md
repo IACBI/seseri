@@ -85,3 +85,34 @@ Referans davranış: `v1-legacy` git etiketi (`git checkout v1-legacy` + `npx se
 - [ ] Ağ yokken arama → görünür hata, sonsuz spinner yok.
 - [ ] CORS proxy'lerinin biri ölüyken RSS yine yüklenir (fallback yarışı).
 - [ ] localStorage dolu senaryosunda uygulama çökmez (quota pruning).
+
+## 13. Offline & indirmeler (v3)
+
+- [ ] Bölümün ⤓ düğmesi → "kaydedildi" bildirimi; düğme ✓ olur.
+- [ ] DevTools → Network → Offline → sayfayı yenile: uygulama açılır, feed önbellekten listelenir, indirilen bölüm çalar **ve** seek eder.
+- [ ] İndirilen bölüme ikinci dokunuş → indirilen silinir.
+- [ ] Ayarlar → Depolama satırı kullanım gösterir; "İndirilenleri Sil" çalışır.
+- [ ] CORS engelli bir feed'de indirme → dosya indirme fallback bildirimi.
+- [ ] OPML dışa aktar → içe aktar → abonelikler aynı (round-trip).
+
+## 14. Mini oynatıcı & kuyruk (v3)
+
+- [ ] Bölüm çalarken "Geri" → ana ekran; **çalma devam eder**, altta mini bar görünür.
+- [ ] Mini bardaki oynat/duraklat yerinde çalışır (gezinmez).
+- [ ] Mini bara dokun → aynı feed'e döner (yeniden yüklenmez, çalan bölüm işaretli).
+- [ ] Satırdaki kuyruk düğmesi → sıra numarası rozeti; bölüm bitince kuyruktaki çalar.
+- [ ] Farklı feed açınca kuyruk sıfırlanır.
+
+## 15. Masaüstü düzeni & tema (v3)
+
+- [ ] ≥900px + feed açık: solda kütüphane rayı (arama + abonelikler), sağda bölümler; ray'dan abonelik tıklamak sağı değiştirir.
+- [ ] <900px: tek ekran davranışı korunur.
+- [ ] Tema "Otomatik": işletim sistemi teması değişince uygulama canlı uyar.
+- [ ] Bölüm satırlarında ilerleme çizgisi; bitenler soluk + ✓.
+
+## 16. Worker & derin linkler (v3)
+
+- [ ] `npm run worker:dev` açıkken RSS worker üzerinden gelir (Network'te `/v1/feed`).
+- [ ] Worker kapalıyken aynı feed halka açık proxy'lerle yine yüklenir.
+- [ ] `?resume=1` → son açılan feed otomatik açılır (mağaza kısayolu).
+- [ ] Deep-link ile gelinen sayfada "Geri" → siteden çıkmaz, ana ekrana döner.

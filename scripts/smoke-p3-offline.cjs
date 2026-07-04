@@ -82,7 +82,7 @@ function waitServer(url, tries = 60) {
     ok('service worker ready', true);
 
     // 2) Download episode 1 offline
-    await page.click('.ep-dl-btn');
+    await page.click('.ep-dl-btn[data-act="dl"]');
     await page.waitForSelector('.ep-dl-btn.done', { timeout: 20000 });
     const cacheState = await page.evaluate(async () => {
       const has = await caches.has('seseri-audio');

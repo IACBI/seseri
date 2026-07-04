@@ -70,23 +70,17 @@
   pointer-events: none;
 }
 .brand-logo svg {
-  width: 46px; height: 46px; display: block;
-  fill: var(--accent-text);
+  width: 52px; height: 52px; display: block;
+  color: var(--accent-text);
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.22));
 }
-.brand-logo .wave-bar {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: wave-flow 2.4s var(--ease-out) infinite;
-  will-change: transform;
+/* The S draws itself once on load, then rests — quiet, not busy */
+.brand-logo .s-mark {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: s-draw 1.3s var(--ease-out) 0.2s forwards;
 }
-.brand-logo .wave-bar:nth-child(4) { animation-delay: 0s; }
-.brand-logo .wave-bar:nth-child(3),
-.brand-logo .wave-bar:nth-child(5) { animation-delay: 0.16s; }
-.brand-logo .wave-bar:nth-child(2),
-.brand-logo .wave-bar:nth-child(6) { animation-delay: 0.32s; }
-.brand-logo .wave-bar:nth-child(1),
-.brand-logo .wave-bar:nth-child(7) { animation-delay: 0.48s; }
+@keyframes s-draw { to { stroke-dashoffset: 0; } }
 
 .brand-name {
   font-family: var(--font-display);

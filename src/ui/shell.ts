@@ -42,14 +42,10 @@ const SEARCH_SCREEN = `
 
   <div class="brand">
     <div class="brand-logo" aria-hidden="true">
-      <svg viewBox="0 0 32 32">
-        <rect class="wave-bar" x="3"  y="13"   width="2" height="6"  rx="1"/>
-        <rect class="wave-bar" x="7"  y="10.5" width="2" height="11" rx="1"/>
-        <rect class="wave-bar" x="11" y="8"    width="2" height="16" rx="1"/>
-        <rect class="wave-bar" x="15" y="5"    width="2" height="22" rx="1"/>
-        <rect class="wave-bar" x="19" y="8"    width="2" height="16" rx="1"/>
-        <rect class="wave-bar" x="23" y="10.5" width="2" height="11" rx="1"/>
-        <rect class="wave-bar" x="27" y="13"   width="2" height="6"  rx="1"/>
+      <svg viewBox="0 0 512 512">
+        <path class="s-mark" pathLength="100"
+          d="M 334 184 A 78 78 0 1 0 256 262 A 78 78 0 1 1 178 340"
+          fill="none" stroke="currentColor" stroke-width="60" stroke-linecap="round"/>
       </svg>
     </div>
     <h1 class="brand-name" aria-label="Seseri">Seseri</h1>
