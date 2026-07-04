@@ -1,0 +1,3723 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Content Security Policy
+     unsafe-inline: inline <style> ve onclick handler'lar için zorunlu.
+     Nonce tabanlı alternatif: script-src 'nonce-{random}' ile her sayfa yüklemesinde
+     benzersiz token üretilip <script nonce="..."> şeklinde uygulanabilir,
+     ancak bu single-page HTML mimarisiyle çalışmak için sunucu tarafı gerektirir. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://www.youtube.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+  img-src 'self' data: https:;
+  media-src https:;
+  frame-src https://www.youtube-nocookie.com https://www.youtube.com;
+  connect-src https://itunes.apple.com https://ax.itunes.apple.com https://api.rss2json.com https://api.allorigins.win https://api.codetabs.com https://corsproxy.io https://pipedapi.kavin.rocks https://api.piped.private.coffee https://pipedapi.adminforge.de https://pipedapi.leptons.xyz https://pipedapi.reallyaweso.me https://pipedapi.r4fo.com https://piapi.ggtyler.dev https://invidious.nerdvpn.de https://inv.nadeko.net https://invidious.jing.rocks https://invidious.f5.si https://yewtu.be https://noembed.com;
+">
+<title>Seseri</title>
+<meta name="author" content="𝓐.𝓒.𝓑">
+<meta name="description" content="Seseri — free, no-account, browser-based podcast player. Search via iTunes or paste an RSS feed URL — stream, resume and download episodes.">
+<meta property="og:site_name" content="Seseri">
+<meta property="og:title" content="Seseri">
+<meta property="og:description" content="Seseri — free, no-account, browser-based podcast player. Search via iTunes or paste an RSS feed URL.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://iacbi.github.io/seseri/">
+<meta property="og:image" content="https://iacbi.github.io/seseri/icons/icon-512.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="Seseri logo">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image:alt" content="Seseri logo">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d0e13">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Seseri">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238b7cf6'/%3E%3Cg fill='%23fff'%3E%3Crect x='8' y='13' width='2.4' height='6' rx='1.2'/%3E%3Crect x='12' y='9' width='2.4' height='14' rx='1.2'/%3E%3Crect x='16' y='6' width='2.4' height='20' rx='1.2'/%3E%3Crect x='20' y='10' width='2.4' height='12' rx='1.2'/%3E%3Crect x='24' y='14' width='2.4' height='4' rx='1.2'/%3E%3C/g%3E%3C/svg%3E">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<!-- Warm up the origins used on first paint / first search -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://itunes.apple.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  color-scheme: dark;
+  /* ─ Surfaces — deep studio ink, faint cool cast ─ */
+  --bg: #0b0c11;
+  --bg2: #101117;
+  --surface: #15161e;
+  --surface2: #1c1e28;
+  --border: #23252f;
+  --border2: #30333f;
+  /* ─ Signature accent — electric violet (JS-overridable) ─ */
+  --accent: #8b7cf6;
+  --accent-dim: #6c5ce0;
+  --accent-2: #c084fc;
+  --accent-glow: rgba(139,124,246,0.18);
+  --accent-soft: rgba(139,124,246,0.10);
+  --accent-text: #ffffff;
+  --accent-grad: linear-gradient(135deg, #8b7cf6 0%, #6c5ce0 100%);
+  --text: #edeff7;
+  --text2: #9aa0b8;
+  --text3: #5d6280;
+  --green: #43d49a;
+  --red: #f06a6a;
+  --yellow: #e6bb4f;
+
+  /* ─ Wordmark sheen + hero vignette — overridden per-theme so they never
+       collapse into the background (white sheen vanishes on a white canvas) ─ */
+  --wm-shine: #ffffff;
+  --hero-vignette: rgba(0,0,0,0.18);
+
+  /* ─ Translucent chrome (recomputed per-theme by .theme-* below) ─ */
+  --glass: rgba(20,21,29,0.72);
+  --glass-2: rgba(28,30,40,0.6);
+  --hairline: rgba(255,255,255,0.04);
+
+  /* ─ Typography ─ */
+  --font-display: 'Space Grotesk', 'DM Sans', sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+
+  /* ─ Motion — easings + a tuned duration scale (route transitions through these) ─ */
+  --ease-spring: cubic-bezier(0.34, 1.42, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --d-fast: 0.13s;
+  --d-base: 0.22s;
+  --d-slow: 0.42s;
+
+  /* ─ Spacing scale (4-pt rhythm) ─ */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  /* ─ Type scale ─ */
+  --fs-xs: 10.5px;
+  --fs-sm: 12px;
+  --fs-md: 13.5px;
+  --fs-lg: 16px;
+  --fs-xl: 22px;
+  --fs-2xl: 46px;
+
+  /* ─ Radii ─ */
+  --r-xs: 8px;
+  --r-sm: 11px;
+  --r: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  /* ─ Elevation — layered, diffuse ramp for depth on ink ─ */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.30), 0 2px 8px -5px rgba(0,0,0,0.45);
+  --shadow-md: 0 2px 6px -3px rgba(0,0,0,0.40), 0 8px 24px -10px rgba(0,0,0,0.55);
+  --shadow-lg: 0 8px 24px -12px rgba(0,0,0,0.50), 0 30px 70px -24px rgba(0,0,0,0.65);
+
+  /* ─ Waveform scrubber (signature) ─ */
+  --wave-track: var(--border2);
+  --wave-played: var(--accent);
+
+  /* ─ Settings (JS-overridable) ─ */
+  --player-font-size: 14px;
+  --list-row-height: 56px;
+
+  /* ─ Layout ─ */
+  --header-h: 66px;
+  --status-h: 30px;
+  --sortbar-h: 40px;
+}
+
+/* Per-theme translucent chrome + scheme hint (theme class set on <html> by JS) */
+html.theme-light { color-scheme: light; }
+html.theme-light {
+  --glass: rgba(255,255,255,0.74);
+  --glass-2: rgba(255,255,255,0.55);
+  --hairline: rgba(15,18,28,0.05);
+  --shadow-sm: 0 1px 2px rgba(20,24,40,0.06), 0 2px 10px -6px rgba(20,24,40,0.12);
+  --shadow-md: 0 6px 20px -10px rgba(20,24,40,0.16), 0 2px 6px -4px rgba(20,24,40,0.10);
+  --shadow-lg: 0 30px 70px -24px rgba(30,36,60,0.28);
+  /* On a light canvas the sheen must be a coloured shimmer, not white (which
+     would erase the letters); a faint cool vignette keeps depth without mud. */
+  --wm-shine: var(--accent-dim);
+  --hero-vignette: rgba(24,28,48,0.05);
+}
+html.theme-oled {
+  --glass: rgba(8,8,11,0.78);
+  --glass-2: rgba(16,16,22,0.6);
+  --hairline: rgba(255,255,255,0.05);
+}
+
+/* Respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+::selection { background: var(--accent-soft); color: var(--text); }
+
+/* ─ Icon system — one consistent SVG set referenced via <use> ─ */
+.icon {
+  width: 18px; height: 18px;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.icon-fill { fill: currentColor; stroke: none; }
+/* mirror directional icons in RTL */
+[dir="rtl"] .icon-flip { transform: scaleX(-1); }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.45s var(--ease-out), color 0.35s var(--ease-out);
+}
+
+/* ═══════════════════════════════════════
+   SEARCH SCREEN
+═══════════════════════════════════════ */
+#searchScreen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  gap: 34px;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.45s var(--ease-out);
+}
+/* Twin ambient studio glow */
+#searchScreen::before {
+  content: '';
+  position: absolute;
+  top: 30%; left: 50%;
+  width: min(720px, 130vw); height: min(720px, 130vw);
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 42% 40%, var(--accent-glow) 0%, transparent 60%),
+    radial-gradient(circle at 62% 58%, rgba(192,132,252,0.10) 0%, transparent 58%);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+  /* radial gradients are already soft — no blur filter (a continuously
+     animated filter pass is expensive and steals frames from scrolling) */
+  will-change: transform, opacity;
+  animation: glow-breathe 11s var(--ease-out) infinite;
+}
+/* Faint grid vignette for depth */
+#searchScreen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 42%, transparent 55%, var(--hero-vignette) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+.brand, .search-wrap, .results-list { position: relative; z-index: 1; }
+
+.brand {
+  text-align: center;
+  animation: rise-in 0.8s var(--ease-out) both;
+}
+.brand-logo {
+  width: 84px; height: 84px;
+  background: var(--accent-grad);
+  border-radius: 26px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+  position: relative;
+  box-shadow: 0 18px 50px -12px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -10px 24px -12px rgba(0,0,0,0.35);
+  animation: logo-float 7s ease-in-out infinite;
+}
+.brand-logo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(160deg, rgba(255,255,255,0.4), rgba(255,255,255,0) 45%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+}
+.brand-logo svg {
+  width: 46px; height: 46px; display: block;
+  fill: var(--accent-text);
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.22));
+}
+.brand-logo .wave-bar {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wave-flow 2.4s var(--ease-out) infinite;
+  will-change: transform;
+}
+.brand-logo .wave-bar:nth-child(4) { animation-delay: 0s; }
+.brand-logo .wave-bar:nth-child(3),
+.brand-logo .wave-bar:nth-child(5) { animation-delay: 0.16s; }
+.brand-logo .wave-bar:nth-child(2),
+.brand-logo .wave-bar:nth-child(6) { animation-delay: 0.32s; }
+.brand-logo .wave-bar:nth-child(1),
+.brand-logo .wave-bar:nth-child(7) { animation-delay: 0.48s; }
+
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 600;
+  letter-spacing: -1.8px;
+  line-height: 1;
+  margin: 0;
+  background: linear-gradient(110deg,
+    var(--text) 0%, var(--text) 38%,
+    var(--wm-shine) 46%, var(--accent) 52%, var(--wm-shine) 58%,
+    var(--text) 66%, var(--text) 100%);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: text-sheen 8s var(--ease-out) infinite;
+}
+.brand-tag {
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--text3);
+}
+
+.search-wrap {
+  width: 100%;
+  max-width: 560px;
+  animation: rise-in 0.8s var(--ease-out) 0.1s both;
+}
+.search-row {
+  display: flex;
+  gap: 10px;
+}
+.search-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 16px 20px;
+  border-radius: var(--r);
+  outline: none;
+  box-shadow: var(--shadow-sm), inset 0 1px 0 var(--hairline);
+  transition: border-color 0.25s var(--ease-out), box-shadow 0.3s var(--ease-out), background 0.25s;
+}
+.search-input:focus {
+  border-color: var(--accent);
+  background: var(--surface2);
+  box-shadow: 0 0 0 4px var(--accent-glow), var(--shadow-md);
+}
+.search-input::placeholder { color: var(--text3); }
+
+.search-btn {
+  background: var(--accent-grad);
+  border: none;
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 16px 26px;
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: filter 0.18s, transform 0.16s var(--ease-spring), box-shadow 0.25s;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.22);
+}
+.search-btn:hover { filter: brightness(1.07); box-shadow: 0 14px 30px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.22); transform: translateY(-1px); }
+.search-btn:active { transform: scale(0.97); }
+.search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.search-hint {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+  text-align: center;
+  letter-spacing: 0.2px;
+  padding: 4px 0 8px;
+}
+
+.results-list {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 348px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px;
+  margin: -2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+.results-list::-webkit-scrollbar { width: 5px; }
+.results-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, background 0.2s, transform 0.24s var(--ease-out), box-shadow 0.24s;
+  animation: rise-in 0.5s var(--ease-out) both;
+}
+.result-item:hover {
+  border-color: var(--accent);
+  background: var(--surface2);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 38px -18px var(--accent-glow), var(--shadow-md);
+}
+.result-item:active { transform: translateY(-1px); }
+.result-item:nth-child(1) { animation-delay: 0.02s; }
+.result-item:nth-child(2) { animation-delay: 0.06s; }
+.result-item:nth-child(3) { animation-delay: 0.10s; }
+.result-item:nth-child(4) { animation-delay: 0.14s; }
+.result-item:nth-child(5) { animation-delay: 0.18s; }
+.result-item:nth-child(6) { animation-delay: 0.22s; }
+.result-item:nth-child(n+7) { animation-delay: 0.26s; }
+.result-thumb {
+  width: 54px; height: 54px;
+  border-radius: var(--r-xs);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--border);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.result-info { flex: 1; min-width: 0; }
+.result-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; letter-spacing: -0.01em; }
+.result-author { font-size: 11.5px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result-count { font-size: 10px; color: var(--accent); font-family: var(--font-mono); margin-top: 4px; }
+.result-arrow { color: var(--text3); font-size: 19px; flex-shrink: 0; transition: transform 0.22s var(--ease-out), color 0.22s; }
+.result-item:hover .result-arrow { color: var(--accent); transform: translateX(4px); }
+
+.empty-state {
+  padding: 34px 20px;
+  text-align: center;
+  color: var(--text3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 2;
+}
+
+/* ═══════════════════════════════════════
+   PLAYER SCREEN
+═══════════════════════════════════════ */
+#playerScreen {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(120% 60% at 50% -10%, var(--accent-soft) 0%, transparent 50%),
+    var(--bg);
+}
+
+/* Header (glass) */
+.p-header {
+  height: var(--header-h);
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
+}
+.p-back {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 13px;
+  border-radius: var(--r-xs);
+  transition: border-color 0.18s, color 0.18s, background 0.18s, transform 0.16s var(--ease-spring);
+  flex-shrink: 0;
+}
+.p-back:hover { border-color: var(--accent); color: var(--accent); transform: translateX(-2px); }
+.p-back:active { transform: translateX(-2px) scale(0.96); }
+.p-thumb {
+  width: 42px; height: 42px;
+  border-radius: var(--r-xs);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--border);
+  box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--hairline);
+}
+.p-meta { flex: 1; min-width: 0; }
+.p-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
+.p-author { font-size: 11.5px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.p-epcount { font-family: var(--font-mono); font-size: 10px; color: var(--text3); flex-shrink: 0; text-align: right; line-height: 1.2; text-transform: uppercase; letter-spacing: 0.5px; }
+.p-epcount strong { color: var(--accent); font-size: 15px; display: block; font-weight: 600; }
+
+/* Icon chrome buttons */
+.settings-btn {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-xs);
+  font-size: 15px;
+  line-height: 1;
+  transition: border-color 0.18s, color 0.18s, background 0.18s, transform 0.16s var(--ease-spring);
+  flex-shrink: 0;
+}
+.settings-btn .icon { width: 17px; height: 17px; }
+.settings-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+.settings-btn:active { transform: scale(0.94); }
+/* Favorited: accent-filled star + accent chrome */
+#favBtn.faved { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+#favBtn.faved .icon { fill: currentColor; }
+
+/* Status strip */
+.p-status {
+  padding: 0 20px;
+  height: var(--status-h);
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; transition: background 0.3s; }
+.dot.loading { background: var(--accent); box-shadow: 0 0 0 0 var(--accent-glow); animation: pulse-ring 1.4s var(--ease-out) infinite; }
+.dot.ok { background: var(--green); }
+.dot.error { background: var(--red); }
+.p-status-text { font-size: 11px; font-family: var(--font-mono); color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Player block */
+.p-player {
+  padding: var(--s-5) var(--s-5) var(--s-5);
+  border-bottom: 1px solid var(--border);
+  background: var(--glass-2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.p-now-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+}
+.p-now-label {
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+}
+.now-eq { display: inline-flex; align-items: flex-end; gap: 2.5px; height: 13px; }
+.now-eq i {
+  display: block;
+  width: 2.5px;
+  height: 40%;
+  background: var(--accent);
+  border-radius: 2px;
+  transform-origin: bottom;
+}
+#pPlayer.playing .now-eq i { animation: eq-bounce 0.95s var(--ease-out) infinite; }
+.now-eq i:nth-child(1) { animation-delay: 0s; height: 55%; }
+.now-eq i:nth-child(2) { animation-delay: 0.18s; height: 100%; }
+.now-eq i:nth-child(3) { animation-delay: 0.36s; height: 70%; }
+.now-eq i:nth-child(4) { animation-delay: 0.12s; height: 45%; }
+.p-now-title {
+  font-family: var(--font-display);
+  font-size: calc(var(--player-font-size) + 2px);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: var(--s-4);
+  line-height: 1.35;
+  min-height: 20px;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity var(--d-base) var(--ease-out), transform var(--d-base) var(--ease-out);
+}
+.p-now-title.swapping { opacity: 0; transform: translateY(6px); }
+
+audio { display: none; }
+
+/* Waveform scrubber — the signature: sound made visible */
+.wave {
+  position: relative;
+  width: 100%;
+  height: 46px;
+  margin-bottom: var(--s-2);
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+  border-radius: var(--r-xs);
+  transition: transform var(--d-fast) var(--ease-out);
+}
+.wave:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
+.wave-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+.wave-layer i {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 18%;
+  border-radius: 1.5px;
+  transform-origin: center;
+  transition: height var(--d-base) var(--ease-out);
+}
+.wave-base i { background: var(--wave-track); }
+.wave-fill {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--d-base) linear;
+  will-change: clip-path;
+}
+.wave-fill i { background: var(--wave-played); }
+/* leading-edge playhead */
+.wave-head {
+  position: absolute;
+  top: 50%; left: 0;
+  width: 2px; height: 76%;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: translate(-1px, -50%) scaleY(0);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  transition: transform var(--d-fast) var(--ease-spring), left var(--d-base) linear;
+  pointer-events: none;
+}
+.wave:hover .wave-head,
+.wave.scrubbing .wave-head,
+#pPlayer.playing .wave-head { transform: translate(-1px, -50%) scaleY(1); }
+#pPlayer.playing .wave-head { animation: head-pulse 1.7s var(--ease-out) infinite; }
+/* gentle per-bar life on the played region while playing — only every other
+   bar animates, which keeps the "living" feel at roughly half the layer cost */
+#pPlayer.playing .wave-fill i:nth-child(2n) { animation: wave-breathe 2s var(--ease-out) infinite; }
+#pPlayer.playing .wave-fill i:nth-child(4n) { animation-delay: .22s; }
+#pPlayer.playing .wave-fill i:nth-child(6n) { animation-delay: .4s; }
+/* hover/scrub time tooltip */
+.wave-tip {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 0;
+  transform: translateX(-50%);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: var(--r-xs);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--d-fast) var(--ease-out);
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  z-index: 3;
+}
+.wave:hover .wave-tip, .wave.scrubbing .wave-tip { opacity: 1; }
+.time-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  margin-bottom: 16px;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 9px 13px;
+  border-radius: var(--r-xs);
+  transition: border-color 0.18s, color 0.18s, background 0.18s, transform 0.16s var(--ease-spring);
+  white-space: nowrap;
+  line-height: 1;
+}
+.ctrl-btn .icon { width: 15px; height: 15px; }
+.ctrl-skip { font-variant-numeric: tabular-nums; }
+.ctrl-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+.ctrl-btn:active { transform: scale(0.95); }
+.ctrl-btn:disabled { opacity: 0.28; cursor: not-allowed; }
+.ctrl-btn:disabled:hover { border-color: var(--border2); color: var(--text2); transform: none; }
+
+.play-btn {
+  width: 50px; height: 50px;
+  background: var(--accent-grad);
+  border: none;
+  color: var(--accent-text);
+  font-size: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: filter 0.18s, transform 0.16s var(--ease-spring), box-shadow 0.25s;
+  flex-shrink: 0;
+  box-shadow: 0 8px 22px -6px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.25);
+  position: relative;
+}
+.play-btn .icon { width: 20px; height: 20px; }
+.play-btn::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s var(--ease-out);
+}
+#pPlayer.playing .play-btn::after { opacity: 0.35; animation: ring-pulse 2s var(--ease-out) infinite; }
+.play-btn:hover { filter: brightness(1.08); box-shadow: 0 12px 28px -6px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.25); transform: translateY(-1px) scale(1.04); }
+.play-btn:active { transform: scale(0.92); }
+.play-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.play-btn:disabled:hover { filter: none; transform: none; box-shadow: none; }
+
+/* Idle player — a feed is open but nothing is loaded yet: present as a prompt */
+#pPlayer.idle .p-now-head { opacity: 0; }
+#pPlayer.idle .wave { opacity: 0.4; pointer-events: none; filter: grayscale(0.5); }
+#pPlayer.idle .time-row { opacity: 0.45; }
+
+/* YouTube embed — audio-only: the player is kept rendered (so audio plays) but
+   moved off-screen, so YouTube feeds look like a normal audio podcast (cover art
+   + waveform) instead of a video. NOTE: the official embed still streams video in
+   the background — there is no audio-only stream — but lowest quality is requested
+   to keep the data use down. Never display:none (that can stop playback). */
+.yt-frame {
+  position: absolute;
+  width: 1px; height: 1px;
+  left: -9999px; top: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.yt-frame iframe, .yt-frame #ytHost { width: 100%; height: 100%; border: 0; display: block; }
+
+.spacer { flex: 1; }
+
+/* Custom select chrome — matches the button cluster (no native arrow) */
+.sel-wrap { position: relative; display: inline-flex; align-items: center; }
+.sel-ic { position: absolute; left: 9px; width: 14px; height: 14px; color: var(--text2); pointer-events: none; }
+.seri-select {
+  appearance: none; -webkit-appearance: none;
+  direction: ltr;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 26px 8px 11px;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.18s, color 0.18s, box-shadow 0.18s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa0b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+}
+.sleep-select { padding-left: 28px; } /* room for the moon icon */
+.seri-select:hover, .seri-select:focus { border-color: var(--accent); }
+.seri-select:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
+.sleep-select.active { border-color: var(--accent); color: var(--accent); }
+.sleep-wrap:has(.sleep-select.active) .sel-ic { color: var(--accent); }
+
+/* Sort / filter bar */
+.sort-bar {
+  min-height: var(--sortbar-h);
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 10px;
+  background: var(--bg2);
+}
+.sort-left { display: flex; align-items: center; gap: 10px; }
+.sort-info { font-size: 11px; font-family: var(--font-mono); color: var(--text3); }
+.sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 6px 11px;
+  border-radius: var(--r-xs);
+  transition: border-color 0.18s, color 0.18s, transform 0.16s var(--ease-spring);
+}
+.sort-toggle .icon { width: 14px; height: 14px; }
+.sort-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.sort-toggle:active { transform: scale(0.95); }
+
+.search-filter {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: var(--r-xs);
+  outline: none;
+  width: 170px;
+  transition: border-color 0.2s, width 0.28s var(--ease-out), box-shadow 0.25s;
+}
+.search-filter:focus { border-color: var(--accent); width: 210px; box-shadow: 0 0 0 3px var(--accent-glow); }
+.search-filter::placeholder { color: var(--text3); }
+
+/* Episode list */
+.ep-list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.ep-list::-webkit-scrollbar { width: 6px; }
+.ep-list::-webkit-scrollbar-track { background: transparent; }
+.ep-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+.ep-list::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+.ep-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0 22px;
+  height: var(--list-row-height);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out), padding-left 0.22s var(--ease-out);
+  position: relative;
+  /* Skip rendering rows scrolled out of view (big win on 100+ episode feeds) */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 var(--list-row-height);
+}
+.ep-list.entering .ep-item { animation: rise-in 0.45s var(--ease-out) both; }
+.ep-list.entering .ep-item:nth-child(1)  { animation-delay: 0.00s; }
+.ep-list.entering .ep-item:nth-child(2)  { animation-delay: 0.03s; }
+.ep-list.entering .ep-item:nth-child(3)  { animation-delay: 0.06s; }
+.ep-list.entering .ep-item:nth-child(4)  { animation-delay: 0.09s; }
+.ep-list.entering .ep-item:nth-child(5)  { animation-delay: 0.12s; }
+.ep-list.entering .ep-item:nth-child(6)  { animation-delay: 0.15s; }
+.ep-list.entering .ep-item:nth-child(7)  { animation-delay: 0.18s; }
+.ep-list.entering .ep-item:nth-child(8)  { animation-delay: 0.21s; }
+.ep-list.entering .ep-item:nth-child(9)  { animation-delay: 0.24s; }
+.ep-list.entering .ep-item:nth-child(10) { animation-delay: 0.27s; }
+.ep-list.entering .ep-item:nth-child(n+11) { animation-delay: 0.30s; }
+.ep-item:hover { background: var(--surface); padding-left: 27px; }
+.ep-item.active { background: var(--accent-soft); }
+.ep-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent-grad);
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 12px -1px var(--accent-glow);
+}
+
+.ep-num {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text3);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ep-item.active .ep-num { color: var(--accent); }
+/* Mini equalizer that replaces the index on the active row */
+.ep-eq { display: inline-flex; align-items: flex-end; justify-content: flex-end; gap: 2px; height: 13px; width: 100%; }
+.ep-eq i { width: 3px; height: 35%; background: var(--accent); border-radius: 1px; transform-origin: bottom; }
+.ep-eq i:nth-child(1) { height: 55%; }
+.ep-eq i:nth-child(2) { height: 100%; }
+.ep-eq i:nth-child(3) { height: 72%; }
+body.is-playing .ep-item.active .ep-eq i { animation: eq-bounce 0.9s var(--ease-out) infinite; }
+body.is-playing .ep-item.active .ep-eq i:nth-child(2) { animation-delay: 0.15s; }
+body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
+.ep-info { flex: 1; min-width: 0; }
+.ep-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  transition: color 0.18s;
+}
+.ep-item.active .ep-name { color: var(--accent); }
+.ep-date-dur {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+}
+.ep-saved-badge {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--yellow);
+  margin-left: 6px;
+}
+
+.ep-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.ep-dl-btn {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 11px;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--r-xs);
+  font-family: var(--font-mono);
+  transition: border-color 0.18s, color 0.18s, transform 0.16s var(--ease-spring);
+  opacity: 0;
+}
+.ep-item:hover .ep-dl-btn, .ep-dl-btn.done { opacity: 1; }
+.ep-dl-btn .icon { width: 15px; height: 15px; }
+.ep-dl-btn:hover { border-color: var(--green); color: var(--green); transform: translateY(-1px); }
+.ep-dl-btn.done { border-color: var(--green); color: var(--green); }
+/* Unfavorite button (in the subscriptions list) reads as a filled accent star */
+.ep-dl-btn.unfav { color: var(--accent); border-color: var(--accent); opacity: 1; }
+.ep-dl-btn.unfav:hover { border-color: var(--red); color: var(--red); }
+/* On touch devices the dl button is always visible (no hover) */
+@media (hover: none) { .ep-dl-btn { opacity: 1; } }
+
+/* ═══════════════════════════════════════
+   SETTINGS PANEL
+═══════════════════════════════════════ */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6,7,11,0.55);
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.32s var(--ease-out), visibility 0.32s;
+}
+.settings-overlay.open { opacity: 1; visibility: visible; }
+
+/* While the drawer is open, freeze continuous background motion so scrolling
+   the panel runs at full frame rate (nothing behind it competes for the GPU) */
+body.settings-open #searchScreen::before,
+body.settings-open .brand-logo,
+body.settings-open .brand-name,
+body.settings-open .wave-fill i,
+body.settings-open .now-eq i,
+body.settings-open .ep-eq i,
+body.settings-open .play-btn::after,
+body.settings-open .dot.loading { animation-play-state: paused; }
+
+.settings-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 340px;
+  max-width: 88vw;
+  /* Solid surface (no backdrop-filter): a drawer slides over content, and
+     animating translateX on a blurred element re-rasterizes the whole backdrop
+     every frame — the main cause of the settings FPS drop. */
+  background: var(--surface);
+  border-left: 1px solid var(--border2);
+  box-shadow: var(--shadow-lg);
+  z-index: 101;
+  transform: translateX(100%);
+  transition: transform 0.42s var(--ease-out);
+  will-change: transform;
+  contain: paint;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+.settings-panel::-webkit-scrollbar { width: 6px; }
+.settings-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+.settings-panel.open { transform: translateX(0); }
+[dir="rtl"] .settings-panel {
+  right: auto; left: 0;
+  border-left: none; border-right: 1px solid var(--border2);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-100%);
+}
+[dir="rtl"] .settings-panel.open { transform: translateX(0); }
+
+.settings-header {
+  padding: 22px 22px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+.settings-title { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.settings-close {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 4px;
+  transition: color 0.18s, transform 0.18s var(--ease-spring);
+}
+.settings-close:hover { color: var(--text); transform: rotate(90deg); }
+
+.settings-body { padding: 22px; display: flex; flex-direction: column; gap: 26px; }
+
+.s-section-title {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 14px;
+}
+
+.s-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.s-label { font-size: 12.5px; color: var(--text2); flex: 1; }
+.s-sublabel { font-size: 10px; color: var(--text3); font-family: var(--font-mono); margin-top: 3px; }
+
+.s-select {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 7px 9px;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  outline: none;
+  min-width: 96px;
+  transition: border-color 0.18s;
+}
+.s-select:hover, .s-select:focus { border-color: var(--accent); }
+
+.s-range {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  margin-top: 8px;
+}
+.s-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.s-toggle { position: relative; width: 40px; height: 23px; flex-shrink: 0; }
+.s-toggle input { opacity: 0; width: 0; height: 0; }
+.s-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--border2);
+  border-radius: 23px;
+  cursor: pointer;
+  transition: background 0.25s var(--ease-out);
+}
+.s-toggle input:checked + .s-toggle-track { background: var(--accent); }
+.s-toggle-track::before {
+  content: '';
+  position: absolute;
+  width: 17px; height: 17px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.28s var(--ease-spring);
+}
+.s-toggle input:checked + .s-toggle-track::before { transform: translateX(17px); }
+
+.s-color-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.s-color-swatch {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), var(--shadow-sm);
+  transition: border-color 0.18s, transform 0.16s var(--ease-spring);
+  position: relative;
+}
+.s-color-swatch:hover { transform: scale(1.16); }
+.s-color-swatch.active { border-color: var(--text); transform: scale(1.08); }
+
+.s-divider { border: none; border-top: 1px solid var(--border); margin: 2px 0; }
+
+.s-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 10px 14px;
+  border-radius: var(--r-xs);
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+  width: 100%;
+  text-align: left;
+}
+.s-btn:hover { border-color: var(--accent); color: var(--accent); }
+.s-btn.danger:hover { border-color: var(--red); color: var(--red); background: rgba(240,106,106,0.06); }
+
+/* Language picker — search screen */
+.search-screen-topbar {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+.lang-select {
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 10px;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.18s, color 0.18s;
+}
+.lang-select:hover, .lang-select:focus { border-color: var(--accent); color: var(--text); }
+
+/* ═══════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════ */
+@media (max-width: 520px) {
+  .p-header { padding: 0 14px; gap: 9px; }
+  .p-epcount { display: none; }
+  .p-player { padding: 16px 16px 18px; }
+  .controls { flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .controls .spacer { display: none; }
+  .ctrl-btn { padding: 9px 11px; }
+  .brand-name { font-size: 34px; }
+  .brand-logo { width: 74px; height: 74px; }
+  .search-input { font-size: 14px; padding: 14px 16px; }
+  .search-screen-topbar { top: 14px; right: 14px; }
+  .ep-item { padding: 0 16px; }
+  .ep-item:hover { padding-left: 20px; }
+  .sort-bar { padding: 0 16px; }
+}
+
+/* ═══════════════════════════════════════
+   KEYFRAMES
+═══════════════════════════════════════ */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.38; transform: translate(-50%, -50%) scale(0.94); }
+  50%      { opacity: 0.7;  transform: translate(-50%, -50%) scale(1.05); }
+}
+@keyframes eq-bounce {
+  0%, 100% { transform: scaleY(0.42); }
+  50%      { transform: scaleY(1); }
+}
+@keyframes wave-breathe {
+  0%, 100% { transform: scaleY(0.9); }
+  50%      { transform: scaleY(1.12); }
+}
+@keyframes head-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent-glow); }
+  50%      { box-shadow: 0 0 9px 3px var(--accent-glow); }
+}
+@keyframes wave-flow {
+  0%, 100% { transform: scaleY(0.5); }
+  50%      { transform: scaleY(1); }
+}
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+@keyframes text-sheen {
+  0%   { background-position: 150% 0; }
+  50%, 100% { background-position: -60% 0; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 var(--accent-glow); }
+  70%  { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes ring-pulse {
+  0%   { transform: scale(0.96); opacity: 0.4; }
+  70%  { transform: scale(1.18); opacity: 0; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+
+/* Screen enter */
+.screen-enter { animation: screen-in 0.45s var(--ease-out) both; }
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.995); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Skeleton */
+.skeleton-list { padding: 8px 0; }
+.skeleton-row {
+  display: flex; align-items: center; gap: 13px;
+  padding: 0 22px; height: var(--list-row-height);
+  border-bottom: 1px solid var(--border);
+}
+.sk { background: var(--surface2); border-radius: 6px; position: relative; overflow: hidden; }
+.sk::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, var(--accent-soft) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+.sk-num { width: 20px; height: 11px; }
+.sk-line1 { height: 11px; width: 62%; margin-bottom: 8px; }
+.sk-line2 { height: 9px; width: 34%; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ ICON SPRITE (one consistent set, referenced via <use>) ══════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="ic-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+  <symbol id="ic-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></symbol>
+  <symbol id="ic-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="ic-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
+  <symbol id="ic-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="ic-prev" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></symbol>
+  <symbol id="ic-next" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></symbol>
+  <symbol id="ic-rewind" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+  <symbol id="ic-forward" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+  <symbol id="ic-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="ic-sort" viewBox="0 0 24 24"><polyline points="21 16 17 20 13 16"/><line x1="17" y1="20" x2="17" y2="4"/><polyline points="3 8 7 4 11 8"/><line x1="7" y1="4" x2="7" y2="20"/></symbol>
+  <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="ic-arrow-right" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+  <symbol id="ic-back" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+</svg>
+
+<!-- ══════════ SEARCH SCREEN ══════════ -->
+<div id="searchScreen">
+  <!-- Language picker top-right -->
+  <div class="search-screen-topbar">
+    <select class="lang-select" id="homeLangSel" onchange="onHomeLangChange()">
+      <option value="tr">🇹🇷 TR</option>
+      <option value="en">🇬🇧 EN</option>
+      <option value="de">🇩🇪 DE</option>
+      <option value="fr">🇫🇷 FR</option>
+      <option value="es">🇪🇸 ES</option>
+      <option value="ar">🇸🇦 AR</option>
+      <option value="ja">🇯🇵 JA</option>
+      <option value="ru">🇷🇺 RU</option>
+    </select>
+  </div>
+
+  <div class="brand">
+    <div class="brand-logo" aria-hidden="true">
+      <svg viewBox="0 0 32 32">
+        <rect class="wave-bar" x="3"  y="13"   width="2" height="6"  rx="1"/>
+        <rect class="wave-bar" x="7"  y="10.5" width="2" height="11" rx="1"/>
+        <rect class="wave-bar" x="11" y="8"    width="2" height="16" rx="1"/>
+        <rect class="wave-bar" x="15" y="5"    width="2" height="22" rx="1"/>
+        <rect class="wave-bar" x="19" y="8"    width="2" height="16" rx="1"/>
+        <rect class="wave-bar" x="23" y="10.5" width="2" height="11" rx="1"/>
+        <rect class="wave-bar" x="27" y="13"   width="2" height="6"  rx="1"/>
+      </svg>
+    </div>
+    <h1 class="brand-name" aria-label="Seseri">Seseri</h1>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-row">
+      <input class="search-input" id="searchInput" type="text"
+        placeholder="Podcast adı, Apple Podcasts veya YouTube linki..." data-i18n-ph="search_placeholder"
+        onkeydown="if(event.key==='Enter') doSearch()" />
+      <button class="search-btn" id="searchBtn" onclick="doSearch()" data-i18n="btn_search">Ara →</button>
+    </div>
+  </div>
+
+  <div class="results-list" id="resultsList"></div>
+</div>
+
+<!-- ══════════ PLAYER SCREEN ══════════ -->
+<div id="playerScreen">
+
+  <!-- Header -->
+  <div class="p-header">
+    <button class="p-back" onclick="goBack()" data-i18n="btn_back">← Geri</button>
+    <img class="p-thumb" id="pThumb" alt="" loading="lazy" decoding="async">
+    <div class="p-meta">
+      <div class="p-title" id="pTitle">—</div>
+      <div class="p-author" id="pAuthor">—</div>
+    </div>
+    <div class="p-epcount"><strong id="pEpCount">—</strong><span id="pEpUnit" data-i18n="ep_count_unit">bölüm</span></div>
+    <button class="settings-btn" id="favBtn" onclick="toggleFav()" data-i18n-title="fav_btn" data-i18n-aria="fav_btn" title="Abonelik ekle/çıkar" aria-label="Abonelik"><svg class="icon" aria-hidden="true"><use href="#ic-star"/></svg></button>
+    <button class="settings-btn" id="shareBtn" onclick="sharePodcast()" data-i18n-title="share_btn" data-i18n-aria="share_btn" title="Linki paylaş" aria-label="Paylaş"><svg class="icon" aria-hidden="true"><use href="#ic-share"/></svg></button>
+    <button class="settings-btn" onclick="openSettings()" data-i18n-title="settings_title" data-i18n-aria="settings_title" title="Ayarlar" aria-label="Ayarlar"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg></button>
+  </div>
+
+  <!-- Status -->
+  <div class="p-status">
+    <div class="dot loading" id="dot"></div>
+    <span class="p-status-text" id="statusText" data-i18n="status_loading">Yükleniyor...</span>
+  </div>
+
+  <!-- Player -->
+  <div class="p-player" id="pPlayer">
+    <div class="p-now-head">
+      <span class="now-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <div class="p-now-label" data-i18n="now_playing">ŞU AN ÇALIYOR</div>
+    </div>
+    <div class="p-now-title" id="nowTitle" data-i18n="pick_episode">Bir bölüm seçin</div>
+    <audio id="audio"></audio>
+    <!-- YouTube embed host (shown only for YouTube feeds; the IFrame API replaces #ytHost) -->
+    <div class="yt-frame" id="ytFrame"><div id="ytHost"></div></div>
+    <div class="wave" id="progressWrap" role="slider" tabindex="0"
+         aria-label="Konum" data-i18n-aria="seek_label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="wave-layer wave-base" id="waveBase"></div>
+      <div class="wave-layer wave-fill" id="waveFill"></div>
+      <div class="wave-head" id="waveHead"></div>
+      <div class="wave-tip" id="waveTip">0:00</div>
+    </div>
+    <div class="time-row">
+      <span id="tCur">0:00</span>
+      <span id="tTot">0:00</span>
+    </div>
+    <div class="controls">
+      <button class="ctrl-btn" id="btnPrev" onclick="prevEp()" disabled><svg class="icon" aria-hidden="true"><use href="#ic-prev"/></svg> <span data-i18n="btn_prev">Önceki</span></button>
+      <button class="ctrl-btn ctrl-skip" id="btnSkipBack" onclick="seekRel(-S.skipBack)"><svg class="icon" aria-hidden="true"><use href="#ic-rewind"/></svg> <span id="lblSkipBack">15</span></button>
+      <button class="play-btn" id="btnPlay" onclick="togglePlay()" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
+      <button class="ctrl-btn ctrl-skip" id="btnSkipFwd" onclick="seekRel(S.skipForward)"><svg class="icon" aria-hidden="true"><use href="#ic-forward"/></svg> <span id="lblSkipFwd">30</span></button>
+      <button class="ctrl-btn" id="btnNext" onclick="nextEp()" disabled><span data-i18n="btn_next">Sonraki</span> <svg class="icon" aria-hidden="true"><use href="#ic-next"/></svg></button>
+      <span class="spacer"></span>
+      <span class="sel-wrap sleep-wrap">
+        <svg class="icon sel-ic" aria-hidden="true"><use href="#ic-moon"/></svg>
+        <select class="seri-select sleep-select" id="sleepSel" onchange="changeSleep()" data-i18n-title="sleep_timer" data-i18n-aria="sleep_timer" title="Uyku zamanlayıcısı (dk)">
+          <option value="0" selected>—</option>
+          <option value="15">15</option>
+          <option value="30">30</option>
+          <option value="60">60</option>
+        </select>
+      </span>
+      <span class="sel-wrap">
+        <select class="seri-select speed-select" id="speedSel" onchange="changeSpeed()" data-i18n-title="speed_label" title="Hız">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+          <option value="1.75">1.75×</option>
+          <option value="2">2×</option>
+          <option value="2.5">2.5×</option>
+        </select>
+      </span>
+    </div>
+  </div>
+
+  <!-- Sort Bar -->
+  <div class="sort-bar">
+    <div class="sort-left">
+      <button class="sort-toggle" onclick="toggleSort()"><svg class="icon" aria-hidden="true"><use href="#ic-sort"/></svg> <span data-i18n="btn_sort">Sıra</span></button>
+      <span class="sort-info" id="sortInfo" data-i18n="sort_asc">Eskiden → Yeniye</span>
+    </div>
+    <input class="search-filter" id="filterInput" type="text"
+      placeholder="Bölüm ara..." data-i18n-ph="filter_placeholder" oninput="filterEps()" />
+  </div>
+
+  <!-- Episode List -->
+  <div class="ep-list" id="epList">
+    <div class="empty-state" data-i18n="loading_eps">Yükleniyor...</div>
+  </div>
+</div>
+
+<!-- ══════════ SETTINGS PANEL ══════════ -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="settings-header">
+    <span class="settings-title"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg> <span id="settingsTitle" data-i18n="settings_heading">Ayarlar</span></span>
+    <button class="settings-close" onclick="closeSettings()" aria-label="×">×</button>
+  </div>
+  <div class="settings-body">
+
+    <!-- Oynatma -->
+    <div>
+      <div class="s-section-title" data-i18n="s_playback">Oynatma</div>
+
+      <div class="s-row">
+        <div>
+          <div class="s-label" data-i18n="s_default_speed">Varsayılan Hız</div>
+          <div class="s-sublabel" data-i18n="s_speed_sub">Bölümler arası korunur</div>
+        </div>
+        <select class="s-select" id="s_defaultSpeed" onchange="applySettings()">
+          <option value="0.5">0.5×</option>
+          <option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+          <option value="1.75">1.75×</option>
+          <option value="2">2×</option>
+          <option value="2.5">2.5×</option>
+        </select>
+      </div>
+
+      <div class="s-row">
+        <div>
+          <div class="s-label" data-i18n="s_skip_back">Geri Atla (saniye)</div>
+        </div>
+        <select class="s-select" id="s_skipBack" onchange="applySettings()">
+          <option value="5">5s</option>
+          <option value="10">10s</option>
+          <option value="15" selected>15s</option>
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+        </select>
+      </div>
+
+      <div class="s-row">
+        <div>
+          <div class="s-label" data-i18n="s_skip_fwd">İleri Atla (saniye)</div>
+        </div>
+        <select class="s-select" id="s_skipForward" onchange="applySettings()">
+          <option value="10">10s</option>
+          <option value="15">15s</option>
+          <option value="30" selected>30s</option>
+          <option value="45">45s</option>
+          <option value="60">60s</option>
+          <option value="90">90s</option>
+        </select>
+      </div>
+
+      <div class="s-row">
+        <div>
+          <div class="s-label" data-i18n="s_auto_next">Otomatik Sonraki Bölüm</div>
+        </div>
+        <label class="s-toggle">
+          <input type="checkbox" id="s_autoNext" checked onchange="applySettings()">
+          <span class="s-toggle-track"></span>
+        </label>
+      </div>
+
+      <div class="s-row">
+        <div>
+          <div class="s-label" data-i18n="s_resume">Kaldığım Yerden Devam</div>
+        </div>
+        <label class="s-toggle">
+          <input type="checkbox" id="s_resumePos" checked onchange="applySettings()">
+          <span class="s-toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <hr class="s-divider">
+
+    <!-- Görünüm -->
+    <div>
+      <div class="s-section-title" data-i18n="s_appearance">Görünüm</div>
+
+      <div class="s-row">
+        <div>
+          <div class="s-label" data-i18n="s_accent">Vurgu Rengi</div>
+        </div>
+      </div>
+      <div class="s-color-row" id="colorSwatches">
+        <div class="s-color-swatch active" style="background:#8b7cf6" data-color="#8b7cf6" onclick="setAccent(this)" role="button" aria-label="Violet"></div>
+        <div class="s-color-swatch" style="background:#5b8af5" data-color="#5b8af5" onclick="setAccent(this)" role="button" aria-label="Blue"></div>
+        <div class="s-color-swatch" style="background:#43d49a" data-color="#43d49a" onclick="setAccent(this)" role="button" aria-label="Green"></div>
+        <div class="s-color-swatch" style="background:#f06a6a" data-color="#f06a6a" onclick="setAccent(this)" role="button" aria-label="Red"></div>
+        <div class="s-color-swatch" style="background:#e6bb4f" data-color="#e6bb4f" onclick="setAccent(this)" role="button" aria-label="Amber"></div>
+        <div class="s-color-swatch" style="background:#f5845b" data-color="#f5845b" onclick="setAccent(this)" role="button" aria-label="Coral"></div>
+        <div class="s-color-swatch" style="background:#34d8e0" data-color="#34d8e0" onclick="setAccent(this)" role="button" aria-label="Cyan"></div>
+      </div>
+
+      <div style="margin-top:16px">
+        <div class="s-row">
+          <div>
+            <div class="s-label" data-i18n="s_font_size">Yazı Boyutu</div>
+          </div>
+          <select class="s-select" id="s_fontSize" onchange="applySettings()">
+            <option value="11px" data-i18n="size_small">Küçük</option>
+            <option value="13px" selected data-i18n="size_normal">Normal</option>
+            <option value="15px" data-i18n="size_large">Büyük</option>
+            <option value="17px" data-i18n="size_xlarge">Çok Büyük</option>
+          </select>
+        </div>
+
+        <div class="s-row">
+          <div>
+            <div class="s-label" data-i18n="s_row_height">Liste Satır Yüksekliği</div>
+          </div>
+          <select class="s-select" id="s_rowHeight" onchange="applySettings()">
+            <option value="42px" data-i18n="row_compact">Sıkı</option>
+            <option value="54px" selected data-i18n="size_normal">Normal</option>
+            <option value="66px" data-i18n="row_spacious">Geniş</option>
+          </select>
+        </div>
+
+        <div class="s-row">
+          <div>
+            <div class="s-label" data-i18n="s_theme_label">Karanlık / Açık Tema</div>
+          </div>
+          <select class="s-select" id="s_theme" onchange="applySettings()">
+            <option value="dark" selected data-i18n="theme_dark">Karanlık</option>
+            <option value="light" data-i18n="theme_light">Açık</option>
+            <option value="oled" data-i18n="theme_oled">OLED Siyah</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <hr class="s-divider">
+
+    <!-- Liste -->
+    <div>
+      <div class="s-section-title" data-i18n="s_list">Liste</div>
+
+      <div class="s-row">
+        <div>
+          <div class="s-label" data-i18n="s_default_sort">Varsayılan Sıralama</div>
+        </div>
+        <select class="s-select" id="s_defaultSort" onchange="applySettings()">
+          <option value="asc" selected data-i18n="sort_asc">Eskiden → Yeniye</option>
+          <option value="desc" data-i18n="sort_desc">Yeniden → Eskiye</option>
+        </select>
+      </div>
+
+      <div class="s-row">
+        <div>
+          <div class="s-label" data-i18n="s_show_dl">İndirme Butonu Göster</div>
+        </div>
+        <label class="s-toggle">
+          <input type="checkbox" id="s_showDl" checked onchange="applySettings()">
+          <span class="s-toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+
+    <hr class="s-divider">
+
+    <!-- Dil / Language -->
+    <div>
+      <div class="s-section-title" data-i18n="s_lang_title">Dil / Language</div>
+      <div class="s-row">
+        <div><div class="s-label" data-i18n="s_lang_label">Arayüz Dili</div></div>
+        <select class="s-select" id="s_lang" onchange="applySettings()">
+          <option value="tr">🇹🇷 Türkçe</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="de">🇩🇪 Deutsch</option>
+          <option value="fr">🇫🇷 Français</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="ar">🇸🇦 العربية</option>
+          <option value="ja">🇯🇵 日本語</option>
+          <option value="ru">🇷🇺 Русский</option>
+        </select>
+      </div>
+    </div>
+
+    <hr class="s-divider">
+
+    <!-- Veri -->
+    <div>
+      <div class="s-section-title" data-i18n="s_data">Veri</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="s-btn danger" onclick="clearProgress()" data-i18n="btn_clear_progress">🗑 Tüm İlerlemeyi Sıfırla</button>
+        <button class="s-btn danger" onclick="clearAll()" data-i18n="btn_clear_all">🗑 Tüm Verileri Temizle</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════
+// INTERNATIONALISATION (i18n)
+// ═══════════════════════════════════════
+const LANGS = {
+  tr: {
+    brand_sub: 'Ücretsiz · Üyeliksiz · iTunes API',
+    search_placeholder: 'Podcast adı, Apple Podcasts veya YouTube linki...',
+    search_hint: "Örnek: Merdiven Altı Terapi · veya bir YouTube playlist/kanal linki yapıştır",
+    btn_search: 'Ara →', btn_back: '← Geri', now_playing: 'ŞU AN ÇALIYOR', ep_fallback: (n) => `Bölüm ${n}`,
+    pick_episode: 'Bir bölüm seçin', btn_prev: 'Önceki', btn_next: 'Sonraki',
+    btn_sort: 'Sıra', filter_placeholder: 'Bölüm ara...', settings_title: 'Ayarlar',
+    settings_heading: 'Ayarlar', sort_asc_label: 'Eskiden → Yeniye', sort_desc_label: 'Yeniden → Eskiye',
+    ep_saved_badge: 'kaldığın yer', status_loading: 'Bölümler yükleniyor...',
+    status_ok: (n) => `${n} bölüm yüklendi ✓`, status_err: 'Hata: ', searching: 'Aranıyor...',
+    no_results: 'Sonuç bulunamadı.', ep_count_unit: 'bölüm', ep_not_found: 'Bölüm bulunamadı.',
+    loading_eps: 'Yükleniyor...', retry: 'F5 ile yenileyin.',
+    confirm_clear_progress: 'Tüm bölüm ilerlemeleri silinecek. Emin misin?',
+    confirm_clear_all: 'Tüm ayarlar ve ilerleme silinecek. Emin misin?',
+    dl_not_found: 'İndirme linki bulunamadı.',
+    s_lang_title: 'Dil / Language', s_lang_label: 'Arayüz Dili', s_playback: 'Oynatma',
+    s_default_speed: 'Varsayılan Hız', s_speed_sub: 'Bölümler arası korunur',
+    s_skip_back: 'Geri Atla (saniye)', s_skip_fwd: 'İleri Atla (saniye)',
+    s_auto_next: 'Otomatik Sonraki Bölüm', s_resume: 'Kaldığım Yerden Devam',
+    s_appearance: 'Görünüm', s_accent: 'Vurgu Rengi', s_font_size: 'Yazı Boyutu',
+    s_row_height: 'Liste Satır Yüksekliği', s_theme_label: 'Tema', s_list: 'Liste',
+    s_default_sort: 'Varsayılan Sıralama', s_show_dl: 'İndirme Butonu Göster', s_data: 'Veri',
+    btn_clear_progress: '🗑 Tüm İlerlemeyi Sıfırla', btn_clear_all: '🗑 Tüm Verileri Temizle',
+    theme_dark: 'Karanlık', theme_light: 'Açık', theme_oled: 'OLED Siyah',
+    size_small: 'Küçük', size_normal: 'Normal', size_large: 'Büyük', size_xlarge: 'Çok Büyük',
+    row_compact: 'Sıkı', row_spacious: 'Geniş',
+    sort_asc: 'Eskiden → Yeniye', sort_desc: 'Yeniden → Eskiye', dir: 'ltr',
+    audio_err: 'Ses dosyası yüklenemedi.',
+    dur_h: 'sa', dur_m: 'dk', storage_full: 'Depolama dolu — en eski ilerlemeler silindi.',
+    favs_title: 'Aboneliklerim', fav_btn: 'Abonelik ekle/çıkar', share_btn: 'Linki paylaş',
+    link_copied: 'Link kopyalandı ✓', sleep_timer: 'Uyku zamanlayıcısı (dk)',
+    play: 'Oynat', pause: 'Duraklat', seek_label: 'Konum', speed_label: 'Oynatma hızı',
+    sleep_set: (n) => `Uyku: ${n} dk`, sleep_done: 'Uyku zamanlayıcısı bitti',
+    dl_label: 'Bölümü indir', rss_invalid: 'Geçersiz RSS beslemesi.',
+    yt_video: 'YouTube videosu', yt_invalid: 'Geçersiz YouTube bağlantısı.', yt_embed_blocked: 'Bu video gömülemiyor.', yt_limit_note: 'son ~15 bölüm',
+  },
+  en: {
+    brand_sub: 'Free · No Account · iTunes API',
+    search_placeholder: 'Podcast name, Apple Podcasts or YouTube link...',
+    search_hint: 'e.g. Serial · Radiolab · or paste a YouTube playlist/channel link',
+    btn_search: 'Search →', btn_back: '← Back', now_playing: 'NOW PLAYING', ep_fallback: (n) => `Episode ${n}`,
+    pick_episode: 'Select an episode', btn_prev: 'Previous', btn_next: 'Next',
+    btn_sort: 'Order', filter_placeholder: 'Filter episodes...', settings_title: 'Settings',
+    settings_heading: 'Settings', sort_asc_label: 'Oldest → Newest', sort_desc_label: 'Newest → Oldest',
+    ep_saved_badge: 'resume', status_loading: 'Loading episodes...',
+    status_ok: (n) => `${n} episodes loaded ✓`, status_err: 'Error: ', searching: 'Searching...',
+    no_results: 'No results found.', ep_count_unit: 'eps', ep_not_found: 'No episodes found.',
+    loading_eps: 'Loading...', retry: 'Press F5 to retry.',
+    confirm_clear_progress: 'All episode progress will be deleted. Are you sure?',
+    confirm_clear_all: 'All settings and progress will be deleted. Are you sure?',
+    dl_not_found: 'Download link not found.',
+    s_lang_title: 'Language', s_lang_label: 'Interface Language', s_playback: 'Playback',
+    s_default_speed: 'Default Speed', s_speed_sub: 'Preserved between episodes',
+    s_skip_back: 'Skip Back (seconds)', s_skip_fwd: 'Skip Forward (seconds)',
+    s_auto_next: 'Auto-play Next Episode', s_resume: 'Resume from Last Position',
+    s_appearance: 'Appearance', s_accent: 'Accent Color', s_font_size: 'Font Size',
+    s_row_height: 'List Row Height', s_theme_label: 'Theme', s_list: 'List',
+    s_default_sort: 'Default Sort Order', s_show_dl: 'Show Download Button', s_data: 'Data',
+    btn_clear_progress: '🗑 Clear All Progress', btn_clear_all: '🗑 Clear All Data',
+    theme_dark: 'Dark', theme_light: 'Light', theme_oled: 'OLED Black',
+    size_small: 'Small', size_normal: 'Normal', size_large: 'Large', size_xlarge: 'X-Large',
+    row_compact: 'Compact', row_spacious: 'Spacious',
+    sort_asc: 'Oldest → Newest', sort_desc: 'Newest → Oldest', dir: 'ltr',
+    audio_err: 'Audio file could not be loaded.',
+    dur_h: 'h', dur_m: 'm', storage_full: 'Storage full — oldest progress was pruned.',
+    favs_title: 'My Subscriptions', fav_btn: 'Add/remove subscription', share_btn: 'Share link',
+    link_copied: 'Link copied ✓', sleep_timer: 'Sleep timer (min)',
+    play: 'Play', pause: 'Pause', seek_label: 'Seek', speed_label: 'Playback speed',
+    sleep_set: (n) => `Sleep: ${n} min`, sleep_done: 'Sleep timer ended',
+    dl_label: 'Download episode', rss_invalid: 'Invalid RSS feed.',
+    yt_video: 'YouTube video', yt_invalid: 'Invalid YouTube link.', yt_embed_blocked: 'This video can’t be embedded.', yt_limit_note: 'latest ~15',
+  },
+  de: {
+    brand_sub: 'Kostenlos · Kein Konto · iTunes API',
+    search_placeholder: 'Podcast-Name oder Apple Podcasts Link...',
+    search_hint: 'z.B. Fest & Flauschig · oder Apple Podcasts URL einfügen',
+    btn_search: 'Suchen →', btn_back: '← Zurück', now_playing: 'JETZT LÄUFT', ep_fallback: (n) => `Folge ${n}`,
+    pick_episode: 'Episode auswählen', btn_prev: 'Vorherige', btn_next: 'Nächste',
+    btn_sort: 'Sortieren', filter_placeholder: 'Episoden filtern...', settings_title: 'Einstellungen',
+    settings_heading: 'Einstellungen', sort_asc_label: 'Älteste → Neueste', sort_desc_label: 'Neueste → Älteste',
+    ep_saved_badge: 'fortsetzen', status_loading: 'Episoden werden geladen...',
+    status_ok: (n) => `${n} Episoden geladen ✓`, status_err: 'Fehler: ', searching: 'Suche läuft...',
+    no_results: 'Keine Ergebnisse gefunden.', ep_count_unit: 'Folgen', ep_not_found: 'Keine Episoden gefunden.',
+    loading_eps: 'Lädt...', retry: 'F5 zum Wiederholen.',
+    confirm_clear_progress: 'Alle Episodenfortschritte werden gelöscht. Sicher?',
+    confirm_clear_all: 'Alle Einstellungen und Fortschritte werden gelöscht. Sicher?',
+    dl_not_found: 'Download-Link nicht gefunden.',
+    s_lang_title: 'Sprache', s_lang_label: 'Oberflächensprache', s_playback: 'Wiedergabe',
+    s_default_speed: 'Standardgeschwindigkeit', s_speed_sub: 'Zwischen Episoden gespeichert',
+    s_skip_back: 'Zurückspulen (Sekunden)', s_skip_fwd: 'Vorspulen (Sekunden)',
+    s_auto_next: 'Nächste Episode automatisch', s_resume: 'Ab letzter Position fortsetzen',
+    s_appearance: 'Darstellung', s_accent: 'Akzentfarbe', s_font_size: 'Schriftgröße',
+    s_row_height: 'Zeilenhöhe', s_theme_label: 'Design', s_list: 'Liste',
+    s_default_sort: 'Standardsortierung', s_show_dl: 'Download-Schaltfläche anzeigen', s_data: 'Daten',
+    btn_clear_progress: '🗑 Alle Fortschritte löschen', btn_clear_all: '🗑 Alle Daten löschen',
+    theme_dark: 'Dunkel', theme_light: 'Hell', theme_oled: 'OLED Schwarz',
+    size_small: 'Klein', size_normal: 'Normal', size_large: 'Groß', size_xlarge: 'Sehr groß',
+    row_compact: 'Kompakt', row_spacious: 'Großzügig',
+    sort_asc: 'Älteste → Neueste', sort_desc: 'Neueste → Älteste', dir: 'ltr',
+    audio_err: 'Audiodatei konnte nicht geladen werden.',
+    dur_h: 'Std', dur_m: 'Min', storage_full: 'Speicher voll — älteste Fortschritte gelöscht.',
+    favs_title: 'Meine Abos', fav_btn: 'Abo hinzufügen/entfernen', share_btn: 'Link teilen',
+    link_copied: 'Link kopiert ✓', sleep_timer: 'Schlaftimer (Min)',
+    play: 'Abspielen', pause: 'Pause', seek_label: 'Suchen', speed_label: 'Wiedergabegeschwindigkeit',
+    sleep_set: (n) => `Schlaf: ${n} Min`, sleep_done: 'Schlaftimer beendet',
+    dl_label: 'Episode herunterladen', rss_invalid: 'Ungültiger RSS-Feed.',
+    yt_video: 'YouTube-Video', yt_invalid: 'Ungültiger YouTube-Link.', yt_embed_blocked: 'Dieses Video kann nicht eingebettet werden.', yt_limit_note: 'neueste ~15',
+  },
+  fr: {
+    brand_sub: 'Gratuit · Sans compte · iTunes API',
+    search_placeholder: 'Nom du podcast ou lien Apple Podcasts...',
+    search_hint: "ex. France Inter · ou collez une URL Apple Podcasts",
+    btn_search: 'Chercher →', btn_back: '← Retour', now_playing: 'EN COURS', ep_fallback: (n) => `Épisode ${n}`,
+    pick_episode: 'Sélectionner un épisode', btn_prev: 'Précédent', btn_next: 'Suivant',
+    btn_sort: 'Trier', filter_placeholder: 'Filtrer les épisodes...', settings_title: 'Paramètres',
+    settings_heading: 'Paramètres', sort_asc_label: 'Du plus ancien au plus récent', sort_desc_label: 'Du plus récent au plus ancien',
+    ep_saved_badge: 'reprendre', status_loading: 'Chargement des épisodes...',
+    status_ok: (n) => `${n} épisodes chargés ✓`, status_err: 'Erreur : ', searching: 'Recherche en cours...',
+    no_results: 'Aucun résultat trouvé.', ep_count_unit: 'éps', ep_not_found: 'Aucun épisode trouvé.',
+    loading_eps: 'Chargement...', retry: 'Appuyez sur F5 pour réessayer.',
+    confirm_clear_progress: 'Toute la progression sera supprimée. Confirmer ?',
+    confirm_clear_all: 'Tous les paramètres et la progression seront supprimés. Confirmer ?',
+    dl_not_found: 'Lien de téléchargement introuvable.',
+    s_lang_title: 'Langue', s_lang_label: "Langue de l'interface", s_playback: 'Lecture',
+    s_default_speed: 'Vitesse par défaut', s_speed_sub: 'Conservée entre les épisodes',
+    s_skip_back: 'Retour rapide (secondes)', s_skip_fwd: 'Avance rapide (secondes)',
+    s_auto_next: 'Épisode suivant automatique', s_resume: 'Reprendre depuis la dernière position',
+    s_appearance: 'Apparence', s_accent: "Couleur d'accentuation", s_font_size: 'Taille de police',
+    s_row_height: 'Hauteur des lignes', s_theme_label: 'Thème', s_list: 'Liste',
+    s_default_sort: 'Tri par défaut', s_show_dl: 'Afficher le bouton de téléchargement', s_data: 'Données',
+    btn_clear_progress: '🗑 Effacer toute la progression', btn_clear_all: '🗑 Effacer toutes les données',
+    theme_dark: 'Sombre', theme_light: 'Clair', theme_oled: 'OLED Noir',
+    size_small: 'Petit', size_normal: 'Normal', size_large: 'Grand', size_xlarge: 'Très grand',
+    row_compact: 'Compact', row_spacious: 'Spacieux',
+    sort_asc: 'Du plus ancien', sort_desc: 'Du plus récent', dir: 'ltr',
+    audio_err: 'Impossible de charger le fichier audio.',
+    dur_h: 'h', dur_m: 'min', storage_full: 'Stockage plein — anciennes progressions supprimées.',
+    favs_title: 'Mes abonnements', fav_btn: 'Ajouter/retirer un abonnement', share_btn: 'Partager le lien',
+    link_copied: 'Lien copié ✓', sleep_timer: 'Minuterie de sommeil (min)',
+    play: 'Lecture', pause: 'Pause', seek_label: 'Position', speed_label: 'Vitesse de lecture',
+    sleep_set: (n) => `Sommeil : ${n} min`, sleep_done: 'Minuterie de sommeil terminée',
+    dl_label: "Télécharger l'épisode", rss_invalid: 'Flux RSS invalide.',
+    yt_video: 'Vidéo YouTube', yt_invalid: 'Lien YouTube invalide.', yt_embed_blocked: 'Cette vidéo ne peut pas être intégrée.', yt_limit_note: '~15 plus récents',
+  },
+  es: {
+    brand_sub: 'Gratis · Sin cuenta · iTunes API',
+    search_placeholder: 'Nombre del podcast o enlace de Apple Podcasts...',
+    search_hint: 'p.ej. Nadie Sabe Nada · o pega una URL de Apple Podcasts',
+    btn_search: 'Buscar →', btn_back: '← Volver', now_playing: 'REPRODUCIENDO', ep_fallback: (n) => `Episodio ${n}`,
+    pick_episode: 'Selecciona un episodio', btn_prev: 'Anterior', btn_next: 'Siguiente',
+    btn_sort: 'Ordenar', filter_placeholder: 'Filtrar episodios...', settings_title: 'Ajustes',
+    settings_heading: 'Ajustes', sort_asc_label: 'Más antiguo → Más reciente', sort_desc_label: 'Más reciente → Más antiguo',
+    ep_saved_badge: 'continuar', status_loading: 'Cargando episodios...',
+    status_ok: (n) => `${n} episodios cargados ✓`, status_err: 'Error: ', searching: 'Buscando...',
+    no_results: 'No se encontraron resultados.', ep_count_unit: 'eps', ep_not_found: 'No se encontraron episodios.',
+    loading_eps: 'Cargando...', retry: 'Pulsa F5 para reintentar.',
+    confirm_clear_progress: 'Se eliminará todo el progreso. ¿Estás seguro?',
+    confirm_clear_all: 'Se eliminarán todos los ajustes y el progreso. ¿Estás seguro?',
+    dl_not_found: 'Enlace de descarga no encontrado.',
+    s_lang_title: 'Idioma', s_lang_label: 'Idioma de la interfaz', s_playback: 'Reproducción',
+    s_default_speed: 'Velocidad predeterminada', s_speed_sub: 'Se conserva entre episodios',
+    s_skip_back: 'Retroceder (segundos)', s_skip_fwd: 'Avanzar (segundos)',
+    s_auto_next: 'Reproducir siguiente automáticamente', s_resume: 'Reanudar desde la última posición',
+    s_appearance: 'Apariencia', s_accent: 'Color de acento', s_font_size: 'Tamaño de fuente',
+    s_row_height: 'Altura de fila', s_theme_label: 'Tema', s_list: 'Lista',
+    s_default_sort: 'Orden predeterminado', s_show_dl: 'Mostrar botón de descarga', s_data: 'Datos',
+    btn_clear_progress: '🗑 Borrar todo el progreso', btn_clear_all: '🗑 Borrar todos los datos',
+    theme_dark: 'Oscuro', theme_light: 'Claro', theme_oled: 'OLED Negro',
+    size_small: 'Pequeño', size_normal: 'Normal', size_large: 'Grande', size_xlarge: 'Muy grande',
+    row_compact: 'Compacto', row_spacious: 'Espacioso',
+    sort_asc: 'Más antiguo → Más reciente', sort_desc: 'Más reciente → Más antiguo', dir: 'ltr',
+    audio_err: 'No se pudo cargar el archivo de audio.',
+    dur_h: 'h', dur_m: 'min', storage_full: 'Almacenamiento lleno — se eliminó el progreso antiguo.',
+    favs_title: 'Mis suscripciones', fav_btn: 'Añadir/quitar suscripción', share_btn: 'Compartir enlace',
+    link_copied: 'Enlace copiado ✓', sleep_timer: 'Temporizador de sueño (min)',
+    play: 'Reproducir', pause: 'Pausar', seek_label: 'Posición', speed_label: 'Velocidad de reproducción',
+    sleep_set: (n) => `Sueño: ${n} min`, sleep_done: 'Temporizador de sueño finalizado',
+    dl_label: 'Descargar episodio', rss_invalid: 'Feed RSS no válido.',
+    yt_video: 'Vídeo de YouTube', yt_invalid: 'Enlace de YouTube no válido.', yt_embed_blocked: 'Este vídeo no se puede insertar.', yt_limit_note: 'últimos ~15',
+  },
+  ar: {
+    brand_sub: 'مجاني · بدون حساب · iTunes API',
+    search_placeholder: 'اسم البودكاست أو رابط Apple Podcasts...',
+    search_hint: 'مثال: بودكاست عربي · أو الصق رابط Apple Podcasts',
+    btn_search: '← بحث', btn_back: 'رجوع →', now_playing: 'يُشغَّل الآن', ep_fallback: (n) => `الحلقة ${n}`,
+    pick_episode: 'اختر حلقة', btn_prev: 'السابقة', btn_next: 'التالية',
+    btn_sort: 'ترتيب', filter_placeholder: 'تصفية الحلقات...', settings_title: 'الإعدادات',
+    settings_heading: 'الإعدادات', sort_asc_label: 'الأقدم → الأحدث', sort_desc_label: 'الأحدث → الأقدم',
+    ep_saved_badge: 'استئناف', status_loading: 'جارٍ تحميل الحلقات...',
+    status_ok: (n) => `تم تحميل ${n} حلقة ✓`, status_err: 'خطأ: ', searching: 'جارٍ البحث...',
+    no_results: 'لم يتم العثور على نتائج.', ep_count_unit: 'حلقة', ep_not_found: 'لا توجد حلقات.',
+    loading_eps: 'جارٍ التحميل...', retry: 'اضغط F5 للمحاولة مجدداً.',
+    confirm_clear_progress: 'سيتم حذف كل التقدم. هل أنت متأكد؟',
+    confirm_clear_all: 'سيتم حذف كل الإعدادات والتقدم. هل أنت متأكد؟',
+    dl_not_found: 'لم يتم العثور على رابط التحميل.',
+    s_lang_title: 'اللغة', s_lang_label: 'لغة الواجهة', s_playback: 'التشغيل',
+    s_default_speed: 'السرعة الافتراضية', s_speed_sub: 'محفوظة بين الحلقات',
+    s_skip_back: 'تخطي للخلف (ثوانٍ)', s_skip_fwd: 'تخطي للأمام (ثوانٍ)',
+    s_auto_next: 'تشغيل الحلقة التالية تلقائياً', s_resume: 'استئناف من آخر موضع',
+    s_appearance: 'المظهر', s_accent: 'لون التمييز', s_font_size: 'حجم الخط',
+    s_row_height: 'ارتفاع الصف', s_theme_label: 'السمة', s_list: 'القائمة',
+    s_default_sort: 'الترتيب الافتراضي', s_show_dl: 'إظهار زر التحميل', s_data: 'البيانات',
+    btn_clear_progress: '🗑 مسح كل التقدم', btn_clear_all: '🗑 مسح جميع البيانات',
+    theme_dark: 'داكن', theme_light: 'فاتح', theme_oled: 'OLED أسود',
+    size_small: 'صغير', size_normal: 'عادي', size_large: 'كبير', size_xlarge: 'كبير جداً',
+    row_compact: 'مضغوط', row_spacious: 'واسع',
+    sort_asc: 'الأقدم → الأحدث', sort_desc: 'الأحدث → الأقدم', dir: 'rtl',
+    audio_err: 'تعذّر تحميل ملف الصوت.',
+    dur_h: 'س', dur_m: 'د', storage_full: 'الذاكرة ممتلئة — حُذف التقدم الأقدم.',
+    favs_title: 'اشتراكاتي', fav_btn: 'إضافة/إزالة اشتراك', share_btn: 'مشاركة الرابط',
+    link_copied: 'تم نسخ الرابط ✓', sleep_timer: 'مؤقت النوم (دقيقة)',
+    play: 'تشغيل', pause: 'إيقاف مؤقت', seek_label: 'الموضع', speed_label: 'سرعة التشغيل',
+    sleep_set: (n) => `النوم: ${n} دقيقة`, sleep_done: 'انتهى مؤقت النوم',
+    dl_label: 'تنزيل الحلقة', rss_invalid: 'خلاصة RSS غير صالحة.',
+    yt_video: 'فيديو يوتيوب', yt_invalid: 'رابط يوتيوب غير صالح.', yt_embed_blocked: 'لا يمكن تضمين هذا الفيديو.', yt_limit_note: 'أحدث ~15',
+  },
+  ja: {
+    brand_sub: '無料 · アカウント不要 · iTunes API',
+    search_placeholder: 'ポッドキャスト名またはApple Podcastsリンク...',
+    search_hint: '例: COTEN RADIO · またはApple PodcastsのURLを貼り付け',
+    btn_search: '検索 →', btn_back: '← 戻る', now_playing: '再生中', ep_fallback: (n) => `第${n}回`,
+    pick_episode: 'エピソードを選択', btn_prev: '前へ', btn_next: '次へ',
+    btn_sort: '並替', filter_placeholder: 'エピソードを絞り込む...', settings_title: '設定',
+    settings_heading: '設定', sort_asc_label: '古い順', sort_desc_label: '新しい順',
+    ep_saved_badge: '再開', status_loading: 'エピソードを読み込み中...',
+    status_ok: (n) => `${n}件読み込み完了 ✓`, status_err: 'エラー: ', searching: '検索中...',
+    no_results: '結果が見つかりませんでした。', ep_count_unit: '件', ep_not_found: 'エピソードが見つかりません。',
+    loading_eps: '読み込み中...', retry: 'F5 で再試行してください。',
+    confirm_clear_progress: '再生履歴をすべて削除します。よろしいですか？',
+    confirm_clear_all: 'すべての設定と履歴を削除します。よろしいですか？',
+    dl_not_found: 'ダウンロードリンクが見つかりません。',
+    s_lang_title: '言語', s_lang_label: '表示言語', s_playback: '再生',
+    s_default_speed: 'デフォルト速度', s_speed_sub: 'エピソード間で保持',
+    s_skip_back: '巻き戻し（秒）', s_skip_fwd: '早送り（秒）',
+    s_auto_next: '次のエピソードを自動再生', s_resume: '前回の位置から再開',
+    s_appearance: '外観', s_accent: 'アクセントカラー', s_font_size: 'フォントサイズ',
+    s_row_height: '行の高さ', s_theme_label: 'テーマ', s_list: 'リスト',
+    s_default_sort: 'デフォルトの並び順', s_show_dl: 'ダウンロードボタンを表示', s_data: 'データ',
+    btn_clear_progress: '🗑 再生履歴をリセット', btn_clear_all: '🗑 すべてのデータを削除',
+    theme_dark: 'ダーク', theme_light: 'ライト', theme_oled: 'OLED ブラック',
+    size_small: '小', size_normal: '中', size_large: '大', size_xlarge: '特大',
+    row_compact: 'コンパクト', row_spacious: '広め',
+    sort_asc: '古い順', sort_desc: '新しい順', dir: 'ltr',
+    audio_err: 'オーディオファイルを読み込めませんでした。',
+    dur_h: '時間', dur_m: '分', storage_full: 'ストレージが満杯 — 古い履歴を削除しました。',
+    favs_title: '登録済み', fav_btn: '登録/解除', share_btn: 'リンクを共有',
+    link_copied: 'リンクをコピーしました ✓', sleep_timer: 'スリープタイマー（分）',
+    play: '再生', pause: '一時停止', seek_label: 'シーク', speed_label: '再生速度',
+    sleep_set: (n) => `スリープ: ${n}分`, sleep_done: 'スリープタイマー終了',
+    dl_label: 'エピソードをダウンロード', rss_invalid: '無効なRSSフィードです。',
+    yt_video: 'YouTube動画', yt_invalid: '無効なYouTubeリンクです。', yt_embed_blocked: 'この動画は埋め込めません。', yt_limit_note: '最新~15件',
+  },
+  ru: {
+    brand_sub: 'Бесплатно · Без аккаунта · iTunes API',
+    search_placeholder: 'Название подкаста или ссылка Apple Podcasts...',
+    search_hint: 'например: Медуза · или вставьте ссылку Apple Podcasts',
+    btn_search: 'Найти →', btn_back: '← Назад', now_playing: 'СЕЙЧАС ИГРАЕТ', ep_fallback: (n) => `Эпизод ${n}`,
+    pick_episode: 'Выберите эпизод', btn_prev: 'Назад', btn_next: 'Вперёд',
+    btn_sort: 'Сортировка', filter_placeholder: 'Поиск эпизодов...', settings_title: 'Настройки',
+    settings_heading: 'Настройки', sort_asc_label: 'Сначала старые', sort_desc_label: 'Сначала новые',
+    ep_saved_badge: 'продолжить', status_loading: 'Загрузка эпизодов...',
+    status_ok: (n) => `Загружено ${n} эпизодов ✓`, status_err: 'Ошибка: ', searching: 'Поиск...',
+    no_results: 'Ничего не найдено.', ep_count_unit: 'эп.', ep_not_found: 'Эпизоды не найдены.',
+    loading_eps: 'Загрузка...', retry: 'Нажмите F5 для повтора.',
+    confirm_clear_progress: 'Весь прогресс будет удалён. Вы уверены?',
+    confirm_clear_all: 'Все настройки и прогресс будут удалены. Вы уверены?',
+    dl_not_found: 'Ссылка для скачивания не найдена.',
+    s_lang_title: 'Язык', s_lang_label: 'Язык интерфейса', s_playback: 'Воспроизведение',
+    s_default_speed: 'Скорость по умолчанию', s_speed_sub: 'Сохраняется между эпизодами',
+    s_skip_back: 'Перемотка назад (сек)', s_skip_fwd: 'Перемотка вперёд (сек)',
+    s_auto_next: 'Автовоспроизведение следующего', s_resume: 'Возобновить с последней позиции',
+    s_appearance: 'Внешний вид', s_accent: 'Акцентный цвет', s_font_size: 'Размер шрифта',
+    s_row_height: 'Высота строки', s_theme_label: 'Тема', s_list: 'Список',
+    s_default_sort: 'Сортировка по умолчанию', s_show_dl: 'Показать кнопку загрузки', s_data: 'Данные',
+    btn_clear_progress: '🗑 Сбросить прогресс', btn_clear_all: '🗑 Удалить все данные',
+    theme_dark: 'Тёмная', theme_light: 'Светлая', theme_oled: 'OLED Чёрная',
+    size_small: 'Маленький', size_normal: 'Обычный', size_large: 'Большой', size_xlarge: 'Очень большой',
+    row_compact: 'Компактный', row_spacious: 'Просторный',
+    sort_asc: 'Сначала старые', sort_desc: 'Сначала новые', dir: 'ltr',
+    audio_err: 'Не удалось загрузить аудиофайл.',
+    dur_h: 'ч', dur_m: 'мин', storage_full: 'Хранилище заполнено — старый прогресс удалён.',
+    favs_title: 'Мои подписки', fav_btn: 'Добавить/убрать подписку', share_btn: 'Поделиться ссылкой',
+    link_copied: 'Ссылка скопирована ✓', sleep_timer: 'Таймер сна (мин)',
+    play: 'Воспроизвести', pause: 'Пауза', seek_label: 'Перемотка', speed_label: 'Скорость воспроизведения',
+    sleep_set: (n) => `Сон: ${n} мин`, sleep_done: 'Таймер сна завершён',
+    dl_label: 'Скачать эпизод', rss_invalid: 'Неверный RSS-канал.',
+    yt_video: 'Видео YouTube', yt_invalid: 'Неверная ссылка YouTube.', yt_embed_blocked: 'Это видео нельзя встроить.', yt_limit_note: 'последние ~15',
+  },
+};
+// Active translations
+let T = LANGS['tr'];
+
+function t(key, ...args) {
+  let val = T[key];
+  if (val === undefined) val = LANGS.en[key]; // graceful fallback to English
+  if (typeof val === 'function') return val(...args);
+  return val ?? key;
+}
+
+function applyLang(lang) {
+  T = LANGS[lang] || LANGS['tr'];
+  // Invalidate date cache since locale-formatted dates may differ
+  _dateCache.clear();
+  // RTL support + document language
+  document.documentElement.setAttribute('dir', T.dir || 'ltr');
+  document.documentElement.setAttribute('lang', lang);
+  // Update all data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (T[key] !== undefined && typeof T[key] !== 'function') el.textContent = T[key];
+  });
+  // Placeholders
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.dataset.i18nPh;
+    if (T[key]) el.placeholder = T[key];
+  });
+  // Titles
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.dataset.i18nTitle;
+    if (T[key]) el.title = T[key];
+  });
+  // ARIA labels (localized for assistive tech, not just the visible tooltip)
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    const key = el.dataset.i18nAria;
+    const v = t(key);
+    if (v) el.setAttribute('aria-label', v);
+  });
+  // Play/pause button label depends on state, not a static key
+  if (elBtnPlay) elBtnPlay.setAttribute('aria-label', audio && !audio.paused ? t('pause') : t('play'));
+  // Update dynamic labels
+  if (elSortInfo) elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+  // Re-localise the "pick an episode" placeholder only while nothing is loaded;
+  // an actual episode title is plain content and must be left untouched.
+  if (elNowTitle && currentTrackId == null) {
+    elNowTitle.textContent = t('pick_episode');
+  }
+  // Sync both lang selectors
+  const hl = document.getElementById('homeLangSel');
+  if (hl) hl.value = lang;
+  const sl = document.getElementById('s_lang');
+  if (sl) sl.value = lang;
+  // Re-format cached episode dates/durations in the new language
+  if (episodes.length) {
+    for (const ep of episodes) {
+      ep._fmtDate = fmtDate(ep.releaseDate);
+      ep._fmtDur  = fmtDur(ep.trackTimeMillis);
+    }
+    render();
+  }
+}
+
+function onHomeLangChange() {
+  const lang = document.getElementById('homeLangSel').value;
+  S.lang = lang;
+  const sl = document.getElementById('s_lang');
+  if (sl) sl.value = lang;
+  applyLang(lang);
+  saveState();
+}
+
+// ═══════════════════════════════════════
+// SAFE localStorage WRAPPER
+// ═══════════════════════════════════════
+const store = {
+  get(key, fallback = null) {
+    try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
+    catch { return fallback; }
+  },
+  set(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); }
+    catch(e) {
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
+        pruneProgress();
+        try { localStorage.setItem(key, JSON.stringify(val)); return; } catch {}
+      }
+      console.warn('storage write failed:', key, e?.name);
+    }
+  },
+  rawGet(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  rawSet(key, val) { try { localStorage.setItem(key, val); } catch { /* quota/private */ } },
+};
+
+// Quota recovery: drop the oldest half of saved episode positions and warn once
+let _quotaWarned = false;
+function pruneProgress() {
+  const keys = Object.keys(prog);
+  for (const k of keys.slice(0, Math.ceil(keys.length / 2))) delete prog[k];
+  try { localStorage.setItem('pp_prog', JSON.stringify(prog)); } catch {}
+  if (!_quotaWarned) { _quotaWarned = true; setStatus('error', t('storage_full')); }
+}
+
+// ═══════════════════════════════════════
+// XSS-SAFE TEXT ESCAPING
+// ═══════════════════════════════════════
+const _escMap = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#x27;', '`':'&#x60;' };
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"'`]/g, c => _escMap[c]);
+}
+
+// Only allow https image URLs to reach an <img> src (RSS feeds are untrusted);
+// matches the CSP img-src policy and avoids mixed-content / javascript: surprises.
+function httpsOnly(u) {
+  return /^https:\/\//i.test(u || '') ? u : '';
+}
+
+// ═══════════════════════════════════════
+// DOM CACHE
+// ═══════════════════════════════════════
+const $ = id => document.getElementById(id);
+const audio          = $('audio');
+const elDot          = $('dot');
+const elStatusText   = $('statusText');
+const elNowTitle     = $('nowTitle');
+const elProgressWrap = $('progressWrap');
+const elWaveBase     = $('waveBase');
+const elWaveFill     = $('waveFill');
+const elWaveHead     = $('waveHead');
+const elWaveTip      = $('waveTip');
+const elTCur         = $('tCur');
+const elTTot         = $('tTot');
+const elBtnPlay      = $('btnPlay');
+const elPlayer       = $('pPlayer');
+const elBtnPrev      = $('btnPrev');
+const elBtnNext      = $('btnNext');
+const elSpeedSel     = $('speedSel');
+const elSortInfo     = $('sortInfo');
+const elEpList       = $('epList');
+const elPEpCount     = $('pEpCount');
+const elLblSkipBack  = $('lblSkipBack');
+const elLblSkipFwd   = $('lblSkipFwd');
+const elFilterInput  = $('filterInput');
+
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let episodes = [], filteredEps = [], currentIndex = -1, sortAsc = true;
+let currentTrackId = null; // id of the loaded episode — survives filter/sort changes
+let currentPodcastId = null;
+let prog = {};
+
+// YouTube playback (link-based, official IFrame embed). When a YouTube feed is
+// open, transport is driven through the YT player instead of the <audio> element.
+let feedIsYT = false;   // the currently-open feed is a YouTube playlist/channel/video
+let ytPlayer = null;    // YT.Player instance (created lazily on the embed fallback)
+let ytReady = null;     // promise that resolves once the IFrame API + player are ready
+let _ytPoll = null;     // progress polling interval id (YT has no 'timeupdate' event)
+let _ytLimited = true;  // true = only the latest ~15 (feed); false = full list
+let _ytUseEmbed = false; // current track is playing via the IFrame embed fallback
+
+// Public Piped / Invidious instances. Preferred path: a real audio stream → the
+// <audio> element (ad-free, background/lock-screen, download, dates). These public
+// servers are frequently rate-limited or down (YouTube blocks them), so several are
+// tried in parallel and the whole thing falls back to the official embed if none work.
+const PIPED_APIS = [
+  'https://pipedapi.kavin.rocks',
+  'https://api.piped.private.coffee',
+  'https://pipedapi.adminforge.de',
+  'https://pipedapi.leptons.xyz',
+  'https://pipedapi.reallyaweso.me',
+  'https://pipedapi.r4fo.com',
+  'https://piapi.ggtyler.dev',
+];
+const INV_APIS = [
+  'https://invidious.nerdvpn.de',
+  'https://inv.nadeko.net',
+  'https://invidious.jing.rocks',
+  'https://invidious.f5.si',
+  'https://yewtu.be',
+];
+
+let S = {
+  defaultSpeed: 1,
+  skipBack: 15,
+  skipForward: 30,
+  autoNext: true,
+  resumePos: true,
+  fontSize: '13px',
+  rowHeight: '54px',
+  theme: 'dark',
+  defaultSort: 'asc',
+  showDl: true,
+  accentColor: '#8b7cf6',
+  lang: 'tr',
+};
+
+function loadState() {
+  prog = store.get('pp_prog', {});
+  // Merge saved settings — only known keys, typed correctly
+  const saved = store.get('pp_settings', {});
+  if (saved && typeof saved === 'object') {
+    for (const k of Object.keys(S)) {
+      if (k in saved && typeof saved[k] === typeof S[k]) S[k] = saved[k];
+    }
+  }
+  // First run (no stored language): match the browser's preferred language
+  if (!saved || !('lang' in saved)) {
+    const code = (navigator.language || 'tr').slice(0, 2).toLowerCase();
+    if (code in LANGS) S.lang = code;
+  }
+}
+
+// Throttled progress save: at most once per 5 s while playing
+let _saveTimer = null;
+function saveState() {
+  store.set('pp_settings', S);
+  if (_saveTimer) return;
+  _saveTimer = setTimeout(() => { store.set('pp_prog', prog); _saveTimer = null; }, 5000);
+}
+function saveStateNow() {
+  clearTimeout(_saveTimer); _saveTimer = null;
+  store.set('pp_prog', prog);
+  store.set('pp_settings', S);
+}
+window.addEventListener('beforeunload', saveStateNow);
+window.addEventListener('pagehide',     saveStateNow);
+// iOS Safari does not reliably fire beforeunload/pagehide on tab close
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveStateNow(); });
+
+// ═══════════════════════════════════════
+// SETTINGS PANEL
+// ═══════════════════════════════════════
+function openSettings() {
+  $('s_defaultSpeed').value  = S.defaultSpeed;
+  $('s_skipBack').value      = S.skipBack;
+  $('s_skipForward').value   = S.skipForward;
+  $('s_autoNext').checked    = S.autoNext;
+  $('s_resumePos').checked   = S.resumePos;
+  $('s_fontSize').value      = S.fontSize;
+  $('s_rowHeight').value     = S.rowHeight;
+  $('s_theme').value         = S.theme;
+  $('s_defaultSort').value   = S.defaultSort;
+  $('s_showDl').checked      = S.showDl;
+  $('s_lang').value          = S.lang;
+  document.querySelectorAll('.s-color-swatch').forEach(sw => {
+    sw.classList.toggle('active', sw.dataset.color === S.accentColor);
+  });
+  $('settingsOverlay').classList.add('open');
+  $('settingsPanel').classList.add('open');
+  document.body.classList.add('settings-open');
+}
+
+function closeSettings() {
+  $('settingsOverlay').classList.remove('open');
+  $('settingsPanel').classList.remove('open');
+  document.body.classList.remove('settings-open');
+}
+
+function applySettings() {
+  S.defaultSpeed = parseFloat($('s_defaultSpeed').value) || 1;
+  S.skipBack     = parseInt($('s_skipBack').value)     || 15;
+  S.skipForward  = parseInt($('s_skipForward').value)  || 30;
+  S.autoNext     = $('s_autoNext').checked;
+  S.resumePos    = $('s_resumePos').checked;
+  S.fontSize     = $('s_fontSize').value;
+  S.rowHeight    = $('s_rowHeight').value;
+  S.theme        = $('s_theme').value;
+  S.defaultSort  = $('s_defaultSort').value;
+  S.showDl       = $('s_showDl').checked;
+  S.lang         = $('s_lang').value;
+
+  elLblSkipBack.textContent = S.skipBack;
+  elLblSkipFwd.textContent  = S.skipForward;
+
+  // Sync speed immediately to running audio
+  elSpeedSel.value = S.defaultSpeed;
+  audio.playbackRate = S.defaultSpeed;
+
+  document.documentElement.style.setProperty('--player-font-size', S.fontSize);
+  document.documentElement.style.setProperty('--list-row-height', S.rowHeight);
+  applyTheme(S.theme);
+  applyAccent(S.accentColor);
+  applyLang(S.lang);
+  saveState();
+  render(); // refresh dl-button visibility
+}
+
+function setAccent(el) {
+  document.querySelectorAll('.s-color-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  S.accentColor = el.dataset.color;
+  applyAccent(S.accentColor);
+  saveState();
+}
+
+function applyAccent(c) {
+  const r = parseInt(c.slice(1,3),16), g = parseInt(c.slice(3,5),16), b = parseInt(c.slice(5,7),16);
+  const root = document.documentElement;
+  // Darker companion shade for gradient depth (~78% luminance)
+  const dim = '#' + [r,g,b].map(v => Math.round(v*0.78).toString(16).padStart(2,'0')).join('');
+  root.style.setProperty('--accent', c);
+  root.style.setProperty('--accent-dim', dim);
+  root.style.setProperty('--accent-grad', `linear-gradient(135deg, ${c} 0%, ${dim} 100%)`);
+  root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.18)`);
+  // Soft row highlight: slightly stronger in light theme so it stays visible on white
+  root.style.setProperty('--accent-soft', `rgba(${r},${g},${b},${S.theme === 'light' ? 0.14 : 0.10})`);
+  // Black text on light/yellow-ish accents, white otherwise (WCAG-ish luma check)
+  const luma = 0.299*r + 0.587*g + 0.114*b;
+  root.style.setProperty('--accent-text', luma > 170 ? '#15171f' : '#ffffff');
+}
+
+function applyTheme(theme) {
+  const themes = {
+    //        --bg       --bg2      --surface  --surface2 --border   --border2  --text     --text2    --text3
+    dark:  ['#0b0c11', '#101117', '#15161e', '#1c1e28', '#23252f', '#30333f', '#edeff7', '#9aa0b8', '#5d6280'],
+    oled:  ['#000000', '#08080a', '#0e0e12', '#16161c', '#202027', '#2c2c36', '#f2f2f6', '#8a8a99', '#46465a'],
+    // Light: crisp white cards on a soft cool-grey canvas, deep readable ink,
+    // hairline borders that still outline inputs/cards on white
+    light: ['#f4f5f8', '#ecedf2', '#ffffff', '#f7f8fb', '#e7e9f0', '#d3d7e1', '#14161d', '#4c5165', '#6e7488'],
+  };
+  const keys = ['--bg','--bg2','--surface','--surface2','--border','--border2','--text','--text2','--text3'];
+  const vals = themes[theme] || themes.dark;
+  const root = document.documentElement;
+  keys.forEach((k,i) => root.style.setProperty(k, vals[i]));
+  // Theme class drives the per-theme glass/elevation tokens + color-scheme
+  root.classList.remove('theme-dark','theme-light','theme-oled');
+  root.classList.add('theme-' + (themes[theme] ? theme : 'dark'));
+  // Keep the browser UI (address bar / status bar) in sync with the theme
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) metaTheme.content = vals[0];
+  // accent-soft / accent-text depend on the theme
+  applyAccent(S.accentColor);
+}
+
+function clearProgress() {
+  if (!confirm(t('confirm_clear_progress'))) return;
+  prog = {};
+  saveStateNow();
+  render();
+}
+
+function clearAll() {
+  if (!confirm(t('confirm_clear_all'))) return;
+  try { localStorage.clear(); } catch {}
+  location.reload();
+}
+
+// ═══════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════
+// Abort controllers for in-flight requests
+let _searchAbort = null;
+let _loadAbort   = null;
+
+async function doSearch() {
+  const raw = $('searchInput').value.trim();
+  if (!raw) return;
+  const btn  = $('searchBtn');
+  const list = $('resultsList');
+
+  // Cancel any previous request
+  if (_searchAbort) { _searchAbort.abort(); }
+  _searchAbort = new AbortController();
+  const signal = _searchAbort.signal;
+  // 10-second timeout
+  const searchTimeout = setTimeout(() => _searchAbort.abort(), 10000);
+
+  btn.disabled = true; btn.textContent = '...';
+  list.innerHTML = `<div class="empty-state">${esc(t('searching'))}</div>`;
+
+  const id = extractId(raw);
+  if (id) { clearTimeout(searchTimeout); btn.disabled=false; btn.textContent=t('btn_search'); loadPodcast(id); return; }
+
+  // YouTube link (playlist / channel / video) — checked before the generic RSS branch
+  const yt = extractYouTube(raw);
+  if (yt) { clearTimeout(searchTimeout); btn.disabled=false; btn.textContent=t('btn_search'); list.innerHTML=''; loadYouTube(yt); return; }
+
+  // Direct RSS feed URL (non-iTunes podcasts)
+  if (/^https?:\/\//i.test(raw)) {
+    clearTimeout(searchTimeout); btn.disabled=false; btn.textContent=t('btn_search');
+    list.innerHTML = '';
+    loadRss(raw);
+    return;
+  }
+
+  try {
+    const data = await itunesFetch(
+      `https://itunes.apple.com/search?term=${encodeURIComponent(raw)}&media=podcast&limit=8&country=tr`,
+      signal
+    );
+    clearTimeout(searchTimeout);
+
+    btn.disabled=false; btn.textContent=t('btn_search');
+    if (!data.results || !data.results.length) {
+      list.innerHTML=`<div class="empty-state">${esc(t('no_results'))}</div>`;
+      return;
+    }
+
+    // Build results with escaped strings — no XSS
+    const frag = document.createDocumentFragment();
+    for (const p of data.results) {
+      const div = document.createElement('div');
+      div.className = 'result-item';
+      div.innerHTML = `
+        <img class="result-thumb" src="${esc(httpsOnly(p.artworkUrl100))}" alt="" loading="lazy" decoding="async" onerror="this.style.background='var(--border)'">
+        <div class="result-info">
+          <div class="result-name">${esc(p.collectionName||'—')}</div>
+          <div class="result-author">${esc(p.artistName||'')}</div>
+          <div class="result-count">${esc(String(p.trackCount||'?'))} ${esc(t('ep_count_unit'))}</div>
+        </div>
+        <div class="result-arrow">›</div>`;
+      // Attach event listener — no inline onclick with dynamic data
+      const cid = p.collectionId;
+      div.addEventListener('click', () => loadPodcast(cid));
+      frag.appendChild(div);
+    }
+    list.innerHTML = '';
+    list.appendChild(frag);
+    _hasSearchResults = true;
+
+  } catch(e) {
+    clearTimeout(searchTimeout);
+    if (e.name === 'AbortError') return; // user started new search or timeout
+    btn.disabled=false; btn.textContent=t('btn_search');
+    list.innerHTML=`<div class="empty-state" style="color:var(--red)">${esc(t('status_err'))}${esc(e.message)}</div>`;
+  }
+}
+
+function extractId(s) {
+  const m = s.match(/id(\d{6,12})/);
+  if (m) return m[1];
+  if (/^\d{6,12}$/.test(s.trim())) return s.trim();
+  return null;
+}
+
+// Parse a YouTube link into { type, id }. Playlist and channel-id links become a
+// keyless Atom feed; a single video becomes a one-item feed. Only youtube.com /
+// youtu.be hosts are accepted (no scraping, no free-text name search).
+function extractYouTube(s) {
+  s = s.trim();
+  // Match youtube.com with or without www/scheme (bare "youtube.com/…" too) and youtu.be
+  if (!/(?:^|[/.])(?:youtube\.com|youtu\.be)\b/i.test(s)) return null;
+  const pl = s.match(/[?&]list=(PL[\w-]+|UU[\w-]+|FL[\w-]+|OL[\w-]+)/i);
+  if (pl) return { type: 'playlist', id: pl[1] };
+  const ch = s.match(/youtube\.com\/channel\/(UC[\w-]{20,})/i);
+  if (ch) return { type: 'channel', id: ch[1] };
+  const v = s.match(/[?&]v=([\w-]{11})/) || s.match(/youtu\.be\/([\w-]{11})/) || s.match(/youtube\.com\/(?:shorts|embed|live)\/([\w-]{11})/);
+  if (v) return { type: 'video', id: v[1] };
+  return null;
+}
+
+// Decode a ?yt= deep-link token (pl_/ch_/vid_ + id) back into { type, id }
+function ytFromToken(tok) {
+  const m = String(tok).match(/^(pl|ch|vid)_(.+)$/);
+  if (!m) return null;
+  const type = m[1] === 'pl' ? 'playlist' : m[1] === 'ch' ? 'channel' : 'video';
+  return { type, id: m[2] };
+}
+
+// ═══════════════════════════════════════
+// LOAD PODCAST
+// ═══════════════════════════════════════
+async function loadPodcast(id) {
+  // Cancel any previous in-flight podcast load
+  if (_loadAbort) { _loadAbort.abort(); }
+  _loadAbort = new AbortController();
+  const loadSignal = _loadAbort.signal;
+  const loadTimeout = setTimeout(() => _loadAbort.abort(), 10000);
+
+  _ytStop(); feedIsYT = false; // leaving any YouTube feed → back to <audio>
+  currentPodcastId = String(id);
+  showScreen('playerScreen');
+  setPlayerIdle(true);
+  history.replaceState(null, '', location.pathname + '?podcast=' + encodeURIComponent(id));
+
+  setStatus('loading', t('status_loading'));
+  showSkeleton();
+  currentIndex = -1;
+  currentTrackId = null;
+  elNowTitle.textContent = t('pick_episode');
+
+  try {
+    const data = await itunesFetch(
+      `https://itunes.apple.com/lookup?id=${encodeURIComponent(id)}&entity=podcastEpisode&limit=300&country=tr`,
+      loadSignal
+    );
+    clearTimeout(loadTimeout);
+
+    if (!data.results || !Array.isArray(data.results)) throw new Error('Geçersiz API yanıtı.');
+
+    const meta = data.results.find(r => r.wrapperType==='collection' || r.kind==='podcast');
+    if (meta) {
+      $('pTitle').textContent  = meta.collectionName  || meta.trackName || '—';
+      $('pAuthor').textContent = meta.artistName || '';
+      $('pThumb').src          = httpsOnly(meta.artworkUrl100);
+      document.title           = `${meta.collectionName||'Podcast'} – Seseri`;
+      currentMeta = {
+        id: currentPodcastId,
+        name: meta.collectionName || meta.trackName || '',
+        artist: meta.artistName || '',
+        art: meta.artworkUrl100 || '',
+      };
+    }
+    updateFavBtn();
+
+    const eps = data.results.filter(r => r.wrapperType==='podcastEpisode' || r.kind==='podcast-episode');
+    if (!eps.length) throw new Error(t('ep_not_found'));
+
+    // Pre-cache formatted dates (avoid repeated Date parsing in render)
+    for (const ep of eps) {
+      ep._fmtDate = fmtDate(ep.releaseDate);
+      ep._fmtDur  = fmtDur(ep.trackTimeMillis);
+    }
+
+    sortAsc  = (S.defaultSort === 'asc');
+    episodes = eps.sort((a,b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+    if (!sortAsc) episodes.reverse();
+    elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+    filteredEps = episodes.slice();
+
+    elPEpCount.textContent = episodes.length;
+    setStatus('ok', t('status_ok', episodes.length));
+
+    elSpeedSel.value       = S.defaultSpeed;
+    audio.playbackRate     = S.defaultSpeed;
+
+    _animateNextRender = true;
+    render();
+
+    const lastId = store.rawGet('pp_last_'+id);
+    if (lastId) {
+      const idx = episodes.findIndex(e => String(e.trackId) === lastId);
+      if (idx >= 0) loadEp(idx, false);
+    }
+  } catch(e) {
+    clearTimeout(loadTimeout);
+    if (e.name === 'AbortError') return;
+    setStatus('error', t('status_err') + e.message);
+    elEpList.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}<br><br>${t('retry')}</div>`;
+  }
+}
+
+// Swap between the search and player screens with a short enter animation
+function showScreen(id) {
+  const other = id === 'playerScreen' ? 'searchScreen' : 'playerScreen';
+  $(other).style.display = 'none';
+  const el = $(id);
+  el.style.display = 'flex';
+  el.classList.remove('screen-enter');
+  void el.offsetWidth; // restart the CSS animation
+  el.classList.add('screen-enter');
+}
+
+function goBack() {
+  audio.pause();
+  _ytStop(); feedIsYT = false;
+  saveStateNow();
+  showScreen('searchScreen');
+  history.replaceState(null, '', location.pathname);
+  document.title = 'Seseri';
+  episodes = []; filteredEps = []; currentIndex = -1;
+  currentTrackId = null;
+  currentMeta = null;
+  elNowTitle.textContent = t('pick_episode');
+  setWaveProgress(0);
+  elTCur.textContent = '0:00';
+  elTTot.textContent = '0:00';
+  setPlayIcon(false);
+  elFilterInput.value = '';
+  if (!_hasSearchResults) renderFavs();
+}
+
+// ═══════════════════════════════════════
+// FAVORITES (subscriptions)
+// ═══════════════════════════════════════
+let favs = store.get('pp_favs', []);
+if (!Array.isArray(favs)) favs = [];
+let currentMeta = null;
+let _hasSearchResults = false;
+
+function isFav(id) { return favs.some(f => String(f.id) === String(id)); }
+
+function toggleFav() {
+  if (!currentPodcastId || !currentMeta) return;
+  if (isFav(currentPodcastId)) favs = favs.filter(f => String(f.id) !== String(currentPodcastId));
+  else favs.push(currentMeta);
+  store.set('pp_favs', favs);
+  updateFavBtn();
+}
+
+function updateFavBtn() {
+  $('favBtn').classList.toggle('faved', !!(currentPodcastId && isFav(currentPodcastId)));
+}
+
+function openFav(id) {
+  const s = String(id);
+  if (s.startsWith('yt:')) {
+    const p = s.split(':'); // yt:<type>:<id>
+    loadYouTube({ type: p[1], id: p.slice(2).join(':') });
+  } else if (s.startsWith('rss:')) loadRss(s.slice(4));
+  else loadPodcast(id);
+}
+
+function renderFavs() {
+  const list = $('resultsList');
+  list.innerHTML = '';
+  if (!favs.length) return;
+  const head = document.createElement('div');
+  head.className = 'search-hint';
+  head.innerHTML = '<svg class="icon icon-fill" aria-hidden="true" style="width:12px;height:12px;vertical-align:-1px;color:var(--accent)"><use href="#ic-star"/></svg> ' + esc(t('favs_title'));
+  list.appendChild(head);
+  for (const f of favs) {
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    div.innerHTML = `
+      <img class="result-thumb" src="${esc(httpsOnly(f.art))}" alt="" loading="lazy" decoding="async">
+      <div class="result-info">
+        <div class="result-name">${esc(f.name||'—')}</div>
+        <div class="result-author">${esc(f.artist||'')}</div>
+      </div>
+      <button class="ep-dl-btn unfav" data-unfav="1" data-i18n-title="fav_btn" title="${esc(t('fav_btn'))}" aria-label="${esc(t('fav_btn'))}"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-star"/></svg></button>`;
+    div.addEventListener('click', e => {
+      if (e.target.closest('[data-unfav]')) {
+        e.stopPropagation();
+        favs = favs.filter(x => String(x.id) !== String(f.id));
+        store.set('pp_favs', favs);
+        renderFavs();
+        return;
+      }
+      openFav(f.id);
+    });
+    list.appendChild(div);
+  }
+}
+
+// ═══════════════════════════════════════
+// SHARE / DEEP LINK
+// ═══════════════════════════════════════
+function sharePodcast() {
+  if (!currentPodcastId) return;
+  const id = String(currentPodcastId);
+  const url = location.origin + location.pathname + (
+    id.startsWith('yt:')  ? '?yt='  + encodeURIComponent(currentMeta?.yt || '') :
+    id.startsWith('rss:') ? '?rss=' + encodeURIComponent(id.slice(4)) :
+                            '?podcast=' + encodeURIComponent(id));
+  if (navigator.share) { navigator.share({ title: currentMeta?.name || 'Podcast', url }).catch(() => {}); return; }
+  navigator.clipboard?.writeText(url).then(() => setStatus('ok', t('link_copied'))).catch(() => {});
+}
+
+// ═══════════════════════════════════════
+// LOAD RSS FEED (non-iTunes podcasts, via CORS proxy)
+// ═══════════════════════════════════════
+function _xmlText(parent, tag) {
+  for (const el of parent.children) if (el.localName === tag) return el.textContent.trim();
+  return '';
+}
+function _parseDur(s) {
+  if (!s) return 0;
+  const p = s.split(':').map(Number);
+  if (p.some(isNaN)) return 0;
+  const sec = p.length === 3 ? p[0]*3600 + p[1]*60 + p[2] : p.length === 2 ? p[0]*60 + p[1] : p[0];
+  return sec * 1000;
+}
+
+// Public CORS proxies, tried in order (feeds rarely send CORS headers themselves)
+const RSS_PROXIES = [
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+];
+
+// Fetch a (text) feed through the CORS proxies. All proxies are tried *in
+// parallel* and the first one that returns a non-empty body wins — so a single
+// slow or hanging proxy never blocks the load. Each attempt has its own timeout;
+// if every proxy fails the call rejects (visible error, never an endless spinner).
+// AbortError is surfaced only when the caller's signal cancelled the whole load.
+function fetchTextProxied(url, outerSignal, perTimeout = 15000) {
+  if (outerSignal && outerSignal.aborted) return Promise.reject(new DOMException('aborted', 'AbortError'));
+  const attempts = RSS_PROXIES.map(proxy => {
+    const ctrl = new AbortController();
+    const onAbort = () => ctrl.abort();
+    if (outerSignal) outerSignal.addEventListener('abort', onAbort, { once: true });
+    const to = setTimeout(() => ctrl.abort(), perTimeout);
+    return fetch(proxy(url), { signal: ctrl.signal, credentials: 'omit', mode: 'cors' })
+      .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.text(); })
+      .then(txt => { if (!txt || !txt.trim()) throw new Error('empty response'); return txt; })
+      .finally(() => { clearTimeout(to); if (outerSignal) outerSignal.removeEventListener('abort', onAbort); });
+  });
+  return Promise.any(attempts).catch(() => {
+    if (outerSignal && outerSignal.aborted) throw new DOMException('aborted', 'AbortError');
+    throw new Error('fetch failed');
+  });
+}
+
+// Fetch + normalize a YouTube Atom feed into { title, author, items[] }.
+// Primary path is rss2json — a CORS-enabled RSS→JSON service that works directly
+// from the browser (the generic CORS proxies have become unreliable). Falls back
+// to fetching the raw Atom XML through the proxies if rss2json is unavailable.
+function _ytIdFrom(s) { const m = String(s||'').match(/[\w-]{11}/); return m ? m[0] : ''; }
+
+async function fetchYtFeed(feedUrl, signal, perTimeout = 15000) {
+  // 1) rss2json (JSON, CORS)
+  try {
+    const ctrl = new AbortController();
+    const onAbort = () => ctrl.abort();
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+    const to = setTimeout(() => ctrl.abort(), perTimeout);
+    let j = null;
+    try {
+      const u = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(feedUrl);
+      const r = await fetch(u, { signal: ctrl.signal, credentials: 'omit', mode: 'cors' });
+      if (r.ok) j = await r.json();
+    } finally { clearTimeout(to); if (signal) signal.removeEventListener('abort', onAbort); }
+    if (j && j.status === 'ok' && Array.isArray(j.items) && j.items.length) {
+      const items = j.items.map(it => ({
+        videoId: _ytIdFrom(it.guid) || _ytIdFrom(it.link),
+        title: it.title || '', published: it.pubDate || '', thumb: it.thumbnail || '',
+      })).filter(x => x.videoId);
+      if (items.length) return { title: (j.feed && j.feed.title) || 'YouTube', author: (j.feed && j.feed.author) || '', items };
+    }
+  } catch (e) { if (signal && signal.aborted) throw e; /* else fall through to XML */ }
+
+  // 2) Fallback — raw Atom XML through the CORS proxies
+  const xml = await fetchTextProxied(feedUrl, signal);
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const feed = doc.querySelector('feed');
+  if (doc.querySelector('parsererror') || !feed) throw new Error(t('yt_invalid'));
+  const authorEl = _ytFindAll(feed, 'author')[0];
+  const items = [];
+  for (const entry of feed.querySelectorAll('entry')) {
+    const vid = ((_ytFindAll(entry, 'videoId')[0] || {}).textContent || '').trim();
+    if (!vid) continue;
+    const thEl = _ytFindAll(entry, 'thumbnail')[0];
+    items.push({
+      videoId: vid, title: _xmlText(entry, 'title'), published: _xmlText(entry, 'published'),
+      thumb: (thEl && thEl.getAttribute) ? thEl.getAttribute('url') : '',
+    });
+  }
+  return { title: _xmlText(feed, 'title') || 'YouTube', author: authorEl ? (_xmlText(authorEl, 'name') || '') : '', items };
+}
+
+// ── Piped / Invidious (real audio stream → behaves like a normal podcast) ───────
+// One JSON GET with its own timeout + the load's abort signal.
+function _svcJson(url, signal, perTimeout = 8000) {
+  const ctrl = new AbortController();
+  const onAbort = () => ctrl.abort();
+  if (signal) signal.addEventListener('abort', onAbort, { once: true });
+  const to = setTimeout(() => ctrl.abort(), perTimeout);
+  return fetch(url, { signal: ctrl.signal, credentials: 'omit', mode: 'cors' })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .finally(() => { clearTimeout(to); if (signal) signal.removeEventListener('abort', onAbort); });
+}
+// Race a path across several instances; resolve {base,json} for the first that
+// returns a JSON passing `valid` (so dead/empty instances are skipped).
+function _svcFirst(bases, path, signal, valid) {
+  if (signal && signal.aborted) return Promise.reject(new DOMException('aborted', 'AbortError'));
+  return Promise.any(bases.map(async base => {
+    const json = await _svcJson(base + path, signal);
+    if (!valid(json)) throw new Error('invalid');
+    return { base, json };
+  })).catch(() => { if (signal && signal.aborted) throw new DOMException('aborted', 'AbortError'); throw new Error('no instance'); });
+}
+
+// List a playlist/channel via Piped (full list + dates + durations), paginated.
+async function pipedList(info, signal) {
+  const path = (info.type === 'playlist' ? '/playlists/' : '/channel/') + encodeURIComponent(info.id);
+  const { base, json } = await _svcFirst(PIPED_APIS, path, signal, j => Array.isArray(j.relatedStreams) && j.relatedStreams.length);
+  let streams = json.relatedStreams.slice(), next = json.nextpage, pages = 1;
+  const npBase = (info.type === 'playlist' ? '/nextpage/playlists/' : '/nextpage/channel/') + encodeURIComponent(info.id);
+  while (next && pages < 6 && streams.length < 500) {
+    try {
+      const np = await _svcJson(base + npBase + '?nextpage=' + encodeURIComponent(next), signal);
+      if (!np.relatedStreams || !np.relatedStreams.length) break;
+      streams = streams.concat(np.relatedStreams); next = np.nextpage; pages++;
+    } catch { break; }
+  }
+  return {
+    title: json.name || json.uploader || 'YouTube', author: json.uploader || '',
+    items: streams.map(s => ({
+      videoId: _ytIdFrom(s.url), title: s.title || '',
+      published: (s.uploaded && s.uploaded > 0) ? new Date(s.uploaded).toISOString() : '',
+      durationSec: s.duration || 0, thumb: s.thumbnail || '',
+    })).filter(x => x.videoId),
+  };
+}
+
+// List via Invidious (fallback for the list only — its stream URLs aren't browser-playable).
+async function invList(info, signal) {
+  const path = info.type === 'playlist'
+    ? '/api/v1/playlists/' + encodeURIComponent(info.id) + '?fields=title,author,videos'
+    : '/api/v1/channels/' + encodeURIComponent(info.id) + '/videos';
+  const { json } = await _svcFirst(INV_APIS, path, signal, j => Array.isArray(j.videos) && j.videos.length);
+  return {
+    title: json.title || 'YouTube', author: json.author || '',
+    items: json.videos.map(v => ({
+      videoId: v.videoId, title: v.title || '',
+      published: v.published ? new Date(v.published * 1000).toISOString() : '',
+      durationSec: v.lengthSeconds || 0,
+      thumb: (v.videoThumbnails && v.videoThumbnails[0] && v.videoThumbnails[0].url) || '',
+    })).filter(x => x.videoId),
+  };
+}
+
+// Full episode list via the services (Piped first, then Invidious). null on failure.
+async function ytServiceList(info, signal) {
+  try { const r = await pipedList(info, signal); if (r.items.length) return r; }
+  catch (e) { if (signal && signal.aborted) throw e; }
+  try { const r = await invList(info, signal); if (r.items.length) return r; }
+  catch (e) { if (signal && signal.aborted) throw e; }
+  return null;
+}
+
+// Resolve a browser-playable audio stream URL for a video via Piped (highest
+// bitrate = best audio quality). Returns null if no instance serves it.
+async function ytServiceAudioUrl(videoId, signal) {
+  try {
+    const { json } = await _svcFirst(PIPED_APIS, '/streams/' + encodeURIComponent(videoId), signal,
+      j => Array.isArray(j.audioStreams) && j.audioStreams.length);
+    const a = json.audioStreams.slice().sort((x, y) => (y.bitrate || 0) - (x.bitrate || 0));
+    return (a[0] && a[0].url) || null;
+  } catch (e) { if (signal && signal.aborted) throw e; return null; }
+}
+
+// Background-fill real titles for episodes that only have a placeholder (the embed
+// fallback's "Bölüm N"). Uses noembed (CORS oembed, keyless). For shows that put the
+// date in the title, this also surfaces the date. Throttled; re-renders in batches.
+async function _fillEmbedTitles(signal) {
+  const targets = episodes.filter(e => e.ytId && !e.trackName);
+  if (!targets.length) return;
+  let i = 0, since = 0;
+  const reRender = () => { if (feedIsYT && !(signal && signal.aborted)) render(); };
+  const worker = async () => {
+    while (i < targets.length) {
+      if (signal && signal.aborted) return;
+      const ep = targets[i++];
+      try {
+        const r = await _svcJson('https://noembed.com/embed?url=https://www.youtube.com/watch?v=' + encodeURIComponent(ep.ytId), signal, 8000);
+        if (r && r.title) { ep.trackName = r.title; if (++since >= 6) { since = 0; reRender(); } }
+      } catch {}
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]); // concurrency 4
+  reRender();
+}
+
+// Fetch JSON from the iTunes API, working around its CDN CORS bug.
+// iTunes echoes the request Origin into Access-Control-Allow-Origin, but the
+// response gets cached by its CDN *without* varying on Origin — so a response
+// cached for one site's origin gets served to another, and the browser blocks
+// it as a CORS mismatch. A unique cache-busting param forces a fresh, correctly
+// attributed response; the public CORS proxies are a fallback if it still fails.
+async function itunesFetch(url, signal) {
+  const bust = url + (url.includes('?') ? '&' : '?') +
+    '_cb=' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  try {
+    const res = await fetch(bust, { signal, credentials: 'omit', mode: 'cors', cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    for (const proxy of RSS_PROXIES) {
+      try {
+        const res = await fetch(proxy(bust), { signal, credentials: 'omit', mode: 'cors', cache: 'no-store' });
+        if (!res.ok) continue;
+        return JSON.parse(await res.text());
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+      }
+    }
+    throw e; // surface the original error if every fallback also failed
+  }
+}
+
+async function loadRss(url) {
+  if (_loadAbort) { _loadAbort.abort(); }
+  _loadAbort = new AbortController();
+  const loadSignal = _loadAbort.signal;
+  const loadTimeout = setTimeout(() => _loadAbort.abort(), 25000);
+
+  _ytStop(); feedIsYT = false; // leaving any YouTube feed → back to <audio>
+  currentPodcastId = 'rss:' + url;
+  currentMeta = null;
+  showScreen('playerScreen');
+  setPlayerIdle(true);
+  history.replaceState(null, '', location.pathname + '?rss=' + encodeURIComponent(url));
+
+  setStatus('loading', t('status_loading'));
+  showSkeleton();
+  currentIndex = -1;
+  currentTrackId = null;
+  elNowTitle.textContent = t('pick_episode');
+  updateFavBtn();
+
+  try {
+    let xmlText = null, lastErr = null;
+    for (const proxy of RSS_PROXIES) {
+      try {
+        const res = await fetch(proxy(url), { signal: loadSignal, credentials: 'omit', mode: 'cors' });
+        if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+        xmlText = await res.text();
+        break;
+      } catch(e) {
+        if (e.name === 'AbortError') throw e;
+        lastErr = e;
+      }
+    }
+    clearTimeout(loadTimeout);
+    if (xmlText == null) throw lastErr || new Error(t('rss_invalid'));
+    const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+    const channel = doc.querySelector('channel');
+    if (doc.querySelector('parsererror') || !channel) throw new Error(t('rss_invalid'));
+
+    const chTitle  = _xmlText(channel, 'title') || 'Podcast';
+    const chAuthor = _xmlText(channel, 'author');
+    let chArt = '';
+    for (const el of channel.children) {
+      if (el.localName === 'image') chArt = el.getAttribute('href') || _xmlText(el, 'url') || chArt;
+    }
+    $('pTitle').textContent  = chTitle;
+    $('pAuthor').textContent = chAuthor;
+    $('pThumb').src          = httpsOnly(chArt);
+    document.title           = `${chTitle} – Seseri`;
+    currentMeta = { id: currentPodcastId, name: chTitle, artist: chAuthor, art: chArt };
+    updateFavBtn();
+
+    const eps = [];
+    for (const item of channel.querySelectorAll('item')) {
+      let encUrl = '';
+      for (const el of item.children) if (el.localName === 'enclosure') encUrl = el.getAttribute('url') || '';
+      if (!/^https:\/\//i.test(encUrl)) continue; // CSP allows https media only
+      let durMs = 0;
+      for (const el of item.children) if (el.localName === 'duration') durMs = _parseDur(el.textContent.trim());
+      eps.push({
+        trackId: _xmlText(item, 'guid') || encUrl,
+        trackName: _xmlText(item, 'title'),
+        releaseDate: _xmlText(item, 'pubDate'),
+        episodeUrl: encUrl,
+        trackTimeMillis: durMs,
+      });
+    }
+    if (!eps.length) throw new Error(t('ep_not_found'));
+
+    for (const ep of eps) { ep._fmtDate = fmtDate(ep.releaseDate); ep._fmtDur = fmtDur(ep.trackTimeMillis); }
+
+    sortAsc = (S.defaultSort === 'asc');
+    episodes = eps.sort((a,b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+    if (!sortAsc) episodes.reverse();
+    elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+    filteredEps = episodes.slice();
+    elPEpCount.textContent = episodes.length;
+    setStatus('ok', t('status_ok', episodes.length));
+    elSpeedSel.value = S.defaultSpeed;
+    audio.playbackRate = S.defaultSpeed;
+    _animateNextRender = true;
+    render();
+
+    const lastId = store.rawGet('pp_last_'+currentPodcastId);
+    if (lastId) {
+      const idx = episodes.findIndex(e => String(e.trackId) === lastId);
+      if (idx >= 0) loadEp(idx, false);
+    }
+  } catch(e) {
+    clearTimeout(loadTimeout);
+    if (e.name === 'AbortError') return;
+    setStatus('error', t('status_err') + e.message);
+    elEpList.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}<br><br>${t('retry')}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════
+// LOAD YOUTUBE (link-based: playlist / channel / video, via keyless Atom feed)
+// ═══════════════════════════════════════
+// Recursively collect descendant elements by local (namespace-stripped) name
+function _ytFindAll(root, localName) {
+  const out = [];
+  (function walk(n) { for (const c of n.children) { if (c.localName === localName) out.push(c); walk(c); } })(root);
+  return out;
+}
+
+async function loadYouTube(info) {
+  if (_loadAbort) { _loadAbort.abort(); }
+  _loadAbort = new AbortController();
+  const loadSignal = _loadAbort.signal;
+
+  _ytStop();
+  feedIsYT = true;
+  _ytUseEmbed = false; // default to the real-audio path; embed is the per-track fallback
+  const ytParam = (info.type === 'playlist' ? 'pl_' : info.type === 'channel' ? 'ch_' : 'vid_') + info.id;
+  currentPodcastId = 'yt:' + info.type + ':' + info.id;
+  currentMeta = null;
+  showScreen('playerScreen');
+  elPlayer.classList.add('yt-mode');
+  setPlayerIdle(true);
+  history.replaceState(null, '', location.pathname + '?yt=' + encodeURIComponent(ytParam));
+
+  setStatus('loading', t('status_loading'));
+  showSkeleton();
+  currentIndex = -1;
+  currentTrackId = null;
+  elNowTitle.textContent = t('pick_episode');
+  updateFavBtn();
+
+  try {
+    let eps = [], chTitle = 'YouTube', chAuthor = '', chArt = '';
+
+    if (info.type === 'video') {
+      // Single video → one-item feed. Title is filled from the player once it loads;
+      // the thumbnail URL is deterministic (no extra request).
+      _ytLimited = false;
+      chTitle = t('yt_video');
+      eps = [{
+        trackId: info.id, trackName: t('yt_video'), releaseDate: '',
+        ytId: info.id, episodeUrl: '', trackTimeMillis: 0,
+        art: `https://i.ytimg.com/vi/${info.id}/hqdefault.jpg`,
+      }];
+      chArt = eps[0].art;
+    } else {
+      // Preferred: full list with dates + durations via Piped/Invidious.
+      let svc = null;
+      try { svc = await ytServiceList(info, loadSignal); }
+      catch (e) { if (loadSignal.aborted) throw e; svc = null; }
+
+      if (svc && svc.items.length) {
+        _ytLimited = false;
+        chTitle  = svc.title || 'YouTube';
+        chAuthor = svc.author || '';
+        for (const it of svc.items) {
+          eps.push({
+            trackId: it.videoId, trackName: it.title, releaseDate: it.published,
+            ytId: it.videoId, episodeUrl: '', trackTimeMillis: (it.durationSec || 0) * 1000,
+            art: it.thumb || `https://i.ytimg.com/vi/${it.videoId}/hqdefault.jpg`,
+          });
+        }
+      } else {
+        // Fallback: keyless Atom feed (latest ~15) + player playlist enumeration.
+        const feedUrl = 'https://www.youtube.com/feeds/videos.xml?' +
+          (info.type === 'playlist' ? 'playlist_id=' : 'channel_id=') + encodeURIComponent(info.id);
+        const parsed = await fetchYtFeed(feedUrl, loadSignal);
+        chTitle  = parsed.title || 'YouTube';
+        chAuthor = parsed.author || '';
+        const meta = new Map();
+        for (const it of parsed.items) meta.set(it.videoId, it);
+        const feedNewestId = parsed.items[0] && parsed.items[0].videoId;
+
+        let fullIds = null;
+        if (info.type === 'playlist') {
+          try { fullIds = await _ytPlaylistIds(info.id, loadSignal); }
+          catch (e) { if (loadSignal.aborted) throw e; fullIds = null; }
+        }
+        const mk = (id) => {
+          const it = meta.get(id);
+          return {
+            trackId: id, trackName: it ? it.title : '', releaseDate: it ? it.published : '',
+            ytId: id, episodeUrl: '', trackTimeMillis: 0,
+            art: (it && it.thumb) || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+          };
+        };
+        if (fullIds && fullIds.length > parsed.items.length) {
+          _ytLimited = false;
+          let newestFirst = fullIds.slice();
+          if (!(feedNewestId && fullIds[0] === feedNewestId)) newestFirst.reverse();
+          for (const id of newestFirst) eps.push(mk(id));
+        } else {
+          _ytLimited = true;
+          for (const it of parsed.items) eps.push(mk(it.videoId));
+        }
+      }
+      chArt = eps.length ? eps[0].art : '';
+    }
+    if (!eps.length) throw new Error(t('ep_not_found'));
+
+    $('pTitle').textContent  = chTitle;
+    $('pAuthor').textContent = chAuthor;
+    $('pThumb').src          = httpsOnly(chArt);
+    document.title           = `${chTitle} – Seseri`;
+    currentMeta = { id: currentPodcastId, name: chTitle, artist: chAuthor, art: chArt, kind: 'yt', yt: ytParam };
+    updateFavBtn();
+
+    for (const ep of eps) { ep._fmtDate = fmtDate(ep.releaseDate); ep._fmtDur = ep.trackTimeMillis ? fmtDur(ep.trackTimeMillis) : ''; }
+
+    sortAsc = (S.defaultSort === 'asc');
+    // Order oldest→newest: by date when the items carry dates (service/feed), else
+    // by the (newest-first) source order reversed (player enumeration has no dates).
+    const hasDates = eps.some(e => e.releaseDate);
+    episodes = hasDates
+      ? eps.slice().sort((a, b) => new Date(a.releaseDate || 0) - new Date(b.releaseDate || 0))
+      : eps.slice().reverse();
+    if (!sortAsc) episodes.reverse();
+    elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+    filteredEps = episodes.slice();
+    elPEpCount.textContent = episodes.length;
+    setStatus('ok', t('status_ok', episodes.length) + (_ytLimited ? ' · ' + t('yt_limit_note') : ''));
+    elSpeedSel.value = S.defaultSpeed;
+    _animateNextRender = true;
+    render();
+
+    // Embed fallback may have title-less items ("Bölüm N") — fill real titles in bg
+    if (episodes.some(e => e.ytId && !e.trackName)) _fillEmbedTitles(loadSignal);
+
+    const lastId = store.rawGet('pp_last_'+currentPodcastId);
+    if (lastId) {
+      const idx = episodes.findIndex(e => String(e.trackId) === lastId);
+      if (idx >= 0) loadEp(idx, false);
+    }
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    setStatus('error', t('status_err') + e.message);
+    elEpList.innerHTML = `<div class="empty-state" style="color:var(--red)">${esc(e.message)}<br><br>${t('retry')}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════
+// SORT & FILTER (debounced)
+// ═══════════════════════════════════════
+function toggleSort() {
+  sortAsc = !sortAsc;
+  episodes.reverse();
+  filteredEps.reverse();
+  if (currentTrackId != null) {
+    currentIndex = filteredEps.findIndex(e => String(e.trackId) === currentTrackId);
+  }
+  elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+  updateNavButtons();
+  render();
+}
+
+let _filterTimer = null;
+function filterEps() {
+  clearTimeout(_filterTimer);
+  _filterTimer = setTimeout(() => {
+    const q = elFilterInput.value.trim().toLowerCase();
+    filteredEps = q
+      ? episodes.filter(e => (e.trackName||'').toLowerCase().includes(q))
+      : episodes.slice();
+    // Re-locate the playing episode if it survives the filter
+    currentIndex = currentTrackId != null
+      ? filteredEps.findIndex(e => String(e.trackId) === currentTrackId)
+      : -1;
+    updateNavButtons();
+    render();
+  }, 200); // 200 ms debounce
+}
+
+function updateNavButtons() {
+  elBtnPrev.disabled = currentIndex <= 0;
+  elBtnNext.disabled = currentIndex < 0 || currentIndex >= filteredEps.length - 1;
+}
+
+// Idle = a feed is open but no episode is loaded yet. Present the player as a
+// prompt ("pick an episode"), not a fake "now playing": hide the now-head,
+// de-emphasize the (non-seekable) waveform, and disable the transport.
+function setPlayerIdle(idle) {
+  elPlayer.classList.toggle('idle', idle);
+  elBtnPlay.disabled = idle;
+  const sb = $('btnSkipBack'), sf = $('btnSkipFwd');
+  if (sb) sb.disabled = idle;
+  if (sf) sf.disabled = idle;
+  elProgressWrap.setAttribute('aria-disabled', idle ? 'true' : 'false');
+  if (idle) elProgressWrap.removeAttribute('tabindex');
+  else elProgressWrap.setAttribute('tabindex', '0');
+}
+
+// ═══════════════════════════════════════
+// RENDER — incremental DOM update
+// ═══════════════════════════════════════
+function render() {
+  if (!filteredEps.length) {
+    elEpList.innerHTML = `<div class="empty-state">${esc(t('ep_not_found'))}</div>`;
+    return;
+  }
+
+  // Build new HTML string
+  const parts = new Array(filteredEps.length);
+  for (let i = 0; i < filteredEps.length; i++) {
+    const ep = filteredEps[i];
+    const id      = String(ep.trackId);
+    const hasSaved = S.resumePos && (prog[id]||0) > 5;
+    const active   = (i === currentIndex);
+    const dlBtn    = S.showDl  // YouTube items resolve a real audio URL on click
+      ? `<div class="ep-actions"><button class="ep-dl-btn" data-idx="${i}" aria-label="${esc(t('dl_label'))}"><svg class="icon" aria-hidden="true"><use href="#ic-download"/></svg></button></div>`
+      : '';
+    parts[i] = `<div class="ep-item${active?' active':''}" data-idx="${i}" role="button" tabindex="0"${active?' aria-current="true"':''}>
+      <span class="ep-num">${active ? '<span class="ep-eq" aria-hidden="true"><i></i><i></i><i></i></span>' : (i+1)}</span>
+      <div class="ep-info">
+        <div class="ep-name">${esc(ep.trackName||t('ep_fallback', i+1))}</div>
+        <div class="ep-date-dur">${ep._fmtDate}${ep._fmtDur?' · '+ep._fmtDur:''}${hasSaved?` <span class="ep-saved-badge">${esc(t('ep_saved_badge'))}</span>`:''}</div>
+      </div>${dlBtn}</div>`;
+  }
+
+  elEpList.innerHTML = parts.join('');
+
+  // Stagger-in only on a fresh feed load (not on every filter/sort re-render)
+  if (_animateNextRender) {
+    _animateNextRender = false;
+    elEpList.classList.add('entering');
+    clearTimeout(_enterTimer);
+    _enterTimer = setTimeout(() => elEpList.classList.remove('entering'), 700);
+  }
+
+  // Scroll active into view
+  if (currentIndex >= 0) {
+    const el = elEpList.querySelector('.ep-item.active');
+    if (el) el.scrollIntoView({ block:'nearest', behavior:'smooth' });
+  }
+}
+let _animateNextRender = false;
+let _enterTimer = null;
+
+// Render shimmering skeleton rows while a feed loads
+function showSkeleton(rows = 8) {
+  let html = '<div class="skeleton-list">';
+  for (let i = 0; i < rows; i++) {
+    html += `<div class="skeleton-row"><span class="sk sk-num"></span><div class="ep-info"><div class="sk sk-line1"></div><div class="sk sk-line2"></div></div></div>`;
+  }
+  elEpList.innerHTML = html + '</div>';
+}
+
+// Event delegation — single listener on the list instead of per-row handlers
+elEpList.addEventListener('click', e => {
+  // Download button
+  const dlBtn = e.target.closest('.ep-dl-btn');
+  if (dlBtn) { e.stopPropagation(); dlEp(parseInt(dlBtn.dataset.idx), dlBtn); return; }
+  // Episode row
+  const row = e.target.closest('.ep-item[data-idx]');
+  if (row) loadEp(parseInt(row.dataset.idx), true);
+});
+
+// Keyboard: Enter/Space activates the focused episode row
+elEpList.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest('.ep-item[data-idx]');
+  if (row) { e.preventDefault(); e.stopPropagation(); loadEp(parseInt(row.dataset.idx), true); }
+});
+
+// Crossfade the now-playing title when the track changes
+let _titleTimer = null;
+function setNowTitle(text) {
+  if (elNowTitle.textContent === text) return;
+  elNowTitle.classList.add('swapping');
+  clearTimeout(_titleTimer);
+  _titleTimer = setTimeout(() => {
+    elNowTitle.textContent = text;
+    elNowTitle.classList.remove('swapping');
+  }, 150);
+}
+
+// ═══════════════════════════════════════
+// PLAYBACK
+// ═══════════════════════════════════════
+// Playback facade — one set of calls that dispatch to either the <audio> element
+// (iTunes/RSS, and YouTube via a Piped audio stream) or the YouTube IFrame player
+// (embed fallback), so transport/keyboard/waveform/Media Session stay agnostic.
+function _ytLive() { return feedIsYT && _ytUseEmbed && ytPlayer && typeof ytPlayer.getPlayerState === 'function'; }
+function pbPaused()   { return _ytLive() ? ytPlayer.getPlayerState() !== 1 : audio.paused; }
+function pbCurrent()  { try { return _ytLive() ? (ytPlayer.getCurrentTime() || 0) : audio.currentTime; } catch { return 0; } }
+function pbDuration() { try { return _ytLive() ? (ytPlayer.getDuration()  || 0) : audio.duration;    } catch { return 0; } }
+function pbPlay()     { if (_ytLive()) ytPlayer.playVideo(); else audio.play().catch(() => {}); }
+function pbPause()    { if (_ytLive()) ytPlayer.pauseVideo(); else audio.pause(); }
+function pbSeekTo(sec){ if (_ytLive()) ytPlayer.seekTo(Math.max(0, sec), true); else audio.currentTime = sec; }
+function pbSetRate(r) {
+  if (_ytLive()) {
+    // YouTube only accepts rates it advertises — snap to the nearest available one
+    let rates = [1]; try { rates = ytPlayer.getAvailablePlaybackRates() || rates; } catch {}
+    const near = rates.reduce((a, b) => Math.abs(b - r) < Math.abs(a - r) ? b : a, rates[0]);
+    try { ytPlayer.setPlaybackRate(near); } catch {}
+  } else { audio.playbackRate = r; }
+}
+// Stop the YouTube player and its progress poll (when leaving a YT feed)
+function _ytStop() {
+  if (_ytPoll) { clearInterval(_ytPoll); _ytPoll = null; }
+  if (ytPlayer) { try { ytPlayer.stopVideo(); } catch {} }
+  elPlayer.classList.remove('yt-mode', 'playing');
+  document.body.classList.remove('is-playing');
+}
+
+function loadEp(idx, autoplay) {
+  if (idx < 0 || idx >= filteredEps.length) return;
+  currentIndex = idx;
+  const ep  = filteredEps[idx];
+  const id  = String(ep.trackId);
+  currentTrackId = id;
+  const src = ep.episodeUrl || ep.previewUrl || '';
+
+  setPlayerIdle(false); // an episode is now loaded — activate the transport
+  setNowTitle(ep.trackName || t('ep_fallback', idx+1));
+  buildWaveform(id);          // fresh per-episode amplitude waveform
+  setWaveProgress(0);
+  elTCur.textContent = '0:00';
+  elTTot.textContent = '0:00';
+
+  if (feedIsYT) {
+    _ytResolveAndPlay(ep, id, autoplay); // real audio stream (Piped) → <audio>, else embed
+  } else {
+    _startAudio(src, id, autoplay);
+  }
+
+  // Lock-screen / headset controls metadata
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title:  ep.trackName || '',
+        artist: $('pAuthor').textContent || '',
+        album:  $('pTitle').textContent || '',
+        artwork: $('pThumb').src ? [{ src: $('pThumb').src }] : [],
+      });
+    } catch {}
+  }
+
+  elSpeedSel.value = S.defaultSpeed;
+  updateNavButtons();
+  store.rawSet('pp_last_'+currentPodcastId, id);
+
+  render(); // update active highlight
+}
+
+// Play a direct media URL through the <audio> element (normal audio + Piped audio).
+function _startAudio(src, id, autoplay) {
+  _ytStop();            // stop any embed fallback that was active
+  _ytUseEmbed = false;  // <audio> is now the active source
+  audio.src = src;
+  audio.load();
+  const applyAudioPrefs = () => {
+    audio.playbackRate = S.defaultSpeed;
+    if (S.resumePos) {
+      const saved = prog[id] || 0;
+      if (saved > 5 && isFinite(audio.duration) && saved < audio.duration - 2) audio.currentTime = saved;
+    }
+    if (isFinite(audio.duration) && audio.duration) {
+      setWaveProgress((audio.currentTime / audio.duration) * 100);
+      elTCur.textContent = fmtTime(audio.currentTime);
+      elTTot.textContent = fmtTime(audio.duration);
+    }
+  };
+  if (audio.readyState >= 2) applyAudioPrefs();
+  else audio.addEventListener('canplay', applyAudioPrefs, { once: true });
+  if (autoplay) audio.play().catch(() => {});
+}
+
+// For a YouTube episode: resolve a real audio stream (Piped) and play it through
+// <audio> — ad-free, background, lock-screen, downloadable. If no instance serves
+// it, fall back to the official IFrame embed for this track.
+async function _ytResolveAndPlay(ep, id, autoplay) {
+  audio.pause();
+  setStatus('loading', t('status_loading'));
+  let url = null;
+  try { url = await ytServiceAudioUrl(ep.ytId, _loadAbort && _loadAbort.signal); }
+  catch { url = null; }
+  if (!feedIsYT || currentTrackId !== id) return; // user moved on while resolving
+  if (url) {
+    ep.episodeUrl = url;          // a real media URL → download works too
+    _startAudio(url, id, autoplay);
+    setStatus('ok', t('status_ok', episodes.length) + (_ytLimited ? ' · ' + t('yt_limit_note') : ''));
+  } else {
+    _ytUseEmbed = true;           // no stream available → official embed fallback
+    _ytLoadEp(ep, autoplay);
+  }
+}
+
+function togglePlay() {
+  if (!feedIsYT && !audio.src) return;
+  if (currentTrackId == null) return;
+  if (pbPaused()) pbPlay(); else pbPause();
+}
+
+function seekRel(s) {
+  const dur = pbDuration();
+  if (!feedIsYT && !audio.src) return;
+  if (!Number.isFinite(dur) || !dur) return;
+  pbSeekTo(Math.max(0, Math.min(pbCurrent() + s, dur)));
+}
+
+function prevEp() { if (currentIndex > 0) loadEp(currentIndex-1, !pbPaused()); }
+function nextEp() { if (currentIndex >= 0 && currentIndex < filteredEps.length-1) loadEp(currentIndex+1, !pbPaused()); }
+
+function changeSpeed() {
+  S.defaultSpeed = parseFloat(elSpeedSel.value) || 1;
+  pbSetRate(S.defaultSpeed);
+  $('s_defaultSpeed').value = S.defaultSpeed;
+  saveState();
+}
+
+// ═══════════════════════════════════════
+// SLEEP TIMER
+// ═══════════════════════════════════════
+let _sleepTimer = null;
+function changeSleep() {
+  clearTimeout(_sleepTimer); _sleepTimer = null;
+  const sel = $('sleepSel');
+  const min = parseInt(sel.value) || 0;
+  sel.classList.toggle('active', min > 0);
+  if (min > 0) {
+    flashStatus(t('sleep_set', min));
+    _sleepTimer = setTimeout(() => {
+      pbPause();
+      sel.value = '0';
+      sel.classList.remove('active');
+      _sleepTimer = null;
+      flashStatus(t('sleep_done'));
+    }, min * 60000);
+  }
+}
+
+// Briefly show a message in the status strip, then restore the episode count
+let _statusRestore = null;
+function flashStatus(msg) {
+  setStatus('ok', msg);
+  clearTimeout(_statusRestore);
+  _statusRestore = setTimeout(() => {
+    if (episodes.length) setStatus('ok', t('status_ok', episodes.length));
+  }, 3000);
+}
+
+// ═══════════════════════════════════════
+// GLOBAL KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea' || e.target.isContentEditable) return;
+  if ($('playerScreen').style.display !== 'flex') return;
+  switch (e.key) {
+    case ' ':          e.preventDefault(); togglePlay(); break;
+    case 'ArrowLeft':  e.preventDefault(); seekRel(-S.skipBack); break;
+    case 'ArrowRight': e.preventDefault(); seekRel(S.skipForward); break;
+    case 'ArrowUp':    e.preventDefault(); prevEp(); break;
+    case 'ArrowDown':  e.preventDefault(); nextEp(); break;
+  }
+});
+
+// ── Waveform scrubber ─────────────────────────────────────────────────────
+const WAVE_BARS = 56;
+// Deterministic PRNG (mulberry32 + a string hash) so each episode gets a stable,
+// real-looking amplitude waveform without any audio analysis (impossible on
+// cross-origin podcast MP3s anyway).
+function _waveSeed(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+function buildWaveform(id) {
+  const rand = _waveSeed(String(id || 'seseri'));
+  let bars = '';
+  for (let i = 0; i < WAVE_BARS; i++) {
+    // blend a slow swell with per-bar noise so it reads like a real recording
+    const t = i / (WAVE_BARS - 1);
+    const swell = 0.4 + 0.6 * Math.abs(Math.sin(t * Math.PI + rand() * 0.5));
+    const h = Math.max(0.14, Math.min(1, swell * (0.5 + rand() * 0.75)));
+    bars += `<i style="height:${(h * 100).toFixed(1)}%"></i>`;
+  }
+  elWaveBase.innerHTML = bars;
+  elWaveFill.innerHTML = bars;
+}
+// Reveal the played portion via clip, move the playhead, sync aria.
+function setWaveProgress(pct) {
+  pct = Math.max(0, Math.min(100, pct || 0));
+  elWaveFill.style.clipPath = `inset(0 ${(100 - pct).toFixed(2)}% 0 0)`;
+  elWaveHead.style.left = pct + '%';
+  elProgressWrap.setAttribute('aria-valuenow', Math.round(pct));
+  // Announce the actual time, not just a 0–100 percentage
+  const dur = pbDuration();
+  if (dur) {
+    elProgressWrap.setAttribute('aria-valuetext', fmtTime(pbCurrent()) + ' / ' + fmtTime(dur));
+  }
+}
+function _waveFrac(clientX) {
+  const rect = elProgressWrap.getBoundingClientRect();
+  return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+}
+function _waveSeek(clientX) {
+  const dur = pbDuration();
+  if (!dur) return;
+  const frac = _waveFrac(clientX);
+  pbSeekTo(frac * dur);
+  setWaveProgress(frac * 100);
+}
+function _waveShowTip(clientX) {
+  const frac = _waveFrac(clientX);
+  const dur = pbDuration();
+  elWaveTip.style.left = (frac * 100) + '%';
+  elWaveTip.textContent = dur ? fmtTime(frac * dur) : '0:00';
+}
+let _scrubbing = false;
+elProgressWrap.addEventListener('pointerdown', e => {
+  if (!pbDuration()) return;
+  _scrubbing = true;
+  elProgressWrap.classList.add('scrubbing');
+  try { elProgressWrap.setPointerCapture(e.pointerId); } catch {}
+  _waveSeek(e.clientX); _waveShowTip(e.clientX);
+});
+elProgressWrap.addEventListener('pointermove', e => {
+  _waveShowTip(e.clientX);
+  if (_scrubbing) _waveSeek(e.clientX);
+});
+function _endScrub() { _scrubbing = false; elProgressWrap.classList.remove('scrubbing'); }
+elProgressWrap.addEventListener('pointerup', _endScrub);
+elProgressWrap.addEventListener('pointercancel', _endScrub);
+elProgressWrap.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); seekRel(-S.skipBack); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); seekRel(S.skipForward); }
+  else if (e.key === 'Home') { e.preventDefault(); if (pbDuration()) { pbSeekTo(0); setWaveProgress(0); } }
+  else if (e.key === 'End')  { const d = pbDuration(); if (d) { e.preventDefault(); pbSeekTo(Math.max(0, d - 1)); } }
+});
+buildWaveform('seseri'); // placeholder bars until the first episode loads
+
+// Update the scrubber, time labels and saved position — source-agnostic (audio or YT).
+function _updateProgressUI() {
+  const cur = pbCurrent(), dur = pbDuration();
+  const pct = dur ? (cur / dur * 100) : 0;
+  if (!_scrubbing) setWaveProgress(pct);
+  elTCur.textContent = fmtTime(cur);
+  elTTot.textContent = fmtTime(dur);
+  if (currentIndex >= 0 && cur > 5 && filteredEps[currentIndex]) {
+    prog[String(filteredEps[currentIndex].trackId)] = cur;
+    saveState(); // throttled — won't spam localStorage
+  }
+}
+
+// timeupdate — throttled to ~4 fps for DOM updates; progress saved via saveState throttle
+let _lastUiUpdate = 0;
+audio.addEventListener('timeupdate', () => {
+  const now = performance.now();
+  if (now - _lastUiUpdate < 250) return; // ~4 fps is plenty for a time display
+  _lastUiUpdate = now;
+  if (!_ytLive()) _updateProgressUI(); // audio drives UI unless the embed is active
+});
+
+audio.addEventListener('ended', () => {
+  if (S.autoNext && currentIndex < filteredEps.length-1) loadEp(currentIndex+1, true);
+});
+// Swap the play/pause icon (via <use href>) and keep its aria-label localized
+function setPlayIcon(playing) {
+  const u = elBtnPlay.querySelector('use');
+  if (u) u.setAttribute('href', playing ? '#ic-pause' : '#ic-play');
+  elBtnPlay.setAttribute('aria-label', playing ? t('pause') : t('play'));
+}
+audio.addEventListener('play',  () => { setPlayIcon(true); elPlayer.classList.add('playing'); document.body.classList.add('is-playing'); });
+audio.addEventListener('pause', () => { setPlayIcon(false); elPlayer.classList.remove('playing'); document.body.classList.remove('is-playing'); });
+audio.addEventListener('error', () => {
+  setStatus('error', t('audio_err') || 'Ses dosyası yüklenemedi.');
+  setPlayIcon(false);
+  elPlayer.classList.remove('playing');
+  document.body.classList.remove('is-playing');
+});
+
+// ═══════════════════════════════════════
+// YOUTUBE IFRAME PLAYER (lazy — official embed, loaded on first YouTube play)
+// ═══════════════════════════════════════
+let _ytApiLoading = null;
+function _loadYtApi() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (_ytApiLoading) return _ytApiLoading;
+  _ytApiLoading = new Promise((resolve, reject) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (typeof prev === 'function') { try { prev(); } catch {} } resolve(); };
+    const s = document.createElement('script');
+    s.src = 'https://www.youtube.com/iframe_api';
+    s.async = true;
+    s.onerror = () => reject(new Error(t('yt_invalid')));
+    document.head.appendChild(s);
+  });
+  return _ytApiLoading;
+}
+
+// Create the YT.Player once; resolves ytReady when the player is usable.
+function _ensureYtPlayer() {
+  if (ytReady) return ytReady;
+  ytReady = _loadYtApi().then(() => new Promise(resolve => {
+    ytPlayer = new YT.Player('ytHost', {
+      host: 'https://www.youtube-nocookie.com',
+      playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+      events: {
+        onReady: () => resolve(),
+        onStateChange: _onYtState,
+        onError: () => { setStatus('error', t('yt_embed_blocked')); },
+      },
+    });
+  }));
+  // Don't poison the cached promise on failure — allow a later retry.
+  ytReady.catch(() => { ytReady = null; _ytApiLoading = null; });
+  return ytReady;
+}
+
+function _ytStartPoll() {
+  if (_ytPoll) return;
+  _ytPoll = setInterval(() => { if (feedIsYT && !pbPaused()) _updateProgressUI(); }, 250);
+}
+
+// Enumerate a full playlist's video IDs (up to ~200) via the IFrame player. Cues
+// the playlist (no autoplay) and polls getPlaylist() until populated. Rejects on
+// timeout / cancellation so the caller can fall back to the feed-only list.
+async function _ytPlaylistIds(playlistId, signal, timeoutMs = 10000) {
+  await _ensureYtPlayer();
+  if (signal && signal.aborted) throw new DOMException('aborted', 'AbortError');
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const finish = (fn, val) => { if (done) return; done = true; clearTimeout(to); clearInterval(iv); if (signal) signal.removeEventListener('abort', onAbort); fn(val); };
+    const onAbort = () => finish(reject, new DOMException('aborted', 'AbortError'));
+    const to = setTimeout(() => finish(reject, new Error('playlist timeout')), timeoutMs);
+    if (signal) signal.addEventListener('abort', onAbort, { once: true });
+    try { ytPlayer.cuePlaylist({ list: playlistId, listType: 'playlist', suggestedQuality: 'small' }); }
+    catch (e) { finish(reject, e); return; }
+    const iv = setInterval(() => {
+      let ids = null;
+      try { ids = ytPlayer.getPlaylist(); } catch {}
+      if (Array.isArray(ids) && ids.length) finish(resolve, ids.slice());
+    }, 300);
+  });
+}
+
+function _onYtState(e) {
+  if (!feedIsYT) return;
+  const Y = window.YT && YT.PlayerState;
+  if (!Y) return;
+  if (e.data === Y.PLAYING) {
+    // Fill the title for items that have none yet (single video, or older
+    // full-playlist entries beyond the feed) from the now-playing video data.
+    try {
+      const ep = currentIndex >= 0 ? filteredEps[currentIndex] : null;
+      const needsTitle = ep && (!ep.trackName || ep.trackName === t('yt_video'));
+      const d = ytPlayer.getVideoData && ytPlayer.getVideoData();
+      if (needsTitle && d && d.title) {
+        ep.trackName = d.title;
+        setNowTitle(d.title);
+        render();
+      }
+    } catch {}
+    setPlayIcon(true);
+    elPlayer.classList.add('playing');
+    document.body.classList.add('is-playing');
+    _updateProgressUI();
+    _ytStartPoll();
+  } else if (e.data === Y.PAUSED) {
+    setPlayIcon(false);
+    elPlayer.classList.remove('playing');
+    document.body.classList.remove('is-playing');
+    _updateProgressUI();
+  } else if (e.data === Y.ENDED) {
+    setPlayIcon(false);
+    elPlayer.classList.remove('playing');
+    document.body.classList.remove('is-playing');
+    if (S.autoNext && currentIndex < filteredEps.length - 1) loadEp(currentIndex + 1, true);
+  }
+}
+
+// Load a YouTube episode into the IFrame player and restore its saved position.
+async function _ytLoadEp(ep, autoplay) {
+  setStatus('loading', t('status_loading'));
+  try {
+    await _ensureYtPlayer();
+  } catch {
+    setStatus('error', t('yt_embed_blocked'));
+    return;
+  }
+  if (!feedIsYT || currentTrackId !== String(ep.trackId)) return; // user moved on while loading
+  const saved = (S.resumePos && (prog[String(ep.trackId)] || 0) > 5) ? prog[String(ep.trackId)] : 0;
+  try {
+    // suggestedQuality:'small' = request the lowest video rendition to cut data
+    // (audio is what we use; the video is hidden off-screen).
+    const opts = { videoId: ep.ytId, startSeconds: saved, suggestedQuality: 'small' };
+    if (autoplay) ytPlayer.loadVideoById(opts); else ytPlayer.cueVideoById(opts);
+    try { ytPlayer.setPlaybackQuality('small'); } catch {}
+    pbSetRate(S.defaultSpeed);
+  } catch {
+    setStatus('error', t('yt_embed_blocked'));
+    return;
+  }
+  setStatus('ok', t('status_ok', episodes.length) + (_ytLimited ? ' · ' + t('yt_limit_note') : ''));
+}
+
+// ═══════════════════════════════════════
+// DOWNLOAD
+// ═══════════════════════════════════════
+async function dlEp(idx, btn) {
+  const ep  = filteredEps[idx];
+  // https-only: never hand a non-https (or javascript:) URL to the <a> element
+  let src = httpsOnly(ep?.episodeUrl || ep?.previewUrl || '');
+  // YouTube item not resolved yet → fetch a real audio URL on demand
+  if (!src && feedIsYT && ep?.ytId) {
+    btn.textContent = '⏳';
+    try { const u = await ytServiceAudioUrl(ep.ytId); if (u) { ep.episodeUrl = u; src = httpsOnly(u); } } catch {}
+  }
+  if (!src) { btn.textContent = '⤓'; alert(t('dl_not_found')); return; }
+  btn.textContent = '⏳';
+  // Sanitize filename: keep letters (including Turkish), digits, spaces, dashes
+  const name = (ep.trackName||'bolum')
+    .replace(/[^\p{L}\p{N}\s\-_]/gu, '')
+    .trim()
+    .substring(0, 80) || 'bolum';
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = name + '.mp3';
+  a.rel = 'noopener noreferrer';
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => { btn.textContent='✓'; btn.className='ep-dl-btn done'; }, 1000);
+}
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function setStatus(type, txt) {
+  elDot.className = 'dot ' + type;
+  elStatusText.textContent = txt;
+}
+
+const _dateCache = new Map();
+function fmtDate(s) {
+  if (!s) return '';
+  if (_dateCache.has(s)) return _dateCache.get(s);
+  try {
+    const r = new Date(s).toLocaleDateString(S.lang || 'tr', {day:'2-digit',month:'2-digit',year:'numeric'});
+    if (_dateCache.size >= 500) _dateCache.delete(_dateCache.keys().next().value); // LRU eviction
+    _dateCache.set(s, r);
+    return r;
+  } catch { return ''; }
+}
+
+function fmtDur(ms) {
+  if (!ms) return '';
+  const s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  return h > 0 ? `${h}${t('dur_h')} ${String(m).padStart(2,'0')}${t('dur_m')}` : `${m}${t('dur_m')}`;
+}
+
+function fmtTime(s) {
+  if (!Number.isFinite(s) || isNaN(s)) return '0:00';
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
+  return h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
+    : `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+loadState();
+applyTheme(S.theme);
+applyAccent(S.accentColor);
+applyLang(S.lang);
+document.documentElement.style.setProperty('--player-font-size', S.fontSize);
+document.documentElement.style.setProperty('--list-row-height',  S.rowHeight);
+elLblSkipBack.textContent = S.skipBack;
+elLblSkipFwd.textContent  = S.skipForward;
+elSpeedSel.value          = S.defaultSpeed;
+
+// Lock-screen / headset media controls
+if ('mediaSession' in navigator) {
+  try {
+    const ms = navigator.mediaSession;
+    ms.setActionHandler('play',  () => pbPlay());
+    ms.setActionHandler('pause', () => pbPause());
+    ms.setActionHandler('seekbackward',  () => seekRel(-S.skipBack));
+    ms.setActionHandler('seekforward',   () => seekRel(S.skipForward));
+    ms.setActionHandler('previoustrack', prevEp);
+    ms.setActionHandler('nexttrack',     nextEp);
+  } catch {}
+}
+
+// Deep link: ?podcast=<id>, ?rss=<url>, ?yt=<pl_|ch_|vid_><id>; else show subscriptions
+const _params = new URLSearchParams(location.search);
+const _pid = _params.get('podcast'), _rssUrl = _params.get('rss'), _ytTok = _params.get('yt');
+if (_pid && /^\d{4,14}$/.test(_pid)) loadPodcast(_pid);
+else if (_rssUrl && /^https?:\/\//i.test(_rssUrl)) loadRss(_rssUrl);
+else if (_ytTok && ytFromToken(_ytTok)) loadYouTube(ytFromToken(_ytTok));
+else renderFavs();
+
+$('searchInput').focus();
+</script>
+
+<script>
+// ── Service Worker kaydı ──────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg  => console.log('[SW] kayıt OK, scope:', reg.scope))
+      .catch(err => console.warn('[SW] kayıt başarısız:', err));
+  });
+}
+</script>
+</body>
+</html>
