@@ -81,7 +81,7 @@ const PLAYER_SCREEN = `
     <button class="settings-btn" id="settingsBtn" data-i18n-title="settings_title" data-i18n-aria="settings_title" title="Ayarlar" aria-label="Ayarlar"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg></button>
   </div>
 
-  <div class="p-status">
+  <div class="p-status" aria-live="polite">
     <div class="dot loading" id="dot"></div>
     <span class="p-status-text" id="statusText" data-i18n="status_loading">Yükleniyor...</span>
   </div>
