@@ -14,7 +14,10 @@
     "lint": "eslint src",
     "format": "prettier --write \"src/**/*.{ts,css}\" \"worker/src/**/*.ts\" \"*.{json,md}\"",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run lint && npm run typecheck && npm run test && vite build"
+    "worker:dev": "npm --prefix worker run dev",
+    "worker:typecheck": "npm --prefix worker run typecheck",
+    "worker:test": "npm --prefix worker run test",
+    "verify": "npm run lint && npm run typecheck && npm run test && vite build && npm run worker:typecheck && npm run worker:test"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

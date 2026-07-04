@@ -6,9 +6,13 @@ dist/
 *.log
 npm-debug.log*
 
-# Environment
+# Environment (local worker URL is not a secret — keep it versioned)
 .env
 .env.*
+!.env.development
+
+# Wrangler local state
+.wrangler/
 
 # Editor / OS
 .vscode/
