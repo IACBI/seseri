@@ -27,6 +27,7 @@ const ar: Lang = {
   ep_not_found: "لا توجد حلقات.",
   loading_eps: "جارٍ التحميل...",
   retry: "اضغط F5 للمحاولة مجدداً.",
+  btn_retry: "إعادة المحاولة",
   confirm_clear_progress: "سيتم حذف كل التقدم. هل أنت متأكد؟",
   confirm_clear_all: "سيتم حذف كل الإعدادات والتقدم. هل أنت متأكد؟",
   dl_not_found: "لم يتم العثور على رابط التحميل.",

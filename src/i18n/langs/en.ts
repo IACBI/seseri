@@ -27,6 +27,7 @@ const en: Lang = {
   ep_not_found: "No episodes found.",
   loading_eps: "Loading...",
   retry: "Press F5 to retry.",
+  btn_retry: "Try again",
   confirm_clear_progress: "All episode progress will be deleted. Are you sure?",
   confirm_clear_all: "All settings and progress will be deleted. Are you sure?",
   dl_not_found: "Download link not found.",

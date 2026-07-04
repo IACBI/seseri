@@ -29,6 +29,7 @@ export interface Lang {
   ep_not_found: string;
   loading_eps: string;
   retry: string;
+  btn_retry: string;
   confirm_clear_progress: string;
   confirm_clear_all: string;
   dl_not_found: string;

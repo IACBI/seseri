@@ -175,7 +175,11 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     const frag = document.createDocumentFragment();
     filteredEps.forEach((ep, i) => {
       const id = String(ep.trackId);
-      const hasSaved = S.resumePos && getProgress(id) > 5;
+      const savedSec = getProgress(id);
+      const hasSaved = S.resumePos && savedSec > 5;
+      const durSec = ep.trackTimeMillis ? ep.trackTimeMillis / 1000 : 0;
+      const pct = durSec && savedSec > 5 ? Math.min(100, (savedSec / durSec) * 100) : 0;
+      const listened = pct >= 96;
       const active = i === currentIndex;
 
       const num = h('span', { className: 'ep-num' });
@@ -193,14 +197,16 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
         fmtDate(ep.releaseDate),
         ep.trackTimeMillis ? ' · ' + fmtDur(ep.trackTimeMillis) : '',
       );
-      if (hasSaved) {
+      if (listened) {
+        dateDur.append(' ', h('span', { className: 'ep-done-badge' }, '✓'));
+      } else if (hasSaved) {
         dateDur.append(' ', h('span', { className: 'ep-saved-badge' }, t('ep_saved_badge')));
       }
 
       const row = h(
         'div',
         {
-          className: 'ep-item' + (active ? ' active' : ''),
+          className: 'ep-item' + (active ? ' active' : '') + (listened ? ' listened' : ''),
           role: 'button',
           tabIndex: 0,
           dataset: { idx: String(i) },
@@ -229,6 +235,15 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
               },
               done ? '✓' : icon('ic-download'),
             ),
+          ),
+        );
+      }
+      if (pct > 0 && !listened) {
+        row.append(
+          h(
+            'div',
+            { className: 'ep-progress', attrs: { 'aria-hidden': 'true' } },
+            h('i', { style: `width:${pct.toFixed(1)}%` }),
           ),
         );
       }
@@ -267,18 +282,15 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     elEpList.replaceChildren(list);
   }
 
-  function showError(message: string): void {
+  function showError(message: string, onRetry?: () => void): void {
     setStatus('error', t('status_err') + message);
-    elEpList.replaceChildren(
-      h(
-        'div',
-        { className: 'empty-state', style: 'color:var(--red)' },
-        message,
-        h('br'),
-        h('br'),
-        t('retry'),
-      ),
-    );
+    const box = h('div', { className: 'empty-state', style: 'color:var(--red)' }, message);
+    if (onRetry) {
+      const btn = h('button', { className: 'retry-btn' }, t('btn_retry'));
+      btn.addEventListener('click', onRetry);
+      box.append(h('br'), h('br'), btn);
+    }
+    elEpList.replaceChildren(box);
   }
 
   // ── feed opening (unified — replaces loadPodcast/loadRss/loadYouTube) ──
@@ -414,7 +426,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
         const err = e as Error;
         if (err.name === 'AbortError') return;
         if (painted) return; // cached list stays usable offline
-        showError(err.message || String(err));
+        showError(err.message || String(err), () => openFeed(req));
       }
     })();
   }

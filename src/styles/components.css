@@ -732,6 +732,43 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
   color: var(--yellow);
   margin-left: 6px;
 }
+.ep-done-badge {
+  font-size: 10px;
+  color: var(--green);
+  margin-left: 6px;
+}
+/* Partially-played: a hairline showing how far the listener got */
+.ep-progress {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  pointer-events: none;
+}
+.ep-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.55;
+  border-radius: 0 1px 1px 0;
+}
+/* Finished episodes recede so the unheard ones stand out */
+.ep-item.listened .ep-name { color: var(--text3); font-weight: 400; }
+.ep-item.listened .ep-num { color: var(--text3); }
+
+.retry-btn {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 10px 22px;
+  min-height: 44px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease-out), transform 0.15s var(--ease-out);
+}
+.retry-btn:hover { border-color: var(--accent); }
+.retry-btn:active { transform: scale(0.96); }
 
 .ep-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .ep-dl-btn {
@@ -760,17 +797,6 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
 /* ═══════════════════════════════════════
    SETTINGS PANEL
 ═══════════════════════════════════════ */
-.settings-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(6,7,11,0.55);
-  z-index: 100;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.32s var(--ease-out), visibility 0.32s;
-}
-.settings-overlay.open { opacity: 1; visibility: visible; }
-
 /* While the drawer is open, freeze continuous background motion so scrolling
    the panel runs at full frame rate (nothing behind it competes for the GPU) */
 body.settings-open #searchScreen::before,
@@ -782,11 +808,19 @@ body.settings-open .ep-eq i,
 body.settings-open .play-btn::after,
 body.settings-open .dot.loading { animation-play-state: paused; }
 
+/* Native <dialog> drawer: modal focus trap + Esc from the platform, the
+   slide-in still driven by .open so motion matches the rest of the app. */
 .settings-panel {
   position: fixed;
-  top: 0; right: 0; bottom: 0;
+  inset: 0 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: none;
   width: 340px;
   max-width: 88vw;
+  height: 100%;
+  max-height: none;
+  color: inherit;
   /* Solid surface (no backdrop-filter): a drawer slides over content, and
      animating translateX on a blurred element re-rasterizes the whole backdrop
      every frame — the main cause of the settings FPS drop. */
@@ -809,8 +843,9 @@ body.settings-open .dot.loading { animation-play-state: paused; }
 .settings-panel::-webkit-scrollbar { width: 6px; }
 .settings-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 .settings-panel.open { transform: translateX(0); }
+.settings-panel::backdrop { background: rgba(6,7,11,0.55); }
 [dir="rtl"] .settings-panel {
-  right: auto; left: 0;
+  inset: 0 auto 0 0;
   border-left: none; border-right: 1px solid var(--border2);
   box-shadow: var(--shadow-lg);
   transform: translateX(-100%);

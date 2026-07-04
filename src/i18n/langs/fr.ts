@@ -27,6 +27,7 @@ const fr: Lang = {
   ep_not_found: "Aucun épisode trouvé.",
   loading_eps: "Chargement...",
   retry: "Appuyez sur F5 pour réessayer.",
+  btn_retry: "Réessayer",
   confirm_clear_progress: "Toute la progression sera supprimée. Confirmer ?",
   confirm_clear_all: "Tous les paramètres et la progression seront supprimés. Confirmer ?",
   dl_not_found: "Lien de téléchargement introuvable.",

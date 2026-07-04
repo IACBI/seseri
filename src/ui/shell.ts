@@ -160,8 +160,7 @@ const MINI_PLAYER = `
 </div>`;
 
 const SETTINGS_PANEL = `
-<div class="settings-overlay" id="settingsOverlay"></div>
-<div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+<dialog class="settings-panel" id="settingsPanel" aria-labelledby="settingsTitle">
   <div class="settings-header">
     <span class="settings-title"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg> <span id="settingsTitle" data-i18n="settings_heading">Ayarlar</span></span>
     <button class="settings-close" id="settingsClose" aria-label="×">×</button>
@@ -339,7 +338,7 @@ const SETTINGS_PANEL = `
     </div>
 
   </div>
-</div>`;
+</dialog>`;
 
 export function renderShell(app: HTMLElement): void {
   app.innerHTML = ICON_SPRITE + SEARCH_SCREEN + PLAYER_SCREEN + MINI_PLAYER + SETTINGS_PANEL;

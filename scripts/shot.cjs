@@ -66,6 +66,22 @@ function waitServer(url, tries = 60) {
       await page.screenshot({ path: path.join(OUT, s.name + '.png') });
       console.log('shot', s.name);
     }
+
+    // Settings drawer (native dialog)
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.goto(ORIGIN + '/?podcast=777000111', { waitUntil: 'networkidle2' });
+    await page.waitForSelector('.ep-item', { timeout: 15000 }).catch(() => {});
+    await page.click('#settingsBtn');
+    await new Promise((r) => setTimeout(r, 700));
+    const dlg = await page.evaluate(() => {
+      const d = document.getElementById('settingsPanel');
+      return { open: d.open, focusInside: d.contains(document.activeElement) };
+    });
+    console.log('settings dialog', JSON.stringify(dlg));
+    await page.screenshot({ path: path.join(OUT, 'settings-dialog.png') });
+    await page.keyboard.press('Escape');
+    await new Promise((r) => setTimeout(r, 700));
+    console.log('after esc: open =', await page.evaluate(() => document.getElementById('settingsPanel').open));
   } finally {
     if (browser) await browser.close().catch(() => {});
     server.kill('SIGTERM');

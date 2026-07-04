@@ -18,8 +18,7 @@ export interface SettingsPanel {
 }
 
 export function initSettingsPanel(opts: { onDataCleared: () => void }): SettingsPanel {
-  const overlay = must('settingsOverlay');
-  const panel = must('settingsPanel');
+  const panel = must<HTMLDialogElement>('settingsPanel');
 
   const sSpeed = must<HTMLSelectElement>('s_defaultSpeed');
   const sSkipBack = must<HTMLSelectElement>('s_skipBack');
@@ -70,17 +69,21 @@ export function initSettingsPanel(opts: { onDataCleared: () => void }): Settings
       (info.downloadCount ? ` · ${info.downloadCount} ⤓ ${fmtBytes(info.downloadBytes)}` : '');
   }
 
+  // Native <dialog>: modal focus trap + Esc for free; the slide animation is
+  // driven by the .open class, so close() waits for the transition to finish.
   function open(): void {
+    if (panel.open) return;
     syncInputs(settings());
-    overlay.classList.add('open');
-    panel.classList.add('open');
+    panel.showModal();
+    requestAnimationFrame(() => panel.classList.add('open'));
     document.body.classList.add('settings-open');
     void refreshStorageUsage();
   }
   function close(): void {
-    overlay.classList.remove('open');
+    if (!panel.open) return;
     panel.classList.remove('open');
     document.body.classList.remove('settings-open');
+    setTimeout(() => panel.close(), 440);
   }
 
   // ── wiring ───────────────────────────────────────────────────────
@@ -198,13 +201,20 @@ export function initSettingsPanel(opts: { onDataCleared: () => void }): Settings
   });
 
   must('settingsClose').addEventListener('click', close);
-  overlay.addEventListener('click', close);
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && panel.classList.contains('open')) close();
+  // Clicks on the ::backdrop land outside the panel's box
+  panel.addEventListener('click', (e) => {
+    const r = panel.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) {
+      close();
+    }
+  });
+  panel.addEventListener('cancel', (e) => {
+    e.preventDefault(); // Esc: run the animated close instead of snapping shut
+    close();
   });
 
   // First paint of side-effect settings
   applySide(settings());
 
-  return { open, close, isOpen: () => panel.classList.contains('open') };
+  return { open, close, isOpen: () => panel.open };
 }
