@@ -30,6 +30,8 @@ export interface Lang {
   loading_eps: string;
   retry: string;
   btn_retry: string;
+  btn_queue: string;
+  queued: string;
   confirm_clear_progress: string;
   confirm_clear_all: string;
   dl_not_found: string;

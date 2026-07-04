@@ -26,6 +26,7 @@ import { setSleepTimer } from '../../player/sleep-timer';
 import { getLastPlayed, getProgress, setLastPlayed, setProgress } from '../../storage/progress';
 import { isSubscribed, toggleSubscription } from '../../storage/subscriptions';
 import { nowPlaying } from '../../state/now-playing';
+import { clearQueue, dequeueNext, enqueue, queuePosition, removeFromQueue } from '../../state/queue';
 import { settings, setSetting } from '../../state/settings';
 import { ensureEmbed, getEmbed, onEmbedError, onEmbedStateChange, ytPlaylistIds, YT_STATE } from '../../youtube/embed';
 import { ytServiceAudioUrl } from '../../youtube/piped';
@@ -220,24 +221,34 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
           dateDur,
         ),
       );
+      const actions = h('div', { className: 'ep-actions' });
+      const qPos = queuePosition(id);
+      actions.append(
+        h(
+          'button',
+          {
+            className: 'ep-dl-btn ep-q-btn' + (qPos ? ' queued' : ''),
+            dataset: { idx: String(i), act: 'queue' },
+            attrs: { 'aria-label': t('btn_queue'), title: t('btn_queue') },
+          },
+          qPos ? String(qPos) : icon('ic-queue'),
+        ),
+      );
       if (S.showDl) {
         const done = downloadedIds.has(id);
-        row.append(
+        actions.append(
           h(
-            'div',
-            { className: 'ep-actions' },
-            h(
-              'button',
-              {
-                className: 'ep-dl-btn' + (done ? ' done' : ''),
-                dataset: { idx: String(i) },
-                attrs: { 'aria-label': t('dl_label') },
-              },
-              done ? '✓' : icon('ic-download'),
-            ),
+            'button',
+            {
+              className: 'ep-dl-btn' + (done ? ' done' : ''),
+              dataset: { idx: String(i), act: 'dl' },
+              attrs: { 'aria-label': t('dl_label') },
+            },
+            done ? '✓' : icon('ic-download'),
           ),
         );
       }
+      row.append(actions);
       if (pct > 0 && !listened) {
         row.append(
           h(
@@ -327,6 +338,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     currentTrackId = null;
     episodes = [];
     filteredEps = [];
+    clearQueue();
 
     document.body.classList.add('feed-open');
     screen.classList.remove('screen-enter');
@@ -696,6 +708,20 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
       });
   }
 
+  // ── queue ────────────────────────────────────────────────────────
+  function onQueueToggle(idx: number): void {
+    const ep = filteredEps[idx];
+    if (!ep) return;
+    const id = String(ep.trackId);
+    if (queuePosition(id)) {
+      removeFromQueue(id);
+    } else {
+      enqueue(id);
+      toast(t('queued'));
+    }
+    render();
+  }
+
   // ── downloads ────────────────────────────────────────────────────
   async function onDownload(idx: number, btn: HTMLButtonElement): Promise<void> {
     const ep = filteredEps[idx];
@@ -767,11 +793,21 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
         elPlayer.classList.remove('playing');
         document.body.classList.remove('is-playing');
         break;
-      case 'ended':
+      case 'ended': {
+        // Queue wins over plain list order
+        const nextQueued = dequeueNext(currentTrackId ?? undefined);
+        if (nextQueued) {
+          const qi = filteredEps.findIndex((x) => String(x.trackId) === nextQueued);
+          if (qi >= 0) {
+            loadEp(qi, true);
+            break;
+          }
+        }
         if (settings().autoNext && currentIndex < filteredEps.length - 1) {
           loadEp(currentIndex + 1, true);
         }
         break;
+      }
       case 'timeupdate':
         updateProgressUI(e.current, e.duration);
         break;
@@ -793,10 +829,12 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   // ── event wiring (no inline handlers) ───────────────────────────
   elEpList.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
-    const dlBtn = target.closest<HTMLButtonElement>('.ep-dl-btn');
-    if (dlBtn) {
+    const actBtn = target.closest<HTMLButtonElement>('.ep-dl-btn');
+    if (actBtn) {
       e.stopPropagation();
-      void onDownload(parseInt(dlBtn.dataset.idx ?? '-1'), dlBtn);
+      const idx = parseInt(actBtn.dataset.idx ?? '-1');
+      if (actBtn.dataset.act === 'queue') onQueueToggle(idx);
+      else void onDownload(idx, actBtn);
       return;
     }
     const row = target.closest<HTMLElement>('.ep-item[data-idx]');

@@ -28,6 +28,8 @@ const es: Lang = {
   loading_eps: "Cargando...",
   retry: "Pulsa F5 para reintentar.",
   btn_retry: "Reintentar",
+  btn_queue: "Añadir a la cola",
+  queued: "Añadido a la cola",
   confirm_clear_progress: "Se eliminará todo el progreso. ¿Estás seguro?",
   confirm_clear_all: "Se eliminarán todos los ajustes y el progreso. ¿Estás seguro?",
   dl_not_found: "Enlace de descarga no encontrado.",

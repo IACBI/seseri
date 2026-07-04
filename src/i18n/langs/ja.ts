@@ -28,6 +28,8 @@ const ja: Lang = {
   loading_eps: "読み込み中...",
   retry: "F5 で再試行してください。",
   btn_retry: "再試行",
+  btn_queue: "キューに追加",
+  queued: "キューに追加しました",
   confirm_clear_progress: "再生履歴をすべて削除します。よろしいですか？",
   confirm_clear_all: "すべての設定と履歴を削除します。よろしいですか？",
   dl_not_found: "ダウンロードリンクが見つかりません。",

@@ -788,6 +788,15 @@ body.is-playing .ep-item.active .ep-eq i:nth-child(3) { animation-delay: 0.3s; }
 .ep-dl-btn .icon { width: 15px; height: 15px; }
 .ep-dl-btn:hover { border-color: var(--green); color: var(--green); transform: translateY(-1px); }
 .ep-dl-btn.done { border-color: var(--green); color: var(--green); }
+/* Queue toggle: shows its 1-based position while queued */
+.ep-q-btn.queued {
+  border-color: var(--accent);
+  color: var(--accent);
+  opacity: 1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
 /* Unfavorite button (in the subscriptions list) reads as a filled accent star */
 .ep-dl-btn.unfav { color: var(--accent); border-color: var(--accent); opacity: 1; }
 .ep-dl-btn.unfav:hover { border-color: var(--red); color: var(--red); }

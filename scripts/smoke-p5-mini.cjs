@@ -97,6 +97,14 @@ function waitServer(url, tries = 60) {
       url: location.search,
     }));
     ok('mini opens feed again, still playing', back.playing && back.eps === 2 && back.active, back.url);
+
+    // Queue: toggle on the 2nd episode shows position chip, toggle off clears
+    await page.click('.ep-item:nth-child(2) .ep-q-btn');
+    const chip = await page.$eval('.ep-item:nth-child(2) .ep-q-btn', (b) => ({ q: b.classList.contains('queued'), txt: b.textContent.trim() }));
+    ok('queue chip shows position', chip.q && chip.txt === '1', chip.txt);
+    await page.click('.ep-item:nth-child(2) .ep-q-btn');
+    const off = await page.$eval('.ep-item:nth-child(2) .ep-q-btn', (b) => b.classList.contains('queued'));
+    ok('queue toggle off', !off);
   } catch (e) {
     ok('smoke run', false, e.message);
   } finally {

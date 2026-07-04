@@ -28,6 +28,8 @@ const de: Lang = {
   loading_eps: "Lädt...",
   retry: "F5 zum Wiederholen.",
   btn_retry: "Erneut versuchen",
+  btn_queue: "Zur Warteschlange",
+  queued: "Zur Warteschlange hinzugefügt",
   confirm_clear_progress: "Alle Episodenfortschritte werden gelöscht. Sicher?",
   confirm_clear_all: "Alle Einstellungen und Fortschritte werden gelöscht. Sicher?",
   dl_not_found: "Download-Link nicht gefunden.",

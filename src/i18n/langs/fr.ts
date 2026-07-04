@@ -28,6 +28,8 @@ const fr: Lang = {
   loading_eps: "Chargement...",
   retry: "Appuyez sur F5 pour réessayer.",
   btn_retry: "Réessayer",
+  btn_queue: "Ajouter à la file",
+  queued: "Ajouté à la file",
   confirm_clear_progress: "Toute la progression sera supprimée. Confirmer ?",
   confirm_clear_all: "Tous les paramètres et la progression seront supprimés. Confirmer ?",
   dl_not_found: "Lien de téléchargement introuvable.",

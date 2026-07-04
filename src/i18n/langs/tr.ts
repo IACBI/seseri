@@ -28,6 +28,8 @@ const tr: Lang = {
   loading_eps: "Yükleniyor...",
   retry: "F5 ile yenileyin.",
   btn_retry: "Tekrar dene",
+  btn_queue: "Kuyruğa ekle",
+  queued: "Kuyruğa eklendi",
   confirm_clear_progress: "Tüm bölüm ilerlemeleri silinecek. Emin misin?",
   confirm_clear_all: "Tüm ayarlar ve ilerleme silinecek. Emin misin?",
   dl_not_found: "İndirme linki bulunamadı.",
