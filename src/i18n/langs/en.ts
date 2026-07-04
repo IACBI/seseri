@@ -83,6 +83,17 @@ const en: Lang = {
   yt_invalid: "Invalid YouTube link.",
   yt_embed_blocked: "This video can’t be embedded.",
   yt_limit_note: "latest ~15",
+  s_storage: "Storage",
+  storage_usage: (u,q)=>`${u} / ${q} used`,
+  btn_opml_export: "Export OPML",
+  btn_opml_import: "Import OPML",
+  btn_json_export: "Download JSON Backup",
+  btn_clear_downloads: "🗑 Delete Downloads",
+  opml_imported: (n)=>`${n} subscriptions added ✓`,
+  opml_invalid: "Invalid OPML file.",
+  dl_saved: "Episode saved for offline ✓",
+  dl_removed: "Download removed",
+  dl_fallback_file: "Offline save failed — downloading as a file",
 };
 
 export default en;

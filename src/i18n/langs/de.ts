@@ -83,6 +83,17 @@ const de: Lang = {
   yt_invalid: "Ungültiger YouTube-Link.",
   yt_embed_blocked: "Dieses Video kann nicht eingebettet werden.",
   yt_limit_note: "neueste ~15",
+  s_storage: "Speicher",
+  storage_usage: (u,q)=>`${u} / ${q} belegt`,
+  btn_opml_export: "OPML exportieren",
+  btn_opml_import: "OPML importieren",
+  btn_json_export: "JSON-Backup herunterladen",
+  btn_clear_downloads: "🗑 Downloads löschen",
+  opml_imported: (n)=>`${n} Abos hinzugefügt ✓`,
+  opml_invalid: "Ungültige OPML-Datei.",
+  dl_saved: "Folge offline gespeichert ✓",
+  dl_removed: "Download entfernt",
+  dl_fallback_file: "Offline-Speichern fehlgeschlagen — Datei wird heruntergeladen",
 };
 
 export default de;

@@ -1,6 +1,7 @@
 import { applyLang } from './i18n';
 import { t } from './i18n';
 import { initMediaSession } from './player/media-session';
+import { requestPersistence } from './player/offline';
 import { pbCurrent, pbDuration, pbPaused, pbSeekTo } from './player/engine';
 import { loadProgress, saveProgressNow, setQuotaListener } from './storage/progress';
 import { loadSubscriptions } from './storage/subscriptions';
@@ -30,6 +31,7 @@ export function boot(): void {
   document.documentElement.style.setProperty('--list-row-height', S.rowHeight);
   bindI18nDom();
   setQuotaListener(() => toast(t('storage_full'), 'error'));
+  requestPersistence(); // keep downloads/idb safe from storage-pressure eviction
 
   // ── screens & router ─────────────────────────────────────────────
   const search = initSearchScreen({

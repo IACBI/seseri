@@ -83,6 +83,17 @@ const ja: Lang = {
   yt_invalid: "無効なYouTubeリンクです。",
   yt_embed_blocked: "この動画は埋め込めません。",
   yt_limit_note: "最新~15件",
+  s_storage: "ストレージ",
+  storage_usage: (u,q)=>`${u} / ${q} 使用中`,
+  btn_opml_export: "OPMLをエクスポート",
+  btn_opml_import: "OPMLをインポート",
+  btn_json_export: "JSONバックアップを保存",
+  btn_clear_downloads: "🗑 ダウンロードを削除",
+  opml_imported: (n)=>`${n}件の登録を追加 ✓`,
+  opml_invalid: "無効なOPMLファイルです。",
+  dl_saved: "エピソードをオフライン保存 ✓",
+  dl_removed: "ダウンロードを削除しました",
+  dl_fallback_file: "オフライン保存に失敗 — ファイルとしてダウンロードします",
 };
 
 export default ja;

@@ -12,6 +12,8 @@ const precacheEntries = (
 ).__WB_MANIFEST;
 
 const CACHE = 'seseri-v4';
+// Buckets that must survive shell-cache upgrades (offline episode audio).
+const PERSISTENT = new Set([CACHE, 'seseri-audio']);
 const BASE = new URL('./', sw.location.href).pathname;
 const SHELL = BASE; // offline fallback for navigations
 
@@ -30,7 +32,7 @@ sw.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => !PERSISTENT.has(k)).map((k) => caches.delete(k))))
       .then(() => sw.clients.claim()),
   );
 });

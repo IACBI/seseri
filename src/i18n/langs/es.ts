@@ -83,6 +83,17 @@ const es: Lang = {
   yt_invalid: "Enlace de YouTube no válido.",
   yt_embed_blocked: "Este vídeo no se puede insertar.",
   yt_limit_note: "últimos ~15",
+  s_storage: "Almacenamiento",
+  storage_usage: (u,q)=>`${u} / ${q} en uso`,
+  btn_opml_export: "Exportar OPML",
+  btn_opml_import: "Importar OPML",
+  btn_json_export: "Descargar copia JSON",
+  btn_clear_downloads: "🗑 Borrar descargas",
+  opml_imported: (n)=>`${n} suscripciones añadidas ✓`,
+  opml_invalid: "Archivo OPML no válido.",
+  dl_saved: "Episodio guardado sin conexión ✓",
+  dl_removed: "Descarga eliminada",
+  dl_fallback_file: "No se pudo guardar sin conexión — descargando archivo",
 };
 
 export default es;

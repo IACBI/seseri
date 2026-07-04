@@ -83,6 +83,17 @@ const ar: Lang = {
   yt_invalid: "رابط يوتيوب غير صالح.",
   yt_embed_blocked: "لا يمكن تضمين هذا الفيديو.",
   yt_limit_note: "أحدث ~15",
+  s_storage: "التخزين",
+  storage_usage: (u,q)=>`المستخدم ${u} / ${q}`,
+  btn_opml_export: "تصدير OPML",
+  btn_opml_import: "استيراد OPML",
+  btn_json_export: "تنزيل نسخة JSON",
+  btn_clear_downloads: "🗑 حذف التنزيلات",
+  opml_imported: (n)=>`تمت إضافة ${n} اشتراكًا ✓`,
+  opml_invalid: "ملف OPML غير صالح.",
+  dl_saved: "حُفظت الحلقة دون اتصال ✓",
+  dl_removed: "أُزيل التنزيل",
+  dl_fallback_file: "تعذر الحفظ دون اتصال — يجري تنزيل الملف",
 };
 
 export default ar;

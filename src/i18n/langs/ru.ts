@@ -83,6 +83,17 @@ const ru: Lang = {
   yt_invalid: "Неверная ссылка YouTube.",
   yt_embed_blocked: "Это видео нельзя встроить.",
   yt_limit_note: "последние ~15",
+  s_storage: "Хранилище",
+  storage_usage: (u,q)=>`Занято ${u} / ${q}`,
+  btn_opml_export: "Экспорт OPML",
+  btn_opml_import: "Импорт OPML",
+  btn_json_export: "Скачать JSON-резервную копию",
+  btn_clear_downloads: "🗑 Удалить загрузки",
+  opml_imported: (n)=>`Добавлено подписок: ${n} ✓`,
+  opml_invalid: "Некорректный файл OPML.",
+  dl_saved: "Эпизод сохранён офлайн ✓",
+  dl_removed: "Загрузка удалена",
+  dl_fallback_file: "Не удалось сохранить офлайн — скачиваем файлом",
 };
 
 export default ru;

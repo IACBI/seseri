@@ -1,6 +1,10 @@
 import { applyLang, isLangCode } from '../../i18n';
+import { clearAllDownloads, storageInfo } from '../../player/offline';
 import { clearProgress, saveProgressNow } from '../../storage/progress';
 import { local } from '../../storage/local';
+import { exportOpml, parseOpml } from '../../storage/opml';
+import { subscriptions, toggleSubscription, isSubscribed } from '../../storage/subscriptions';
+import { toast } from '../toast';
 import { settings, setSetting, type Settings, type SortDir, type ThemeName } from '../../state/settings';
 import { pbSetRate } from '../../player/engine';
 import { t } from '../../i18n';
@@ -51,11 +55,27 @@ export function initSettingsPanel(opts: { onDataCleared: () => void }): Settings
     document.documentElement.style.setProperty('--list-row-height', S.rowHeight);
   }
 
+  function fmtBytes(n: number): string {
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + ' GB';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB';
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + ' KB';
+    return n + ' B';
+  }
+
+  async function refreshStorageUsage(): Promise<void> {
+    const el = must('storageUsage');
+    const info = await storageInfo();
+    el.textContent =
+      t('storage_usage', fmtBytes(info.usageBytes), fmtBytes(info.quotaBytes)) +
+      (info.downloadCount ? ` · ${info.downloadCount} ⤓ ${fmtBytes(info.downloadBytes)}` : '');
+  }
+
   function open(): void {
     syncInputs(settings());
     overlay.classList.add('open');
     panel.classList.add('open');
     document.body.classList.add('settings-open');
+    void refreshStorageUsage();
   }
   function close(): void {
     overlay.classList.remove('open');
@@ -110,6 +130,59 @@ export function initSettingsPanel(opts: { onDataCleared: () => void }): Settings
       e.preventDefault();
       sw.click();
     }
+  });
+
+  // ── data section ─────────────────────────────────────────────────
+  function saveFile(name: string, mime: string, content: string): void {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  must('btnOpmlExport').addEventListener('click', () => {
+    saveFile('seseri-subscriptions.opml', 'text/x-opml', exportOpml(subscriptions()));
+  });
+
+  const opmlFile = must<HTMLInputElement>('opmlFile');
+  must('btnOpmlImport').addEventListener('click', () => opmlFile.click());
+  opmlFile.addEventListener('change', () => {
+    const f = opmlFile.files?.[0];
+    opmlFile.value = '';
+    if (!f) return;
+    void f.text().then((xml) => {
+      try {
+        const entries = parseOpml(xml);
+        let added = 0;
+        for (const e of entries) {
+          if (!isSubscribed(e.id)) {
+            toggleSubscription({ id: e.id, name: e.name, artist: '', art: '' });
+            added++;
+          }
+        }
+        toast(t('opml_imported', added));
+      } catch {
+        toast(t('opml_invalid'), 'error');
+      }
+    });
+  });
+
+  must('btnJsonExport').addEventListener('click', () => {
+    const dump: Record<string, unknown> = { exportedAt: new Date().toISOString() };
+    for (const key of ['pp_settings', 'pp_favs', 'pp_prog']) {
+      dump[key] = local.get(key, null);
+    }
+    saveFile('seseri-backup.json', 'application/json', JSON.stringify(dump, null, 2));
+  });
+
+  must('btnClearDownloads').addEventListener('click', () => {
+    void clearAllDownloads().then(() => {
+      toast(t('dl_removed'));
+      void refreshStorageUsage();
+    });
   });
 
   must('btnClearProgress').addEventListener('click', () => {

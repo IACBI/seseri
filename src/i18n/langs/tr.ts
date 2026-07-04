@@ -83,6 +83,17 @@ const tr: Lang = {
   yt_invalid: "Geçersiz YouTube bağlantısı.",
   yt_embed_blocked: "Bu video gömülemiyor.",
   yt_limit_note: "son ~15 bölüm",
+  s_storage: "Depolama",
+  storage_usage: (u,q)=>`${u} / ${q} kullanılıyor`,
+  btn_opml_export: "OPML Dışa Aktar",
+  btn_opml_import: "OPML İçe Aktar",
+  btn_json_export: "JSON Yedeği İndir",
+  btn_clear_downloads: "🗑 İndirilenleri Sil",
+  opml_imported: (n)=>`${n} abonelik eklendi ✓`,
+  opml_invalid: "Geçersiz OPML dosyası.",
+  dl_saved: "Bölüm çevrimdışı kaydedildi ✓",
+  dl_removed: "İndirme silindi",
+  dl_fallback_file: "Çevrimdışı kayıt olmadı — dosya olarak indiriliyor",
 };
 
 export default tr;

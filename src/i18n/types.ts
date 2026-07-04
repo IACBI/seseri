@@ -85,6 +85,17 @@ export interface Lang {
   yt_invalid: string;
   yt_embed_blocked: string;
   yt_limit_note: string;
+  s_storage: string;
+  storage_usage: LangFn;
+  btn_opml_export: string;
+  btn_opml_import: string;
+  btn_json_export: string;
+  btn_clear_downloads: string;
+  opml_imported: LangFn;
+  opml_invalid: string;
+  dl_saved: string;
+  dl_removed: string;
+  dl_fallback_file: string;
 }
 
 export type LangKey = keyof Lang;

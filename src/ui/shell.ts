@@ -311,9 +311,18 @@ const SETTINGS_PANEL = `
 
     <div>
       <div class="s-section-title" data-i18n="s_data">Veri</div>
+      <div class="s-row">
+        <div><div class="s-label" data-i18n="s_storage">Depolama</div></div>
+        <span class="s-sublabel" id="storageUsage">—</span>
+      </div>
       <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="s-btn" id="btnOpmlExport" data-i18n="btn_opml_export">OPML Dışa Aktar</button>
+        <button class="s-btn" id="btnOpmlImport" data-i18n="btn_opml_import">OPML İçe Aktar</button>
+        <button class="s-btn" id="btnJsonExport" data-i18n="btn_json_export">JSON Yedeği İndir</button>
+        <button class="s-btn danger" id="btnClearDownloads" data-i18n="btn_clear_downloads">🗑 İndirilenleri Sil</button>
         <button class="s-btn danger" id="btnClearProgress" data-i18n="btn_clear_progress">🗑 Tüm İlerlemeyi Sıfırla</button>
         <button class="s-btn danger" id="btnClearAll" data-i18n="btn_clear_all">🗑 Tüm Verileri Temizle</button>
+        <input type="file" id="opmlFile" accept=".opml,.xml,text/xml,application/xml" hidden>
       </div>
     </div>
 

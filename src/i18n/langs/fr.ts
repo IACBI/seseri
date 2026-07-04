@@ -83,6 +83,17 @@ const fr: Lang = {
   yt_invalid: "Lien YouTube invalide.",
   yt_embed_blocked: "Cette vidéo ne peut pas être intégrée.",
   yt_limit_note: "~15 plus récents",
+  s_storage: "Stockage",
+  storage_usage: (u,q)=>`${u} / ${q} utilisés`,
+  btn_opml_export: "Exporter OPML",
+  btn_opml_import: "Importer OPML",
+  btn_json_export: "Télécharger la sauvegarde JSON",
+  btn_clear_downloads: "🗑 Supprimer les téléchargements",
+  opml_imported: (n)=>`${n} abonnements ajoutés ✓`,
+  opml_invalid: "Fichier OPML invalide.",
+  dl_saved: "Épisode enregistré hors ligne ✓",
+  dl_removed: "Téléchargement supprimé",
+  dl_fallback_file: "Échec hors ligne — téléchargement du fichier",
 };
 
 export default fr;

@@ -1,4 +1,4 @@
-import type { Episode, FeedMeta, FeedRequest } from '../../feeds/types';
+import type { Episode, FeedMeta, FeedRequest, ResolvedFeed } from '../../feeds/types';
 import { resolveFeed } from '../../feeds/resolve';
 import { t, currentLang } from '../../i18n';
 import { fmtDate, fmtDur, fmtTime } from '../../lib/format';
@@ -19,6 +19,8 @@ import {
   setUsingEmbed,
 } from '../../player/engine';
 import { downloadEpisode } from '../../player/downloads';
+import { downloadOffline, offlineAudioUrl, removeDownload } from '../../player/offline';
+import { getCachedFeed, putCachedFeed, listDownloads } from '../../storage/db';
 import { setMediaMetadata } from '../../player/media-session';
 import { setSleepTimer } from '../../player/sleep-timer';
 import { getLastPlayed, getProgress, setLastPlayed, setProgress } from '../../storage/progress';
@@ -89,6 +91,8 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   let loadAbort: AbortController | null = null;
   let animateNextRender = false;
   let enterTimer: ReturnType<typeof setTimeout> | null = null;
+  let downloadedIds = new Set<string>();
+  let currentBlobUrl: string | null = null;
 
   // ── waveform ─────────────────────────────────────────────────────
   const wave: WaveformController = initWaveform(
@@ -206,6 +210,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
         ),
       );
       if (S.showDl) {
+        const done = downloadedIds.has(id);
         row.append(
           h(
             'div',
@@ -213,11 +218,11 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
             h(
               'button',
               {
-                className: 'ep-dl-btn',
+                className: 'ep-dl-btn' + (done ? ' done' : ''),
                 dataset: { idx: String(i) },
                 attrs: { 'aria-label': t('dl_label') },
               },
-              icon('ic-download'),
+              done ? '✓' : icon('ic-download'),
             ),
           ),
         );
@@ -272,6 +277,17 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   }
 
   // ── feed opening (unified — replaces loadPodcast/loadRss/loadYouTube) ──
+  function feedIdOf(req: FeedRequest): string {
+    switch (req.kind) {
+      case 'itunes':
+        return req.id;
+      case 'rss':
+        return 'rss:' + req.url;
+      case 'yt':
+        return 'yt:' + req.info.type + ':' + req.info.id;
+    }
+  }
+
   function openFeed(req: FeedRequest): void {
     loadAbort?.abort();
     loadAbort = new AbortController();
@@ -301,7 +317,72 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     updateFavBtn();
     deps.onFeedOpened(req);
 
+    const feedId = feedIdOf(req);
+    let painted = false; // true once a list (cache or network) is on screen
+
+    const applyResolved = (resolved: ResolvedFeed): void => {
+      currentMeta = resolved.meta;
+      ytLimited = resolved.limited;
+      elPTitle.textContent = resolved.meta.name || '—';
+      elPAuthor.textContent = resolved.meta.artist || '';
+      elPThumb.src = httpsOnly(resolved.meta.art);
+      document.title = `${resolved.meta.name || 'Podcast'} – Seseri`;
+      updateFavBtn();
+
+      const eps = resolved.episodes;
+      if (!eps.length) throw new Error(t('ep_not_found'));
+
+      const S = settings();
+      sortAsc = S.defaultSort === 'asc';
+      const hasDates = eps.some((e) => e.releaseDate);
+      episodes = hasDates
+        ? eps.slice().sort((a, b) => +new Date(a.releaseDate || 0) - +new Date(b.releaseDate || 0))
+        : eps.slice().reverse(); // newest-first source order → oldest-first
+      if (!sortAsc) episodes.reverse();
+      elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
+      const q = elFilterInput.value.trim().toLowerCase();
+      filteredEps = q
+        ? episodes.filter((e) => (e.trackName || '').toLowerCase().includes(q))
+        : episodes.slice();
+      elPEpCount.textContent = String(episodes.length);
+      setStatus('ok', okStatusText());
+
+      if (painted) {
+        // Refresh under an already-visible list — keep the playing episode.
+        currentIndex =
+          currentTrackId != null
+            ? filteredEps.findIndex((e) => String(e.trackId) === currentTrackId)
+            : -1;
+        updateNavButtons();
+        render();
+        return;
+      }
+      painted = true;
+      elSpeedSel.value = String(S.defaultSpeed);
+      audio.playbackRate = S.defaultSpeed;
+      animateNextRender = true;
+      render();
+
+      const lastId = getLastPlayed(resolved.meta.id);
+      if (lastId) {
+        const idx = filteredEps.findIndex((e) => String(e.trackId) === lastId);
+        if (idx >= 0) loadEp(idx, false);
+      }
+    };
+
     void (async () => {
+      downloadedIds = new Set((await listDownloads()).map((d) => d.id));
+
+      // Stale-while-revalidate: paint the cached copy instantly, then refresh.
+      const cached = await getCachedFeed(feedId);
+      if (cached && !signal.aborted) {
+        try {
+          applyResolved(cached.feed);
+        } catch {
+          /* unusable cache entry — skeleton stays until network */
+        }
+      }
+
       try {
         const resolved = await resolveFeed(req, {
           signal,
@@ -310,49 +391,18 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
         });
         clearTimeout(timeout);
         if (signal.aborted) return;
-
-        currentMeta = resolved.meta;
-        ytLimited = resolved.limited;
-        elPTitle.textContent = resolved.meta.name || '—';
-        elPAuthor.textContent = resolved.meta.artist || '';
-        elPThumb.src = httpsOnly(resolved.meta.art);
-        document.title = `${resolved.meta.name || 'Podcast'} – Seseri`;
-        updateFavBtn();
-
-        const eps = resolved.episodes;
-        if (!eps.length) throw new Error(t('ep_not_found'));
-
-        const S = settings();
-        sortAsc = S.defaultSort === 'asc';
-        const hasDates = eps.some((e) => e.releaseDate);
-        episodes = hasDates
-          ? eps.slice().sort((a, b) => +new Date(a.releaseDate || 0) - +new Date(b.releaseDate || 0))
-          : eps.slice().reverse(); // newest-first source order → oldest-first
-        if (!sortAsc) episodes.reverse();
-        elSortInfo.textContent = sortAsc ? t('sort_asc_label') : t('sort_desc_label');
-        filteredEps = episodes.slice();
-        elFilterInput.value = '';
-        elPEpCount.textContent = String(episodes.length);
-        setStatus('ok', okStatusText());
-        elSpeedSel.value = String(S.defaultSpeed);
-        audio.playbackRate = S.defaultSpeed;
-        animateNextRender = true;
-        render();
+        applyResolved(resolved);
+        void putCachedFeed(resolved);
 
         // Embed fallback may leave title-less items — fill real titles in bg
         if (feedIsYT && episodes.some((e) => e.ytId && !e.trackName)) {
           void fillEmbedTitles(signal);
         }
-
-        const lastId = getLastPlayed(currentMeta.id);
-        if (lastId) {
-          const idx = filteredEps.findIndex((e) => String(e.trackId) === lastId);
-          if (idx >= 0) loadEp(idx, false);
-        }
       } catch (e) {
         clearTimeout(timeout);
         const err = e as Error;
         if (err.name === 'AbortError') return;
+        if (painted) return; // cached list stays usable offline
         showError(err.message || String(err));
       }
     })();
@@ -415,7 +465,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     if (feedIsYT) {
       void ytResolveAndPlay(ep, id, autoplay);
     } else {
-      startAudio(src, id, autoplay);
+      void startAudioPreferOffline(src, id, autoplay);
     }
 
     setMediaMetadata({
@@ -431,9 +481,24 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     render();
   }
 
+  /** Play the downloaded copy when one exists, otherwise the stream URL. */
+  async function startAudioPreferOffline(src: string, id: string, autoplay: boolean): Promise<void> {
+    const local = downloadedIds.has(id) ? await offlineAudioUrl(id) : null;
+    if (currentTrackId !== id) {
+      if (local) URL.revokeObjectURL(local);
+      return; // user moved on during the cache lookup
+    }
+    startAudio(local ?? src, id, autoplay);
+  }
+
   function startAudio(src: string, id: string, autoplay: boolean): void {
     embedStop();
     setUsingEmbed(false);
+    if (currentBlobUrl && currentBlobUrl !== src) {
+      URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = null;
+    }
+    if (src.startsWith('blob:')) currentBlobUrl = src;
     audio.src = src;
     audio.load();
     const applyPrefs = () => {
@@ -462,6 +527,19 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
 
   async function ytResolveAndPlay(ep: Episode, id: string, autoplay: boolean): Promise<void> {
     audio.pause();
+    // Downloaded copy wins — no network resolution needed.
+    if (downloadedIds.has(id)) {
+      const local = await offlineAudioUrl(id);
+      if (!feedIsYT || currentTrackId !== id) {
+        if (local) URL.revokeObjectURL(local);
+        return;
+      }
+      if (local) {
+        startAudio(local, id, autoplay);
+        setStatus('ok', okStatusText());
+        return;
+      }
+    }
     setStatus('loading', t('status_loading'));
     let url: string | null = null;
     try {
@@ -594,17 +672,35 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   async function onDownload(idx: number, btn: HTMLButtonElement): Promise<void> {
     const ep = filteredEps[idx];
     if (!ep) return;
-    btn.textContent = '⏳';
-    const outcome = await downloadEpisode(ep, feedIsYT);
-    if (outcome === 'no-url') {
-      btn.textContent = '⤓';
-      toast(t('dl_not_found'), 'error');
+    const id = String(ep.trackId);
+
+    // Second tap on a downloaded episode removes the offline copy.
+    if (downloadedIds.has(id)) {
+      await removeDownload(id);
+      downloadedIds.delete(id);
+      toast(t('dl_removed'));
+      render();
       return;
     }
-    setTimeout(() => {
-      btn.textContent = '✓';
-      btn.className = 'ep-dl-btn done';
-    }, 1000);
+
+    btn.textContent = '⏳';
+    btn.disabled = true;
+    const outcome = await downloadOffline(ep, currentMeta?.id ?? '', feedIsYT);
+    if (outcome === 'ok') {
+      downloadedIds.add(id);
+      toast(t('dl_saved'));
+      render();
+      return;
+    }
+    if (outcome === 'no-url') {
+      toast(t('dl_not_found'), 'error');
+      render();
+      return;
+    }
+    // CORS-blocked CDN etc. → legacy browser file download still works.
+    const fb = await downloadEpisode(ep, feedIsYT);
+    toast(fb === 'ok' ? t('dl_fallback_file') : t('dl_not_found'), fb === 'ok' ? 'info' : 'error');
+    render();
   }
 
   // ── progress persistence + engine events ────────────────────────
@@ -767,6 +863,11 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
 
   function reset(): void {
     audio.pause();
+    if (currentBlobUrl) {
+      audio.removeAttribute('src');
+      URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = null;
+    }
     embedStop();
     setUsingEmbed(false);
     feedIsYT = false;
