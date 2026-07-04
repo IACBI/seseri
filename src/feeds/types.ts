@@ -1,77 +1,68 @@
 /** Where a feed's data comes from. Drives which resolver handles it. */
 export type FeedSource = 'itunes' | 'rss' | 'youtube';
 
-/** A single playable item in a feed. */
+/**
+ * A single playable item. Field names intentionally match the legacy app
+ * (iTunes API naming) so persisted data (`pp_prog`, `pp_last_*`) stays valid.
+ */
 export interface Episode {
-  /** Stable id: RSS guid, YouTube video id, or enclosure URL as fallback. */
-  id: string;
-  title: string;
-  /** Direct audio URL. Empty when only an embed fallback exists (YouTube). */
-  audioUrl: string;
-  /** Publication date, ms epoch. 0 when unknown. */
-  publishedAt: number;
-  /** Duration in seconds. 0 when unknown. */
-  duration: number;
-  description?: string;
-  artworkUrl?: string;
-  /** YouTube-only: video id for the iframe embed fallback. */
-  ytVideoId?: string;
+  /** Stable id: RSS guid, YouTube video id, iTunes trackId, or enclosure URL. */
+  trackId: string;
+  trackName: string;
+  /** Date string (ISO or RSS pubDate); '' when unknown. */
+  releaseDate: string;
+  /** Direct audio URL; '' when only the YouTube embed fallback exists. */
+  episodeUrl: string;
+  /** Duration in ms; 0 when unknown. */
+  trackTimeMillis: number;
+  /** YouTube-only: video id for Piped resolution / iframe fallback. */
+  ytId?: string;
+  /** Per-episode artwork (YouTube thumbnails). */
+  art?: string;
 }
 
-/** A resolved feed: podcast, raw RSS feed, or YouTube playlist/channel. */
-export interface Podcast {
-  /** Stable id: `itunes:<id>`, `rss:<url>`, or `yt:<token>`. */
+/**
+ * Feed-level metadata. Same shape as the legacy `currentMeta` / `pp_favs`
+ * entries so existing subscriptions keep working without migration.
+ */
+export interface FeedMeta {
+  /** `<itunesId>` | `rss:<url>` | `yt:<type>:<id>` */
   id: string;
-  source: FeedSource;
-  title: string;
-  author?: string;
-  artworkUrl?: string;
-  feedUrl?: string;
+  name: string;
+  artist: string;
+  art: string;
+  /** 'yt' marks YouTube subscriptions (legacy flag). */
+  kind?: 'yt';
+  /** YouTube deep-link token (pl_/ch_/vid_ + id). */
+  yt?: string;
+}
+
+export type Subscription = FeedMeta;
+
+/** What to load — parsed from user input or a deep link. */
+export type FeedRequest =
+  | { kind: 'itunes'; id: string }
+  | { kind: 'rss'; url: string }
+  | { kind: 'yt'; info: YouTubeRef };
+
+export interface YouTubeRef {
+  type: 'playlist' | 'channel' | 'video';
+  id: string;
+}
+
+/** A fully resolved feed ready for the player screen. */
+export interface ResolvedFeed {
+  meta: FeedMeta;
   episodes: Episode[];
-}
-
-/** A saved subscription (favorites list on the home screen). */
-export interface Subscription {
-  id: string;
-  source: FeedSource;
-  title: string;
-  author?: string;
-  artworkUrl?: string;
-  /** What to re-open when tapped: itunes id, rss url, or yt token. */
-  openToken: string;
-  addedAt: number;
+  /** True when only the latest ~15 items could be listed (YT Atom fallback). */
+  limited: boolean;
 }
 
 /** Result row from iTunes search. */
 export interface SearchResult {
-  itunesId: number;
-  title: string;
-  author: string;
-  artworkUrl: string;
-  feedUrl?: string;
-  episodeCount?: number;
-}
-
-export type ThemeName = 'auto' | 'dark' | 'light' | 'oled';
-export type SortOrder = 'newest' | 'oldest';
-
-export interface Settings {
-  speed: number;
-  skipBack: number;
-  skipFwd: number;
-  autoNext: boolean;
-  resume: boolean;
-  accent: string;
-  fontSize: number;
-  rowHeight: number;
-  theme: ThemeName;
-  sort: SortOrder;
-  showDownload: boolean;
-  lang: string;
-}
-
-export interface PlaybackProgress {
-  episodeId: string;
-  positionSec: number;
-  updatedAt: number;
+  collectionId: number;
+  collectionName: string;
+  artistName: string;
+  artworkUrl100: string;
+  trackCount?: number;
 }
