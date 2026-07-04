@@ -29,6 +29,8 @@ const de: Lang = {
   retry: "F5 zum Wiederholen.",
   btn_retry: "Erneut versuchen",
   btn_queue: "Zur Warteschlange",
+  sec_podcasts: "Podcasts",
+  sec_youtube: "YouTube",
   queued: "Zur Warteschlange hinzugefügt",
   confirm_clear_progress: "Alle Episodenfortschritte werden gelöscht. Sicher?",
   confirm_clear_all: "Alle Einstellungen und Fortschritte werden gelöscht. Sicher?",

@@ -60,6 +60,8 @@ describe('routing & validation', () => {
   it('rejects bad yt params', async () => {
     expect((await call('/v1/yt/list?type=video&id=abc')).status).toBe(400);
     expect((await call('/v1/yt/resolve?id=short')).status).toBe(400);
+    expect((await call('/v1/yt/search?q=a')).status).toBe(400);
+    expect((await call('/v1/yt/audio?id=nope')).status).toBe(400);
   });
 
   it('404s unknown paths', async () => {

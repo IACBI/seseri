@@ -7,6 +7,15 @@ modular architecture (same features, same stored data — `pp_*` localStorage
 keys remain compatible). Highlights:
 
 ### Added
+- **YouTube search by name**: search results now show a YouTube section
+  (channels, playlists, videos) next to podcasts — no link pasting needed.
+  Worker endpoint `/v1/yt/search` (Innertube with a Piped-pool fallback),
+  client falls back to public instances when the Worker is down.
+- **YouTube background / lock-screen playback**: the Worker resolves streams
+  via Innertube (multi-client, deciphered) and proxies the audio bytes
+  range-aware (`/v1/yt/audio`) — the app plays them in a plain `<audio>`
+  element with Media Session, so background and lock-screen controls work.
+  Falls back to public Piped, then the official embed.
 - **Offline listening**: episode downloads live in the Cache API and play
   (and seek) with no connection; feeds are cached in IndexedDB and refresh in
   the background (stale-while-revalidate).

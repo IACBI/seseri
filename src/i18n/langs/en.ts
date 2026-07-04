@@ -29,6 +29,8 @@ const en: Lang = {
   retry: "Press F5 to retry.",
   btn_retry: "Try again",
   btn_queue: "Add to queue",
+  sec_podcasts: "Podcasts",
+  sec_youtube: "YouTube",
   queued: "Added to queue",
   confirm_clear_progress: "All episode progress will be deleted. Are you sure?",
   confirm_clear_all: "All settings and progress will be deleted. Are you sure?",

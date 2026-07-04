@@ -29,6 +29,8 @@ const tr: Lang = {
   retry: "F5 ile yenileyin.",
   btn_retry: "Tekrar dene",
   btn_queue: "Kuyruğa ekle",
+  sec_podcasts: "Podcast'ler",
+  sec_youtube: "YouTube",
   queued: "Kuyruğa eklendi",
   confirm_clear_progress: "Tüm bölüm ilerlemeleri silinecek. Emin misin?",
   confirm_clear_all: "Tüm ayarlar ve ilerleme silinecek. Emin misin?",

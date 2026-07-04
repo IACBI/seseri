@@ -179,6 +179,77 @@ export async function ytServiceList(
   return null;
 }
 
+// ── search by name ──────────────────────────────────────────────────
+export interface YtSearchItem {
+  kind: 'video' | 'channel' | 'playlist';
+  id: string;
+  title: string;
+  author: string;
+  thumb: string;
+  /** videos: duration (s); playlists: item count; channels: 0 */
+  extra: number;
+}
+
+interface PipedSearchResponse {
+  items?: Array<{
+    url?: string;
+    type?: string;
+    name?: string;
+    title?: string;
+    uploaderName?: string;
+    thumbnail?: string;
+    duration?: number;
+    videos?: number;
+  }>;
+}
+
+/** Search YouTube by name (Worker → public Piped). [] when nothing answers. */
+export async function ytServiceSearch(q: string, signal?: AbortSignal): Promise<YtSearchItem[]> {
+  if (API_BASE) {
+    try {
+      const res = await fetchWithTimeout(
+        `${API_BASE}/v1/yt/search?q=${encodeURIComponent(q)}`,
+        signal,
+        12000,
+      );
+      if (res.ok) {
+        const j = (await res.json()) as { items?: YtSearchItem[] };
+        if (Array.isArray(j.items)) return j.items;
+      }
+    } catch (e) {
+      if (signal?.aborted) throw e;
+    }
+  }
+  try {
+    const { json } = await svcFirst<PipedSearchResponse>(
+      PIPED_APIS,
+      '/search?q=' + encodeURIComponent(q) + '&filter=all',
+      signal,
+      (j) => Array.isArray(j.items) && j.items.length > 0,
+    );
+    const out: YtSearchItem[] = [];
+    for (const it of json.items ?? []) {
+      const t = (it.type ?? '').toLowerCase();
+      const u = it.url ?? '';
+      if (t === 'stream' || t === 'video') {
+        const id = ytIdFrom(u);
+        if (id) out.push({ kind: 'video', id, title: it.title ?? it.name ?? '', author: it.uploaderName ?? '', thumb: it.thumbnail ?? '', extra: it.duration ?? 0 });
+      } else if (t === 'channel') {
+        const m = u.match(/\/channel\/(UC[\w-]{20,})/);
+        if (m?.[1]) out.push({ kind: 'channel', id: m[1], title: it.name ?? it.title ?? '', author: '', thumb: it.thumbnail ?? '', extra: 0 });
+      } else if (t === 'playlist') {
+        const m = u.match(/[?&]list=([\w-]+)/);
+        if (m?.[1]) out.push({ kind: 'playlist', id: m[1], title: it.name ?? it.title ?? '', author: it.uploaderName ?? '', thumb: it.thumbnail ?? '', extra: it.videos ?? 0 });
+      }
+      if (out.length >= 20) break;
+    }
+    return out;
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    return [];
+  }
+}
+
 interface PipedStreamsResponse {
   audioStreams?: Array<{ url?: string; bitrate?: number }>;
 }

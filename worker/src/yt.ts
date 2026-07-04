@@ -206,6 +206,48 @@ export async function ytList(kv: KVNamespace, type: YtKind, id: string): Promise
   return null;
 }
 
+// ── search (fallback when Innertube is unavailable) ────────────────
+import type { YtSearchRow } from './innertube';
+
+interface PipedSearchResponse {
+  items?: Array<{
+    url?: string;
+    type?: string;
+    name?: string;
+    title?: string;
+    uploaderName?: string;
+    thumbnail?: string;
+    duration?: number;
+    videos?: number;
+  }>;
+}
+
+export async function poolSearch(kv: KVNamespace, q: string): Promise<YtSearchRow[]> {
+  const pool = await healthyPool(kv);
+  const { json: j } = await firstOf<PipedSearchResponse>(
+    pool.piped,
+    '/search?q=' + encodeURIComponent(q) + '&filter=all',
+    (r) => Array.isArray(r.items) && r.items.length > 0,
+  );
+  const out: YtSearchRow[] = [];
+  for (const it of j.items ?? []) {
+    const t = (it.type ?? '').toLowerCase();
+    const u = it.url ?? '';
+    if (t === 'stream' || t === 'video') {
+      const id = ytIdFrom(u);
+      if (id) out.push({ kind: 'video', id, title: it.title ?? it.name ?? '', author: it.uploaderName ?? '', thumb: it.thumbnail ?? '', extra: it.duration ?? 0 });
+    } else if (t === 'channel') {
+      const m = u.match(/\/channel\/(UC[\w-]{20,})/);
+      if (m?.[1]) out.push({ kind: 'channel', id: m[1], title: it.name ?? it.title ?? '', author: '', thumb: it.thumbnail ?? '', extra: 0 });
+    } else if (t === 'playlist') {
+      const m = u.match(/[?&]list=([\w-]+)/);
+      if (m?.[1]) out.push({ kind: 'playlist', id: m[1], title: it.name ?? it.title ?? '', author: it.uploaderName ?? '', thumb: it.thumbnail ?? '', extra: it.videos ?? 0 });
+    }
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+
 // ── stream resolution ───────────────────────────────────────────────
 interface PipedStreamsResponse {
   audioStreams?: Array<{ url?: string; bitrate?: number }>;

@@ -29,6 +29,8 @@ const ar: Lang = {
   retry: "اضغط F5 للمحاولة مجدداً.",
   btn_retry: "إعادة المحاولة",
   btn_queue: "أضف إلى قائمة الانتظار",
+  sec_podcasts: "البودكاست",
+  sec_youtube: "يوتيوب",
   queued: "أُضيف إلى قائمة الانتظار",
   confirm_clear_progress: "سيتم حذف كل التقدم. هل أنت متأكد؟",
   confirm_clear_all: "سيتم حذف كل الإعدادات والتقدم. هل أنت متأكد؟",

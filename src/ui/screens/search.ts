@@ -1,5 +1,7 @@
 import type { FeedRequest, Subscription } from '../../feeds/types';
 import { searchPodcasts } from '../../feeds/itunes';
+import { ytServiceSearch, type YtSearchItem } from '../../youtube/piped';
+import { fmtDur } from '../../lib/format';
 import { parseDirectInput, ytFromToken } from '../../feeds/input-parse';
 import { t, applyLang, isLangCode } from '../../i18n';
 import { httpsOnly } from '../../lib/safe';
@@ -134,16 +136,31 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
       return;
     }
 
-    try {
-      const results = await searchPodcasts(raw, signal);
-      clearTimeout(searchTimeout);
-      restoreBtn();
-      if (!results.length) {
-        list.replaceChildren(emptyState(t('no_results')));
-        return;
-      }
-      const frag = document.createDocumentFragment();
-      for (const p of results) {
+    // Podcasts (iTunes) and YouTube are searched in parallel — either side
+    // may fail without taking the other down.
+    const [pods, yts] = await Promise.allSettled([
+      searchPodcasts(raw, signal),
+      ytServiceSearch(raw, signal),
+    ]);
+    clearTimeout(searchTimeout);
+    if (signal.aborted) return;
+    restoreBtn();
+
+    const podcasts = pods.status === 'fulfilled' ? pods.value : [];
+    const ytItems = yts.status === 'fulfilled' ? yts.value : [];
+
+    if (!podcasts.length && !ytItems.length) {
+      const err = pods.status === 'rejected' ? (pods.reason as Error).message : '';
+      list.replaceChildren(
+        err ? emptyState(t('status_err') + err, true) : emptyState(t('no_results')),
+      );
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    if (podcasts.length) {
+      frag.append(h('div', { className: 'search-hint' }, t('sec_podcasts')));
+      for (const p of podcasts) {
         frag.append(
           resultRow({
             art: p.artworkUrl100,
@@ -154,14 +171,33 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
           }),
         );
       }
-      list.replaceChildren(frag);
-      hasSearchResults = true;
-    } catch (e) {
-      clearTimeout(searchTimeout);
-      if ((e as Error).name === 'AbortError') return;
-      restoreBtn();
-      list.replaceChildren(emptyState(t('status_err') + (e as Error).message, true));
     }
+    if (ytItems.length) {
+      frag.append(h('div', { className: 'search-hint' }, t('sec_youtube')));
+      for (const y of ytItems.slice(0, 8)) frag.append(ytRow(y));
+    }
+    list.replaceChildren(frag);
+    hasSearchResults = true;
+  }
+
+  function ytRow(y: YtSearchItem): HTMLElement {
+    const count =
+      y.kind === 'video'
+        ? fmtDur(y.extra * 1000)
+        : y.kind === 'playlist' && y.extra
+          ? `${y.extra} ${t('ep_count_unit')}`
+          : '';
+    return resultRow({
+      art: y.thumb,
+      name: y.title,
+      author: y.author || 'YouTube',
+      ...(count ? { count } : {}),
+      onOpen: () =>
+        deps.openFeed({
+          kind: 'yt',
+          info: { type: y.kind === 'video' ? 'video' : y.kind, id: y.id },
+        }),
+    });
   }
 
   function renderFavs(): void {

@@ -29,6 +29,8 @@ const ru: Lang = {
   retry: "Нажмите F5 для повтора.",
   btn_retry: "Повторить",
   btn_queue: "В очередь",
+  sec_podcasts: "Подкасты",
+  sec_youtube: "YouTube",
   queued: "Добавлено в очередь",
   confirm_clear_progress: "Весь прогресс будет удалён. Вы уверены?",
   confirm_clear_all: "Все настройки и прогресс будут удалены. Вы уверены?",

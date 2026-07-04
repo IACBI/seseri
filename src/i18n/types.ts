@@ -31,6 +31,8 @@ export interface Lang {
   retry: string;
   btn_retry: string;
   btn_queue: string;
+  sec_podcasts: string;
+  sec_youtube: string;
   queued: string;
   confirm_clear_progress: string;
   confirm_clear_all: string;

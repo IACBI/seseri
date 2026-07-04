@@ -14,7 +14,8 @@ import { cors } from 'hono/cors';
 import type { Env } from './env';
 import { edgeCached, fetchWithTimeout, readCapped, safeTarget } from './safe-fetch';
 import { rateLimited } from './ratelimit';
-import { refreshHealth, ytList, ytResolve, type YtKind } from './yt';
+import { poolSearch, refreshHealth, ytList, ytResolve, type YtKind } from './yt';
+import { tubeAudio, tubeSearch, type TubeAudio } from './innertube';
 
 // Popular feeds keep their full archive in the feed — The Daily's RSS alone
 // is ~18 MB — so the cap is generous; it only guards against abuse.
@@ -39,6 +40,8 @@ app.use(
 );
 
 app.use('*', async (c, next) => {
+  // Audio streaming is exempt: seeking issues bursts of range requests
+  if (c.req.path === '/v1/yt/audio') return next();
   const ip = c.req.header('cf-connecting-ip') ?? '';
   if (await rateLimited(c.env.KV, ip)) {
     return c.json({ error: 'rate limited' }, 429, { 'retry-after': '60' });
@@ -119,12 +122,55 @@ app.get('/v1/yt/list', async (c) => {
   );
 });
 
+app.get('/v1/yt/search', async (c) => {
+  const q = (c.req.query('q') ?? '').trim();
+  if (q.length < 2 || q.length > 100) return c.json({ error: 'invalid query' }, 400);
+  return edgeCached(
+    'https://cache.seseri/yt-search?q=' + encodeURIComponent(q.toLowerCase()),
+    15 * 60,
+    c.executionCtx,
+    async () => {
+      try {
+        const items = await tubeSearch(q);
+        if (items.length) return c.json({ items });
+      } catch (e) {
+        console.error('tubeSearch failed:', (e as Error).message);
+      }
+      try {
+        const items = await poolSearch(c.env.KV, q);
+        return c.json({ items });
+      } catch {
+        return c.json({ error: 'no upstream' }, 502);
+      }
+    },
+  );
+});
+
+/** Resolve an audio format for the audio proxy; cached in KV (URLs ~6 h). */
+async function audioFor(kv: KVNamespace, id: string): Promise<TubeAudio | null> {
+  const key = 'yta:' + id;
+  const hit = await kv.get<TubeAudio>(key, 'json').catch(() => null);
+  if (hit) return hit;
+  const fresh = await tubeAudio(id).catch((e: Error) => {
+    console.error('tubeAudio failed:', e.message);
+    return null;
+  });
+  if (fresh) await kv.put(key, JSON.stringify(fresh), { expirationTtl: 1800 }).catch(() => {});
+  return fresh;
+}
+
 app.get('/v1/yt/resolve', async (c) => {
   const id = c.req.query('id') ?? '';
   if (!/^[\w-]{11}$/.test(id)) return c.json({ error: 'invalid id' }, 400);
+  // Innertube first: its stream URLs are IP-bound to this worker, so the
+  // client gets our /v1/yt/audio proxy URL instead of the raw googlevideo one.
+  const own = await audioFor(c.env.KV, id);
+  if (own) {
+    return c.json({ audioUrl: new URL('/v1/yt/audio?id=' + id, c.req.url).href });
+  }
   return edgeCached(
     'https://cache.seseri/yt-resolve?i=' + encodeURIComponent(id),
-    5 * 60, // stream URLs expire upstream — keep this short
+    5 * 60, // public-instance URLs expire upstream — keep this short
     c.executionCtx,
     async () => {
       const audioUrl = await ytResolve(c.env.KV, id);
@@ -132,6 +178,47 @@ app.get('/v1/yt/resolve', async (c) => {
       return c.json({ audioUrl });
     },
   );
+});
+
+/** Stream the audio bytes through the worker (range-aware → seek works). */
+app.get('/v1/yt/audio', async (c) => {
+  const id = c.req.query('id') ?? '';
+  if (!/^[\w-]{11}$/.test(id)) return c.json({ error: 'invalid id' }, 400);
+  let fmt = await audioFor(c.env.KV, id);
+  if (!fmt) return c.json({ error: 'no stream' }, 502);
+
+  // googlevideo 403s range-less requests — always send one; when the client
+  // didn't ask for a range we unwrap the 206 back into a plain 200 below.
+  const clientRange = c.req.header('range');
+  const range = clientRange ?? 'bytes=0-';
+  const upstreamFetch = (f: TubeAudio): Promise<Response> =>
+    fetch(f.url, { headers: { 'user-agent': f.ua, range } });
+
+  let upstream = await upstreamFetch(fmt);
+  if (upstream.status === 403 || upstream.status === 410) {
+    // URL expired — re-resolve once and retry
+    await c.env.KV.delete('yta:' + id).catch(() => {});
+    fmt = await audioFor(c.env.KV, id);
+    if (!fmt) return c.json({ error: 'no stream' }, 502);
+    upstream = await upstreamFetch(fmt);
+  }
+  if (!upstream.ok && upstream.status !== 206) {
+    return c.json({ error: 'upstream ' + upstream.status }, 502);
+  }
+
+  const headers = new Headers({ 'content-type': fmt.mime, 'accept-ranges': 'bytes' });
+  headers.set('cache-control', 'no-store');
+  if (!clientRange && upstream.status === 206) {
+    // client wanted the whole file — present the full-range 206 as a 200
+    const total = upstream.headers.get('content-range')?.split('/')[1];
+    if (total) headers.set('content-length', total);
+    return new Response(upstream.body, { status: 200, headers });
+  }
+  for (const h of ['content-range', 'content-length'] as const) {
+    const v = upstream.headers.get(h);
+    if (v) headers.set(h, v);
+  }
+  return new Response(upstream.body, { status: upstream.status, headers });
 });
 
 app.notFound((c) => c.json({ error: 'not found' }, 404));

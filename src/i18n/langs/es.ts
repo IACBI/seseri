@@ -29,6 +29,8 @@ const es: Lang = {
   retry: "Pulsa F5 para reintentar.",
   btn_retry: "Reintentar",
   btn_queue: "Añadir a la cola",
+  sec_podcasts: "Pódcasts",
+  sec_youtube: "YouTube",
   queued: "Añadido a la cola",
   confirm_clear_progress: "Se eliminará todo el progreso. ¿Estás seguro?",
   confirm_clear_all: "Se eliminarán todos los ajustes y el progreso. ¿Estás seguro?",

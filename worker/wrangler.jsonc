@@ -3,6 +3,7 @@
   "name": "seseri-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-09-06",
+  "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   // KV: rate-limit counters + health-checked YT instance list
   "kv_namespaces": [

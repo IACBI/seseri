@@ -29,6 +29,8 @@ const fr: Lang = {
   retry: "Appuyez sur F5 pour réessayer.",
   btn_retry: "Réessayer",
   btn_queue: "Ajouter à la file",
+  sec_podcasts: "Podcasts",
+  sec_youtube: "YouTube",
   queued: "Ajouté à la file",
   confirm_clear_progress: "Toute la progression sera supprimée. Confirmer ?",
   confirm_clear_all: "Tous les paramètres et la progression seront supprimés. Confirmer ?",

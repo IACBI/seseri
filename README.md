@@ -25,7 +25,7 @@ backend, installable as a PWA / Microsoft Store / Google Play app.
 | | |
 |---|---|
 | 🔍 **Podcast search** | by name, Apple Podcasts link, or a direct RSS feed URL |
-| ▶️ **YouTube shows** | playlist / channel / video links play as audio via the Worker or public Piped/Invidious instances, with an official `youtube-nocookie` embed fallback |
+| ▶️ **YouTube shows** | search by name (channels/playlists/videos appear in results) or paste a link; audio streams through the Worker (Innertube + range-aware proxy → background/lock-screen playback) or public Piped instances, with an official `youtube-nocookie` embed fallback |
 | 📥 **Offline episodes** | downloads live in the Cache API and play (and seek) with no connection; feeds are cached in IndexedDB and refresh in the background (stale-while-revalidate) |
 | 🧾 **Play queue** | queue any episode as "up next" — the queue wins over list order |
 | 🎧 **Mini player** | leaving a feed keeps playing; a floating transport on the home screen takes you back |
@@ -143,7 +143,7 @@ olarak kurulabilir.
 | | |
 |---|---|
 | 🔍 **Podcast arama** | isim, Apple Podcasts linki veya doğrudan RSS URL'si |
-| ▶️ **YouTube yayınları** | playlist / kanal / video linkleri Worker ya da Piped/Invidious üzerinden ses olarak çalar; sunucular kapalıysa resmi `youtube-nocookie` embed'e düşer |
+| ▶️ **YouTube yayınları** | **isimle ara** (kanal/playlist/videolar sonuçlarda listelenir) veya link yapıştır; ses Worker üzerinden akar (Innertube + range destekli proxy → arka plan/kilit ekranı çalma) ya da Piped'e, o da olmazsa resmi `youtube-nocookie` embed'e düşer |
 | 📥 **Çevrimdışı bölümler** | indirilenler Cache API'de yaşar, bağlantısız çalar ve sarar; feed'ler IndexedDB'de önbelleklenir, arka planda tazelenir |
 | 🧾 **Kuyruk** | bölümü "sıradaki" olarak işaretle — kuyruk, liste sırasından önce gelir |
 | 🎧 **Mini oynatıcı** | feed'den çıkınca çalma sürer; ana ekrandaki yüzen bar seni geri götürür |
