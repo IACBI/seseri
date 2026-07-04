@@ -25,6 +25,7 @@ import { setMediaMetadata } from '../../player/media-session';
 import { setSleepTimer } from '../../player/sleep-timer';
 import { getLastPlayed, getProgress, setLastPlayed, setProgress } from '../../storage/progress';
 import { isSubscribed, toggleSubscription } from '../../storage/subscriptions';
+import { nowPlaying } from '../../state/now-playing';
 import { settings, setSetting } from '../../state/settings';
 import { ensureEmbed, getEmbed, onEmbedError, onEmbedStateChange, ytPlaylistIds, YT_STATE } from '../../youtube/embed';
 import { ytServiceAudioUrl } from '../../youtube/piped';
@@ -38,11 +39,15 @@ export interface PlayerScreenDeps {
   /** Update the address bar for the opened feed (router integration). */
   onFeedOpened: (req: FeedRequest) => void;
   onClosed: () => void;
+  /** Back button: in-app history back, or home when we deep-linked in. */
+  onBack: () => void;
 }
 
 export interface PlayerScreen {
   openFeed(req: FeedRequest): void;
-  /** Stop playback and reset session (called when routing back home). */
+  /** Leave the feed view but keep playback running (mini player takes over). */
+  hide(): void;
+  /** Stop playback and reset session. */
   reset(): void;
   isOpen(): boolean;
   el: HTMLElement;
@@ -289,6 +294,13 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   }
 
   function openFeed(req: FeedRequest): void {
+    // Re-entering the feed that is already loaded (e.g. via the mini player):
+    // just show it — reloading would interrupt playback.
+    if (currentMeta?.id === feedIdOf(req) && episodes.length) {
+      document.body.classList.add('feed-open');
+      deps.onFeedOpened(req);
+      return;
+    }
     loadAbort?.abort();
     loadAbort = new AbortController();
     const signal = loadAbort.signal;
@@ -304,8 +316,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     episodes = [];
     filteredEps = [];
 
-    screen.style.display = 'flex';
-    must('searchScreen').style.display = 'none';
+    document.body.classList.add('feed-open');
     screen.classList.remove('screen-enter');
     void screen.offsetWidth;
     screen.classList.add('screen-enter');
@@ -473,6 +484,11 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
       artist: elPAuthor.textContent || '',
       album: elPTitle.textContent || '',
       artworkUrl: elPThumb.src || '',
+    });
+    nowPlaying.set({
+      title: ep.trackName || t('ep_fallback', idx + 1),
+      feedName: elPTitle.textContent || '',
+      art: ep.art || elPThumb.src || '',
     });
 
     elSpeedSel.value = String(settings().defaultSpeed);
@@ -798,7 +814,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     }
   });
   elShareBtn.addEventListener('click', share);
-  elBackBtn.addEventListener('click', () => history.back());
+  elBackBtn.addEventListener('click', () => deps.onBack());
 
   elSpeedSel.addEventListener('change', () => {
     const speed = parseFloat(elSpeedSel.value) || 1;
@@ -821,7 +837,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     const target = e.target as HTMLElement;
     const tag = (target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'select' || tag === 'textarea' || target.isContentEditable) return;
-    if (screen.style.display !== 'flex') return;
+    if (!document.body.classList.contains('feed-open')) return;
     switch (e.key) {
       case ' ':
         e.preventDefault();
@@ -861,6 +877,12 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     if (episodes.length) render();
   });
 
+  function hide(): void {
+    document.title = 'Seseri';
+    document.body.classList.remove('feed-open');
+    deps.onClosed();
+  }
+
   function reset(): void {
     audio.pause();
     if (currentBlobUrl) {
@@ -868,6 +890,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
       URL.revokeObjectURL(currentBlobUrl);
       currentBlobUrl = null;
     }
+    nowPlaying.set(null);
     embedStop();
     setUsingEmbed(false);
     feedIsYT = false;
@@ -884,14 +907,15 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     elTTot.textContent = '0:00';
     setPlayIcon(false);
     elFilterInput.value = '';
-    screen.style.display = 'none';
+    document.body.classList.remove('feed-open');
     deps.onClosed();
   }
 
   return {
     openFeed,
+    hide,
     reset,
-    isOpen: () => screen.style.display === 'flex',
+    isOpen: () => document.body.classList.contains('feed-open'),
     el: screen,
   };
 }

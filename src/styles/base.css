@@ -35,6 +35,9 @@
 /* mirror directional icons in RTL */
 [dir="rtl"] .icon-flip { transform: scaleX(-1); }
 
+/* The mount node is transparent to layout: screens are body flex items */
+#app { display: contents; }
+
 body {
   font-family: var(--font-body);
   background: var(--bg);

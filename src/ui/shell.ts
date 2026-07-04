@@ -148,6 +148,17 @@ const PLAYER_SCREEN = `
   </div>
 </div>`;
 
+const MINI_PLAYER = `
+<div class="mini-player" id="miniPlayer" role="button" tabindex="0" data-i18n-aria="now_playing" aria-label="Şu an çalıyor">
+  <div class="mini-progress-track"><div class="mini-progress" id="miniProgress"></div></div>
+  <img class="mini-art" id="miniArt" alt="" loading="lazy" decoding="async">
+  <div class="mini-info">
+    <div class="mini-title" id="miniTitle">—</div>
+    <div class="mini-feed" id="miniFeed"></div>
+  </div>
+  <button class="mini-play" id="miniPlay" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
+</div>`;
+
 const SETTINGS_PANEL = `
 <div class="settings-overlay" id="settingsOverlay"></div>
 <div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
@@ -258,7 +269,8 @@ const SETTINGS_PANEL = `
         <div class="s-row">
           <div><div class="s-label" data-i18n="s_theme_label">Karanlık / Açık Tema</div></div>
           <select class="s-select" id="s_theme">
-            <option value="dark" selected data-i18n="theme_dark">Karanlık</option>
+            <option value="auto" selected data-i18n="theme_auto">Otomatik (sistem)</option>
+            <option value="dark" data-i18n="theme_dark">Karanlık</option>
             <option value="light" data-i18n="theme_light">Açık</option>
             <option value="oled" data-i18n="theme_oled">OLED Siyah</option>
           </select>
@@ -330,7 +342,7 @@ const SETTINGS_PANEL = `
 </div>`;
 
 export function renderShell(app: HTMLElement): void {
-  app.innerHTML = ICON_SPRITE + SEARCH_SCREEN + PLAYER_SCREEN + SETTINGS_PANEL;
+  app.innerHTML = ICON_SPRITE + SEARCH_SCREEN + PLAYER_SCREEN + MINI_PLAYER + SETTINGS_PANEL;
 }
 
 /** getElementById that must succeed (shell markup is static). */

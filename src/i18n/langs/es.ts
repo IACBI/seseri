@@ -50,6 +50,7 @@ const es: Lang = {
   s_data: "Datos",
   btn_clear_progress: "🗑 Borrar todo el progreso",
   btn_clear_all: "🗑 Borrar todos los datos",
+  theme_auto: "Automático (sistema)",
   theme_dark: "Oscuro",
   theme_light: "Claro",
   theme_oled: "OLED Negro",

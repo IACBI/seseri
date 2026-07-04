@@ -211,7 +211,6 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
   return {
     el: screen,
     show() {
-      screen.style.display = 'flex';
       screen.classList.remove('screen-enter');
       void screen.offsetWidth;
       screen.classList.add('screen-enter');

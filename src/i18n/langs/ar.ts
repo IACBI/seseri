@@ -50,6 +50,7 @@ const ar: Lang = {
   s_data: "البيانات",
   btn_clear_progress: "🗑 مسح كل التقدم",
   btn_clear_all: "🗑 مسح جميع البيانات",
+  theme_auto: "تلقائي (حسب النظام)",
   theme_dark: "داكن",
   theme_light: "فاتح",
   theme_oled: "OLED أسود",

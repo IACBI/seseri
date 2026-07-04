@@ -50,6 +50,7 @@ const de: Lang = {
   s_data: "Daten",
   btn_clear_progress: "🗑 Alle Fortschritte löschen",
   btn_clear_all: "🗑 Alle Daten löschen",
+  theme_auto: "Automatisch (System)",
   theme_dark: "Dunkel",
   theme_light: "Hell",
   theme_oled: "OLED Schwarz",

@@ -50,6 +50,7 @@ const ru: Lang = {
   s_data: "Данные",
   btn_clear_progress: "🗑 Сбросить прогресс",
   btn_clear_all: "🗑 Удалить все данные",
+  theme_auto: "Авто (системная)",
   theme_dark: "Тёмная",
   theme_light: "Светлая",
   theme_oled: "OLED Чёрная",

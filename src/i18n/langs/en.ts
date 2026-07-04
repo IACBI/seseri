@@ -50,6 +50,7 @@ const en: Lang = {
   s_data: "Data",
   btn_clear_progress: "🗑 Clear All Progress",
   btn_clear_all: "🗑 Clear All Data",
+  theme_auto: "Auto (system)",
   theme_dark: "Dark",
   theme_light: "Light",
   theme_oled: "OLED Black",

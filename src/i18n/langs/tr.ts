@@ -50,6 +50,7 @@ const tr: Lang = {
   s_data: "Veri",
   btn_clear_progress: "🗑 Tüm İlerlemeyi Sıfırla",
   btn_clear_all: "🗑 Tüm Verileri Temizle",
+  theme_auto: "Otomatik (sistem)",
   theme_dark: "Karanlık",
   theme_light: "Açık",
   theme_oled: "OLED Siyah",

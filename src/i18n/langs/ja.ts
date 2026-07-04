@@ -50,6 +50,7 @@ const ja: Lang = {
   s_data: "データ",
   btn_clear_progress: "🗑 再生履歴をリセット",
   btn_clear_all: "🗑 すべてのデータを削除",
+  theme_auto: "自動（システム）",
   theme_dark: "ダーク",
   theme_light: "ライト",
   theme_oled: "OLED ブラック",

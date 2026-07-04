@@ -41,16 +41,25 @@ export interface Router {
   feedOpened(req: FeedRequest, push?: boolean): void;
   /** Navigate home programmatically. */
   goHome(): void;
+  /** True when history.back() stays inside the app (a home entry exists). */
+  canGoBack(): boolean;
 }
 
 export function initRouter(handlers: {
   showFeed: (req: FeedRequest) => void;
   showHome: () => void;
 }): Router {
+  // Deep links land straight on a feed — there is no in-app entry behind us,
+  // so the back button must navigate home instead of leaving the site.
+  let hasHomeBehind = false;
+
   window.addEventListener('popstate', () => {
     const route = parseLocation();
     if (route.kind === 'feed') handlers.showFeed(route.req);
-    else handlers.showHome();
+    else {
+      hasHomeBehind = false;
+      handlers.showHome();
+    }
   });
 
   return {
@@ -62,10 +71,12 @@ export function initRouter(handlers: {
         history.replaceState(null, '', url);
       } else if (push) {
         history.pushState(null, '', url);
+        hasHomeBehind = true;
       } else {
         history.replaceState(null, '', url);
       }
     },
+    canGoBack: () => hasHomeBehind,
     goHome() {
       if (parseLocation().kind !== 'home') history.pushState(null, '', urlFor({ kind: 'home' }));
       handlers.showHome();

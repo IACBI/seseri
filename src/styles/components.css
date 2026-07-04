@@ -254,6 +254,9 @@
     radial-gradient(120% 60% at 50% -10%, var(--accent-soft) 0%, transparent 50%),
     var(--bg);
 }
+/* Screen switching is class-driven so media queries can override it */
+body.feed-open #searchScreen { display: none; }
+body.feed-open #playerScreen { display: flex; }
 
 /* Header (glass) */
 .p-header {
@@ -991,6 +994,137 @@ body.settings-open .dot.loading { animation-play-state: paused; }
   .ep-item { padding: 0 16px; }
   .ep-item:hover { padding-left: 20px; }
   .sort-bar { padding: 0 16px; }
+}
+
+/* ═══════════════════════════════════════
+   MINI PLAYER
+   Floating transport on the home screen while a track is loaded — leaving
+   a feed no longer stops playback.
+═══════════════════════════════════════ */
+.mini-player {
+  display: none;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  width: min(560px, calc(100vw - 24px));
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--glass);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  box-shadow: 0 18px 44px -18px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.02) inset;
+  cursor: pointer;
+  z-index: 60;
+  overflow: hidden;
+  animation: mini-rise 0.4s var(--ease-out) both;
+}
+body.has-track:not(.feed-open) .mini-player { display: flex; }
+.mini-player:hover { border-color: var(--accent); }
+.mini-progress-track {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--border);
+}
+.mini-progress {
+  height: 100%;
+  width: 0%;
+  background: var(--accent-grad);
+  transition: width 0.3s linear;
+}
+.mini-art {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface2);
+  flex-shrink: 0;
+}
+.mini-info { flex: 1; min-width: 0; }
+.mini-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-feed {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-play {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-grad);
+  color: var(--accent-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s var(--ease-out);
+}
+.mini-play:hover { transform: scale(1.06); }
+.mini-play:active { transform: scale(0.94); }
+.mini-play .icon { width: 17px; height: 17px; }
+@keyframes mini-rise {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ═══════════════════════════════════════
+   DESKTOP TWO-PANE (≥900px, feed open)
+   Library rail on the left, episodes on the right — the idle home screen
+   keeps its full-width hero.
+═══════════════════════════════════════ */
+@media (min-width: 900px) {
+  body.feed-open { flex-direction: row; }
+  body.feed-open #searchScreen {
+    display: flex;
+    flex: 0 0 clamp(300px, 30vw, 400px);
+    justify-content: flex-start;
+    padding: 20px 18px 24px;
+    gap: 18px;
+    border-inline-end: 1px solid var(--border);
+  }
+  /* the rail is a tool, not a stage — no ambient glow, no float */
+  body.feed-open #searchScreen::before,
+  body.feed-open #searchScreen::after { display: none; }
+  body.feed-open .search-screen-topbar { display: none; }
+  body.feed-open .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    animation: none;
+  }
+  body.feed-open .brand-logo {
+    width: 40px; height: 40px;
+    border-radius: 13px;
+    margin: 0;
+    animation: none;
+    box-shadow: 0 8px 22px -8px var(--accent-glow);
+  }
+  body.feed-open .brand-logo svg { width: 22px; height: 22px; }
+  body.feed-open .brand-name { font-size: 22px; letter-spacing: -0.8px; }
+  body.feed-open .search-wrap { max-width: none; animation: none; }
+  body.feed-open .results-list {
+    max-width: none;
+    max-height: none;
+    flex: 1;
+  }
+  body.feed-open #playerScreen { flex: 1; min-width: 0; }
+  /* back button is meaningless when both panes are visible */
+  body.feed-open .p-back { display: none; }
 }
 
 /* ═══════════════════════════════════════

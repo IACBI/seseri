@@ -6,7 +6,9 @@ import { pbCurrent, pbDuration, pbPaused, pbSeekTo } from './player/engine';
 import { loadProgress, saveProgressNow, setQuotaListener } from './storage/progress';
 import { loadSubscriptions } from './storage/subscriptions';
 import { loadSettings, settings } from './state/settings';
+import type { FeedRequest } from './feeds/types';
 import { bindI18nDom } from './ui/i18n-dom';
+import { initMiniPlayer } from './ui/mini-player';
 import { initRouter, parseLocation } from './ui/router';
 import { renderShell, must } from './ui/shell';
 import { initPlayerScreen } from './ui/screens/player';
@@ -34,25 +36,44 @@ export function boot(): void {
   requestPersistence(); // keep downloads/idb safe from storage-pressure eviction
 
   // ── screens & router ─────────────────────────────────────────────
+  let lastFeedReq: FeedRequest | null = null;
+
   const search = initSearchScreen({
     openFeed: (req) => {
+      lastFeedReq = req;
       player.openFeed(req);
       router.feedOpened(req);
     },
   });
 
   const player = initPlayerScreen({
-    onFeedOpened: () => {
+    onFeedOpened: (req) => {
+      lastFeedReq = req;
       /* URL handled by the router (avoids double push) */
     },
     onClosed: () => search.show(),
+    onBack: () => {
+      if (router.canGoBack()) history.back();
+      else router.goHome();
+    },
   });
 
   const router = initRouter({
-    showFeed: (req) => player.openFeed(req),
+    showFeed: (req) => {
+      lastFeedReq = req;
+      player.openFeed(req);
+    },
     showHome: () => {
       saveProgressNow();
-      player.reset();
+      player.hide(); // playback continues — the mini player takes over
+    },
+  });
+
+  initMiniPlayer({
+    onOpen: () => {
+      if (!lastFeedReq) return;
+      player.openFeed(lastFeedReq);
+      router.feedOpened(lastFeedReq);
     },
   });
 
@@ -87,8 +108,10 @@ export function boot(): void {
   // ── initial route (deep links preserved) ─────────────────────────
   const route = parseLocation();
   if (route.kind === 'feed') {
+    lastFeedReq = route.req;
     player.openFeed(route.req);
     router.feedOpened(route.req, false);
+    search.renderFavs(); // desktop rail is visible alongside the feed
   } else {
     search.show();
     search.focusInput();

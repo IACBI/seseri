@@ -50,6 +50,7 @@ const fr: Lang = {
   s_data: "Données",
   btn_clear_progress: "🗑 Effacer toute la progression",
   btn_clear_all: "🗑 Effacer toutes les données",
+  theme_auto: "Automatique (système)",
   theme_dark: "Sombre",
   theme_light: "Clair",
   theme_oled: "OLED Noir",

@@ -52,6 +52,7 @@ export interface Lang {
   s_data: string;
   btn_clear_progress: string;
   btn_clear_all: string;
+  theme_auto: string;
   theme_dark: string;
   theme_light: string;
   theme_oled: string;

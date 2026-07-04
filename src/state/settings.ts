@@ -3,7 +3,7 @@ import { isLangCode, detectLang } from '../i18n';
 import { local } from '../storage/local';
 import { signal } from './signals';
 
-export type ThemeName = 'dark' | 'light' | 'oled';
+export type ThemeName = 'auto' | 'dark' | 'light' | 'oled';
 export type SortDir = 'asc' | 'desc';
 
 /** User settings — persisted under the legacy `pp_settings` key (same shape). */
@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS: Settings = {
   resumePos: true,
   fontSize: '13px',
   rowHeight: '54px',
-  theme: 'dark',
+  theme: 'auto',
   defaultSort: 'asc',
   showDl: true,
   accentColor: '#8b7cf6',

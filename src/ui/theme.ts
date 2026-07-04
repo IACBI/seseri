@@ -1,7 +1,9 @@
 import type { ThemeName } from '../state/settings';
 import { settings } from '../state/settings';
 
-const THEME_VALUES: Record<ThemeName, string[]> = {
+type ResolvedTheme = Exclude<ThemeName, 'auto'>;
+
+const THEME_VALUES: Record<ResolvedTheme, string[]> = {
   //       --bg       --bg2      --surface  --surface2 --border   --border2  --text     --text2    --text3
   dark: ['#0b0c11', '#101117', '#15161e', '#1c1e28', '#23252f', '#30333f', '#edeff7', '#9aa0b8', '#5d6280'],
   oled: ['#000000', '#08080a', '#0e0e12', '#16161c', '#202027', '#2c2c36', '#f2f2f6', '#8a8a99', '#46465a'],
@@ -11,12 +13,27 @@ const THEME_KEYS = [
   '--bg', '--bg2', '--surface', '--surface2', '--border', '--border2', '--text', '--text2', '--text3',
 ];
 
+const prefersLight =
+  typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: light)') : null;
+
+/** The theme actually painted ('auto' resolved against the OS preference). */
+export function resolveTheme(theme: ThemeName): ResolvedTheme {
+  if (theme === 'auto') return prefersLight?.matches ? 'light' : 'dark';
+  return theme in THEME_VALUES ? theme : 'dark';
+}
+
+// OS theme flips repaint immediately while the setting is 'auto'
+prefersLight?.addEventListener('change', () => {
+  if (settings().theme === 'auto') applyTheme('auto');
+});
+
 export function applyTheme(theme: ThemeName): void {
-  const vals = THEME_VALUES[theme] ?? THEME_VALUES.dark;
+  const resolved = resolveTheme(theme);
+  const vals = THEME_VALUES[resolved];
   const root = document.documentElement;
   THEME_KEYS.forEach((k, i) => root.style.setProperty(k, vals[i] ?? ''));
   root.classList.remove('theme-dark', 'theme-light', 'theme-oled');
-  root.classList.add('theme-' + (theme in THEME_VALUES ? theme : 'dark'));
+  root.classList.add('theme-' + resolved);
   // Keep the browser chrome (address/status bar) in sync
   const metaTheme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (metaTheme && vals[0]) metaTheme.content = vals[0];
@@ -46,7 +63,7 @@ export function applyAccent(c: string): void {
   // Soft row highlight: stronger in light theme so it stays visible on white
   root.style.setProperty(
     '--accent-soft',
-    `rgba(${r},${g},${b},${settings().theme === 'light' ? 0.14 : 0.1})`,
+    `rgba(${r},${g},${b},${resolveTheme(settings().theme) === 'light' ? 0.14 : 0.1})`,
   );
   // Black text on light/yellow-ish accents, white otherwise (WCAG-ish luma)
   const luma = 0.299 * r + 0.587 * g + 0.114 * b;
