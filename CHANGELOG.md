@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- CI quality gate on GitHub Actions (`.github/workflows/ci.yml` — the full
+  `npm run verify` chain on every push/PR; formerly parked in `docs/`).
+- Unified loading/empty/error boxes (`src/ui/states.ts`): search and player
+  now share one pattern; errors get `role="alert"` and a retry button.
+- Localized `close` label (8 languages) for the settings close button.
+
+### Fixed
+- Search result rows are keyboard-operable (`role="button"`, `tabindex`,
+  Enter/Space) — previously mouse/touch only.
+- Focus rings restored on selects/range inputs that had `outline: none`
+  with no `:focus-visible` replacement.
+- Light theme tertiary text (`--text3`) darkened to meet WCAG AA (≥4.5:1).
+- Sort direction label no longer wraps into 2–3 lines on narrow screens
+  (hidden ≤520px; the toggle button still shows the direction).
+
+### Removed
+- Stale `docs/screens-v1/` screenshots (superseded by `screens-v2`).
+
 ## 3.0.0 — 2026-07-04
 
 Full rewrite of the 3,700-line single-file app into a Vite + strict TypeScript

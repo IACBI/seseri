@@ -110,7 +110,19 @@ Referans davranış: `v1-legacy` git etiketi (`git checkout v1-legacy` + `npx se
 - [ ] Tema "Otomatik": işletim sistemi teması değişince uygulama canlı uyar.
 - [ ] Bölüm satırlarında ilerleme çizgisi; bitenler soluk + ✓.
 
-## 16. Worker & derin linkler (v3)
+## 16. Responsive & erişilebilirlik denetimi
+
+Ekran görüntüsü altyapısı: `scripts/shot.cjs` (headless Edge + vite preview; önce `npm run build`).
+
+- [ ] Genişlikler: **320 / 360 / 390 / 520 / 600 / 768 / 900 / 1280** — ana ekran, arama sonuçları, feed, ayarlar paneli: yatay kaydırma yok, metinler taşmaz (ellipsis), bileşenler üst üste binmez.
+- [ ] 360×640'ta ayarlar paneli dikey kaydırılabilir, tüm satırlar erişilebilir.
+- [ ] ≤520px: sıralama etiketi gizli, sıralama düğmesi yönü göstermeye devam eder.
+- [ ] Light temada aynı genişliklerde kontrast/okunabilirlik kontrolü (özellikle küçük mono etiketler).
+- [ ] `ar` (RTL): başlık, kontroller ve liste hizaları aynalanır; taşma yok.
+- [ ] Klavye: Tab ile arama sonuçları gezinilir, Enter/Space açar; select/range odak halkası görünür; ayarlar kapatma düğmesi anlamlı `aria-label` taşır.
+- [ ] Arama hatasında kırmızı hata kutusu + "Tekrar dene" düğmesi; boş sonuçta boş durum mesajı; yükleme sırasında "Aranıyor..." kutusu.
+
+## 17. Worker & derin linkler (v3)
 
 - [ ] `npm run worker:dev` açıkken RSS worker üzerinden gelir (Network'te `/v1/feed`).
 - [ ] Worker kapalıyken aynı feed halka açık proxy'lerle yine yüklenir.
