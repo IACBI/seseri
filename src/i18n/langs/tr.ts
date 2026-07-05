@@ -15,6 +15,7 @@ const tr: Lang = {
   filter_placeholder: "Bölüm ara...",
   settings_title: "Ayarlar",
   settings_heading: "Ayarlar",
+  close: "Kapat",
   sort_asc_label: "Eskiden → Yeniye",
   sort_desc_label: "Yeniden → Eskiye",
   ep_saved_badge: "kaldığın yer",

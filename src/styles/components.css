@@ -234,6 +234,7 @@
   font-size: 12px;
   line-height: 2;
 }
+.empty-state--error { color: var(--red); }
 
 /* ═══════════════════════════════════════
    PLAYER SCREEN
@@ -915,6 +916,7 @@ body.settings-open .dot.loading { animation-play-state: paused; }
   transition: border-color 0.18s;
 }
 .s-select:hover, .s-select:focus { border-color: var(--accent); }
+.s-select:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
 
 .s-range {
   -webkit-appearance: none;
@@ -926,6 +928,7 @@ body.settings-open .dot.loading { animation-play-state: paused; }
   cursor: pointer;
   margin-top: 8px;
 }
+.s-range:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
 .s-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 15px; height: 15px;
@@ -1014,6 +1017,7 @@ body.settings-open .dot.loading { animation-play-state: paused; }
   transition: border-color 0.18s, color 0.18s;
 }
 .lang-select:hover, .lang-select:focus { border-color: var(--accent); color: var(--text); }
+.lang-select:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
 
 /* ═══════════════════════════════════════
    RESPONSIVE

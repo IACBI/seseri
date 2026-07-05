@@ -15,6 +15,7 @@ const ar: Lang = {
   filter_placeholder: "تصفية الحلقات...",
   settings_title: "الإعدادات",
   settings_heading: "الإعدادات",
+  close: "إغلاق",
   sort_asc_label: "الأقدم → الأحدث",
   sort_desc_label: "الأحدث → الأقدم",
   ep_saved_badge: "استئناف",

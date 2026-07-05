@@ -15,6 +15,7 @@ const ja: Lang = {
   filter_placeholder: "エピソードを絞り込む...",
   settings_title: "設定",
   settings_heading: "設定",
+  close: "閉じる",
   sort_asc_label: "古い順",
   sort_desc_label: "新しい順",
   ep_saved_badge: "再開",

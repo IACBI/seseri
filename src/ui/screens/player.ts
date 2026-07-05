@@ -32,6 +32,7 @@ import { ensureEmbed, getEmbed, onEmbedError, onEmbedStateChange, ytPlaylistIds,
 import { ytServiceAudioUrl } from '../../youtube/piped';
 import { svcJson } from '../../feeds/proxy-chain';
 import { h, icon } from '../h';
+import { stateBox } from '../states';
 import { must } from '../shell';
 import { toast } from '../toast';
 import { initWaveform, type WaveformController } from '../waveform';
@@ -169,7 +170,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   // ── episode list rendering (typed DOM, no innerHTML with data) ───
   function render(): void {
     if (!filteredEps.length) {
-      elEpList.replaceChildren(h('div', { className: 'empty-state' }, t('ep_not_found')));
+      elEpList.replaceChildren(stateBox('empty', t('ep_not_found')));
       return;
     }
     const S = settings();
@@ -295,13 +296,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
 
   function showError(message: string, onRetry?: () => void): void {
     setStatus('error', t('status_err') + message);
-    const box = h('div', { className: 'empty-state', style: 'color:var(--red)' }, message);
-    if (onRetry) {
-      const btn = h('button', { className: 'retry-btn' }, t('btn_retry'));
-      btn.addEventListener('click', onRetry);
-      box.append(h('br'), h('br'), btn);
-    }
-    elEpList.replaceChildren(box);
+    elEpList.replaceChildren(stateBox('error', message, { onRetry }));
   }
 
   // ── feed opening (unified — replaces loadPodcast/loadRss/loadYouTube) ──

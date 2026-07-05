@@ -15,6 +15,7 @@ const en: Lang = {
   filter_placeholder: "Filter episodes...",
   settings_title: "Settings",
   settings_heading: "Settings",
+  close: "Close",
   sort_asc_label: "Oldest → Newest",
   sort_desc_label: "Newest → Oldest",
   ep_saved_badge: "resume",

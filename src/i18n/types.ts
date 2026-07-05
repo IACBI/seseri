@@ -17,6 +17,7 @@ export interface Lang {
   filter_placeholder: string;
   settings_title: string;
   settings_heading: string;
+  close: string;
   sort_asc_label: string;
   sort_desc_label: string;
   ep_saved_badge: string;

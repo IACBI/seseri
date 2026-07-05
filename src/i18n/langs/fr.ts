@@ -15,6 +15,7 @@ const fr: Lang = {
   filter_placeholder: "Filtrer les épisodes...",
   settings_title: "Paramètres",
   settings_heading: "Paramètres",
+  close: "Fermer",
   sort_asc_label: "Du plus ancien au plus récent",
   sort_desc_label: "Du plus récent au plus ancien",
   ep_saved_badge: "reprendre",

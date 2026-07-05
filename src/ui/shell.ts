@@ -59,7 +59,7 @@ const SEARCH_SCREEN = `
     </div>
   </div>
 
-  <div class="results-list" id="resultsList"></div>
+  <div class="results-list" id="resultsList" aria-live="polite"></div>
 </div>`;
 
 const PLAYER_SCREEN = `
@@ -160,7 +160,7 @@ const SETTINGS_PANEL = `
 <dialog class="settings-panel" id="settingsPanel" aria-labelledby="settingsTitle">
   <div class="settings-header">
     <span class="settings-title"><svg class="icon" aria-hidden="true"><use href="#ic-settings"/></svg> <span id="settingsTitle" data-i18n="settings_heading">Ayarlar</span></span>
-    <button class="settings-close" id="settingsClose" aria-label="×">×</button>
+    <button class="settings-close" id="settingsClose" data-i18n-aria="close" aria-label="Kapat">×</button>
   </div>
   <div class="settings-body">
 

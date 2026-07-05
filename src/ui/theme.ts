@@ -7,7 +7,8 @@ const THEME_VALUES: Record<ResolvedTheme, string[]> = {
   //       --bg       --bg2      --surface  --surface2 --border   --border2  --text     --text2    --text3
   dark: ['#0b0c11', '#101117', '#15161e', '#1c1e28', '#23252f', '#30333f', '#edeff7', '#9aa0b8', '#5d6280'],
   oled: ['#000000', '#08080a', '#0e0e12', '#16161c', '#202027', '#2c2c36', '#f2f2f6', '#8a8a99', '#46465a'],
-  light: ['#f4f5f8', '#ecedf2', '#ffffff', '#f7f8fb', '#e7e9f0', '#d3d7e1', '#14161d', '#4c5165', '#6e7488'],
+  // --text3 #62687c: ≥4.5:1 on --bg/--surface (WCAG AA for the small mono labels)
+  light: ['#f4f5f8', '#ecedf2', '#ffffff', '#f7f8fb', '#e7e9f0', '#d3d7e1', '#14161d', '#4c5165', '#62687c'],
 };
 const THEME_KEYS = [
   '--bg', '--bg2', '--surface', '--surface2', '--border', '--border2', '--text', '--text2', '--text3',

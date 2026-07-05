@@ -15,6 +15,7 @@ const ru: Lang = {
   filter_placeholder: "Поиск эпизодов...",
   settings_title: "Настройки",
   settings_heading: "Настройки",
+  close: "Закрыть",
   sort_asc_label: "Сначала старые",
   sort_desc_label: "Сначала новые",
   ep_saved_badge: "продолжить",

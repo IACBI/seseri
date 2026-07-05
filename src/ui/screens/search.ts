@@ -8,6 +8,7 @@ import { httpsOnly } from '../../lib/safe';
 import { setSetting, settings } from '../../state/settings';
 import { removeSubscription, subscriptions } from '../../storage/subscriptions';
 import { h, icon } from '../h';
+import { stateBox } from '../states';
 import { must } from '../shell';
 
 export interface SearchScreenDeps {
@@ -49,14 +50,6 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
   let searchAbort: AbortController | null = null;
   let hasSearchResults = false;
 
-  function emptyState(msg: string, isError = false): HTMLElement {
-    return h(
-      'div',
-      { className: 'empty-state', ...(isError ? { style: 'color:var(--red)' } : {}) },
-      msg,
-    );
-  }
-
   function resultRow(opts: {
     art: string;
     name: string;
@@ -75,7 +68,7 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
 
     const row = h(
       'div',
-      { className: 'result-item' },
+      { className: 'result-item', role: 'button', tabIndex: 0 },
       h('img', {
         className: 'result-thumb',
         src: httpsOnly(opts.art),
@@ -106,6 +99,12 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
       }
       opts.onOpen();
     });
+    row.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.target !== row) return; // let the unfav button keep its native keys
+      e.preventDefault();
+      opts.onOpen();
+    });
     return row;
   }
 
@@ -126,7 +125,7 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
 
     btn.disabled = true;
     btn.textContent = '...';
-    list.replaceChildren(emptyState(t('searching')));
+    list.replaceChildren(stateBox('loading', t('searching')));
 
     // Direct input: Apple id / YouTube link / RSS URL
     const direct = parseDirectInput(raw);
@@ -153,11 +152,13 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
       clearTimeout(searchTimeout);
       if (!podsBox.hasChildNodes() && !ytBox.hasChildNodes()) {
         list.replaceChildren(
-          podsErr ? emptyState(t('status_err') + podsErr, true) : emptyState(t('no_results')),
+          podsErr
+            ? stateBox('error', t('status_err') + podsErr, { onRetry: () => void doSearch() })
+            : stateBox('empty', t('no_results')),
         );
       }
     };
-    const searching = emptyState(t('searching'));
+    const searching = stateBox('loading', t('searching'));
     list.replaceChildren(searching, podsBox, ytBox);
 
     void searchPodcasts(raw, signal)
