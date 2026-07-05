@@ -89,6 +89,7 @@ const en: Lang = {
   yt_video: "YouTube video",
   yt_invalid: "Invalid YouTube link.",
   yt_embed_blocked: "This video can’t be embedded.",
+  yt_embed_bg: "Playing via the YouTube player — playback may stop while the screen is locked.",
   yt_limit_note: "latest ~15",
   s_storage: "Storage",
   storage_usage: (u,q)=>`${u} / ${q} used`,

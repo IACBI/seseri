@@ -89,6 +89,7 @@ const tr: Lang = {
   yt_video: "YouTube videosu",
   yt_invalid: "Geçersiz YouTube bağlantısı.",
   yt_embed_blocked: "Bu video gömülemiyor.",
+  yt_embed_bg: "Bu bölüm YouTube oynatıcısıyla çalıyor — ekran kilitliyken oynatma durabilir.",
   yt_limit_note: "son ~15 bölüm",
   s_storage: "Depolama",
   storage_usage: (u,q)=>`${u} / ${q} kullanılıyor`,

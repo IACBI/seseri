@@ -89,6 +89,7 @@ const ru: Lang = {
   yt_video: "Видео YouTube",
   yt_invalid: "Неверная ссылка YouTube.",
   yt_embed_blocked: "Это видео нельзя встроить.",
+  yt_embed_bg: "Воспроизведение через плеер YouTube — при блокировке экрана оно может остановиться.",
   yt_limit_note: "последние ~15",
   s_storage: "Хранилище",
   storage_usage: (u,q)=>`Занято ${u} / ${q}`,

@@ -89,6 +89,7 @@ const es: Lang = {
   yt_video: "Vídeo de YouTube",
   yt_invalid: "Enlace de YouTube no válido.",
   yt_embed_blocked: "Este vídeo no se puede insertar.",
+  yt_embed_bg: "Reproduciendo con el reproductor de YouTube; puede detenerse con la pantalla bloqueada.",
   yt_limit_note: "últimos ~15",
   s_storage: "Almacenamiento",
   storage_usage: (u,q)=>`${u} / ${q} en uso`,

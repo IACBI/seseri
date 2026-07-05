@@ -10,6 +10,17 @@
 - Localized `close` label (8 languages) for the settings close button.
 
 ### Fixed
+- **YouTube background playback restored**: stream resolution had silently
+  broken (YouTube's PO-token enforcement caps most clients at the first
+  ~2 MB, the TV/embedded clients died, and the public Piped/Invidious pool
+  is gone), so every episode fell back to the iframe embed — which mobile
+  browsers pause when the screen locks. The Worker now resolves audio via
+  the PO-token-exempt `ANDROID_VR` client with a server-generated session
+  (locally generated sessions trip the "confirm you're not a bot" wall) and
+  no player JS, so `<audio>` + Media Session playback — and with it
+  lock-screen/background listening — works again. When the embed fallback
+  is still needed (e.g. region-locked videos), a toast now says background
+  playback may not work.
 - Search result rows are keyboard-operable (`role="button"`, `tabindex`,
   Enter/Space) — previously mouse/touch only.
 - Focus rings restored on selects/range inputs that had `outline: none`

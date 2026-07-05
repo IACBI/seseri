@@ -89,6 +89,7 @@ const ar: Lang = {
   yt_video: "فيديو يوتيوب",
   yt_invalid: "رابط يوتيوب غير صالح.",
   yt_embed_blocked: "لا يمكن تضمين هذا الفيديو.",
+  yt_embed_bg: "يتم التشغيل عبر مشغّل YouTube — قد يتوقف عند قفل الشاشة.",
   yt_limit_note: "أحدث ~15",
   s_storage: "التخزين",
   storage_usage: (u,q)=>`المستخدم ${u} / ${q}`,

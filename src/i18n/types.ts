@@ -91,6 +91,7 @@ export interface Lang {
   yt_video: string;
   yt_invalid: string;
   yt_embed_blocked: string;
+  yt_embed_bg: string;
   yt_limit_note: string;
   s_storage: string;
   storage_usage: LangFn;

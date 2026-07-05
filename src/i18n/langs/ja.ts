@@ -89,6 +89,7 @@ const ja: Lang = {
   yt_video: "YouTube動画",
   yt_invalid: "無効なYouTubeリンクです。",
   yt_embed_blocked: "この動画は埋め込めません。",
+  yt_embed_bg: "YouTubeプレーヤーで再生中 — 画面ロック中は停止することがあります。",
   yt_limit_note: "最新~15件",
   s_storage: "ストレージ",
   storage_usage: (u,q)=>`${u} / ${q} 使用中`,

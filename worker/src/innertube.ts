@@ -1,8 +1,8 @@
 /**
- * Direct YouTube access via youtubei.js (plan option A). The ANDROID client
- * returns undeciphered stream URLs, but those are bound to the resolver's IP —
- * so the audio itself is streamed through /v1/yt/audio rather than handed to
- * the browser. Search/listing come from the same session.
+ * Direct YouTube access via youtubei.js (plan option A). The ANDROID_VR/IOS
+ * clients return direct (uncipherd) stream URLs, but those are bound to the
+ * resolver's IP — so the audio itself is streamed through /v1/yt/audio rather
+ * than handed to the browser. Search/listing come from the same session.
  */
 import { Innertube } from 'youtubei.js';
 import { fetchWithTimeout } from './safe-fetch';
@@ -12,11 +12,19 @@ let tube: Promise<Innertube> | null = null;
 export function innertube(): Promise<Innertube> {
   if (!tube) {
     tube = Innertube.create({
-      generate_session_locally: true,
-      // player JS is required: since ~2025 every client's stream URLs are ciphered
-      retrieve_player: true,
+      // Server-generated session: locally-generated visitor data now trips
+      // YouTube's "Sign in to confirm you're not a bot" wall on most videos.
+      generate_session_locally: false,
+      // No player JS: the clients below hand out direct URLs, and running
+      // YouTube's cipher code needs a JS evaluator workerd doesn't allow.
+      // (Format.decipher without a player passes the direct URL through.)
+      retrieve_player: false,
       // workerd rejects unbound fetch ("Illegal invocation") — rebind it
       fetch: (input, init) => globalThis.fetch(input as RequestInfo, init),
+    });
+    // A failed create must not poison the cache for the isolate's lifetime.
+    tube.catch(() => {
+      tube = null;
     });
   }
   return tube;
@@ -122,28 +130,26 @@ export interface TubeAudio {
   ua: string;
 }
 
-const TV_UA = 'Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version';
 const WEB_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const CLIENT_UA: Record<string, string> = {
+  ANDROID_VR:
+    'com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip',
   IOS: 'com.google.ios.youtube/20.20.7 (iPhone16,2; U; CPU iOS 18_1_1 like Mac OS X;)',
-  ANDROID: 'com.google.android.youtube/20.20.41 (Linux; U; Android 14; en_US) gzip',
-  TV: TV_UA,
-  TV_EMBEDDED: TV_UA,
-  TV_SIMPLY: TV_UA,
-  WEB_EMBEDDED: WEB_UA,
-  MWEB: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
-  WEB: WEB_UA,
 };
 
 /**
  * Best audio-only format for a video (URL usable from THIS worker's IP).
- * Clients are tried in order until one yields a decipherable format whose URL
- * also serves MID-FILE ranges — under PO-token enforcement many clients only
- * get the first chunk, which breaks streaming/seek. TV/embedded clients are
- * typically exempt, hence they go first.
+ * Clients are tried in order until one yields a direct-URL format that also
+ * serves MID-FILE ranges — under PO-token enforcement most clients only get
+ * the first ~2 MB, which breaks streaming/seek.
+ * ANDROID_VR (Meta Quest) is the one remaining PO-token-exempt client; IOS
+ * resolves everywhere but its URLs are usually range-capped, so it's only a
+ * fallback for the videos where the cap isn't applied.
+ * The TV/embedded/WEB clients were dropped: they now require a JS evaluator
+ * to decipher (unavailable in workerd) or fail playability outright.
  */
-const STREAM_CLIENTS = ['TV_EMBEDDED', 'TV_SIMPLY', 'TV', 'WEB_EMBEDDED', 'IOS', 'ANDROID', 'MWEB', 'WEB'] as const;
+const STREAM_CLIENTS = ['ANDROID_VR', 'IOS'] as const;
 
 export async function tubeAudio(videoId: string): Promise<TubeAudio | null> {
   const yt = await innertube();
@@ -151,16 +157,13 @@ export async function tubeAudio(videoId: string): Promise<TubeAudio | null> {
     try {
       const info = await yt.getBasicInfo(videoId, { client });
       if (info.playability_status?.status !== 'OK') continue;
+      // Direct-URL formats only — with no player, ciphered ones can't be used
       const formats = (info.streaming_data?.adaptive_formats ?? []).filter(
-        (f) =>
-          f.has_audio &&
-          !f.has_video &&
-          (f.url || (f as unknown as { signature_cipher?: string }).signature_cipher ||
-            (f as unknown as { cipher?: string }).cipher),
+        (f) => f.has_audio && !f.has_video && f.url,
       );
       const best = formats.slice().sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0))[0];
       if (!best) continue;
-      // async since v17 (n-sig solving); may resolve to a URL instance → String()
+      // no player → passes the direct URL through; String() guards URL instances
       const url = String((await best.decipher(yt.session.player)) ?? '');
       if (!/^https?:\/\//.test(url)) continue;
       const ua = CLIENT_UA[client] ?? WEB_UA;

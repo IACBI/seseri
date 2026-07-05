@@ -100,6 +100,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   let enterTimer: ReturnType<typeof setTimeout> | null = null;
   let downloadedIds = new Set<string>();
   let currentBlobUrl: string | null = null;
+  let embedNoticeShown = false;
 
   // ── waveform ─────────────────────────────────────────────────────
   const wave: WaveformController = initWaveform(
@@ -589,6 +590,11 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
       setStatus('ok', okStatusText());
     } else {
       setUsingEmbed(true);
+      // The iframe can't keep playing on a locked phone — be upfront about it.
+      if (!embedNoticeShown) {
+        embedNoticeShown = true;
+        toast(t('yt_embed_bg'), 'info');
+      }
       await embedLoadEp(ep, autoplay);
     }
   }

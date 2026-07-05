@@ -89,6 +89,7 @@ const fr: Lang = {
   yt_video: "Vidéo YouTube",
   yt_invalid: "Lien YouTube invalide.",
   yt_embed_blocked: "Cette vidéo ne peut pas être intégrée.",
+  yt_embed_bg: "Lecture via le lecteur YouTube — elle peut s’arrêter quand l’écran est verrouillé.",
   yt_limit_note: "~15 plus récents",
   s_storage: "Stockage",
   storage_usage: (u,q)=>`${u} / ${q} utilisés`,

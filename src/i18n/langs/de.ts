@@ -89,6 +89,7 @@ const de: Lang = {
   yt_video: "YouTube-Video",
   yt_invalid: "Ungültiger YouTube-Link.",
   yt_embed_blocked: "Dieses Video kann nicht eingebettet werden.",
+  yt_embed_bg: "Wiedergabe über den YouTube-Player — bei gesperrtem Bildschirm kann sie stoppen.",
   yt_limit_note: "neueste ~15",
   s_storage: "Speicher",
   storage_usage: (u,q)=>`${u} / ${q} belegt`,
