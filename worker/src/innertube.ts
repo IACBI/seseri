@@ -156,7 +156,14 @@ export async function tubeAudio(videoId: string): Promise<TubeAudio | null> {
   for (const client of STREAM_CLIENTS) {
     try {
       const info = await yt.getBasicInfo(videoId, { client });
-      if (info.playability_status?.status !== 'OK') continue;
+      if (info.playability_status?.status !== 'OK') {
+        // Surface WHY in `wrangler tail` — geo-blocks and bot walls look
+        // identical from the client ("no stream") but need different fixes.
+        console.error(
+          `tubeAudio[${client}]: ${info.playability_status?.status} — ${info.playability_status?.reason ?? ''}`,
+        );
+        continue;
+      }
       // Direct-URL formats only — with no player, ciphered ones can't be used
       const formats = (info.streaming_data?.adaptive_formats ?? []).filter(
         (f) => f.has_audio && !f.has_video && f.url,
