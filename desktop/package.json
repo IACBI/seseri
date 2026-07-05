@@ -1,14 +1,13 @@
 {
-  "name": "desktop",
+  "name": "seseri-desktop",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Tauri desktop shell for Seseri — loads the hosted web app in a native window.",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "tauri": "tauri"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "A.C.B",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4"

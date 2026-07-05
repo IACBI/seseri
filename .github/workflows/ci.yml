@@ -1,5 +1,4 @@
-# Quality gate — move to .github/workflows/ci.yml once the repo is pushed.
-# Runs the same chain as `npm run verify`.
+# Quality gate — runs the same chain as `npm run verify`.
 name: CI
 
 on:
