@@ -146,16 +146,22 @@ app.get('/v1/yt/search', async (c) => {
   );
 });
 
-/** Resolve an audio format for the audio proxy; cached in KV (URLs ~6 h). */
+/**
+ * Resolve an audio format for the audio proxy; cached in KV (URLs ~6 h).
+ * Failures are cached too ("none") so /v1/yt/resolve falls through to the
+ * public pool quickly instead of re-probing every client each time.
+ */
 async function audioFor(kv: KVNamespace, id: string): Promise<TubeAudio | null> {
-  const key = 'yta:' + id;
-  const hit = await kv.get<TubeAudio>(key, 'json').catch(() => null);
-  if (hit) return hit;
+  const key = 'yta2:' + id;
+  const hit = await kv.get<TubeAudio | { none: true }>(key, 'json').catch(() => null);
+  if (hit) return 'none' in hit ? null : hit;
   const fresh = await tubeAudio(id).catch((e: Error) => {
     console.error('tubeAudio failed:', e.message);
     return null;
   });
-  if (fresh) await kv.put(key, JSON.stringify(fresh), { expirationTtl: 1800 }).catch(() => {});
+  await kv
+    .put(key, JSON.stringify(fresh ?? { none: true }), { expirationTtl: fresh ? 1800 : 900 })
+    .catch(() => {});
   return fresh;
 }
 
@@ -180,45 +186,91 @@ app.get('/v1/yt/resolve', async (c) => {
   );
 });
 
-/** Stream the audio bytes through the worker (range-aware → seek works). */
+/**
+ * Stream the audio bytes through the worker (range-aware → seek works).
+ * googlevideo rejects range-less and open-ended requests but happily serves
+ * bounded ranges — so the requested span is fetched as sequential ≤4 MB
+ * chunks stitched into one streamed response.
+ */
+const AUDIO_CHUNK = 1024 * 1024;
+
 app.get('/v1/yt/audio', async (c) => {
   const id = c.req.query('id') ?? '';
   if (!/^[\w-]{11}$/.test(id)) return c.json({ error: 'invalid id' }, 400);
-  let fmt = await audioFor(c.env.KV, id);
+  const kv = c.env.KV;
+  let fmt = await audioFor(kv, id);
   if (!fmt) return c.json({ error: 'no stream' }, 502);
 
-  // googlevideo 403s range-less requests — always send one; when the client
-  // didn't ask for a range we unwrap the 206 back into a plain 200 below.
-  const clientRange = c.req.header('range');
-  const range = clientRange ?? 'bytes=0-';
-  const upstreamFetch = (f: TubeAudio): Promise<Response> =>
-    fetch(f.url, { headers: { 'user-agent': f.ua, range } });
+  const size = fmt.contentLength || 0;
+  const m = /bytes=(\d+)-(\d*)/.exec(c.req.header('range') ?? '');
+  const clientRanged = !!m;
+  const start = m ? parseInt(m[1] ?? '0') : 0;
+  const endWanted =
+    m && m[2] ? Math.min(parseInt(m[2]), size ? size - 1 : Infinity) : size ? size - 1 : -1;
+  if (endWanted < 0) return c.json({ error: 'no stream' }, 502); // unknown length
+  if (start > endWanted) return c.body(null, 416);
 
-  let upstream = await upstreamFetch(fmt);
-  if (upstream.status === 403 || upstream.status === 410) {
-    // URL expired — re-resolve once and retry
-    await c.env.KV.delete('yta:' + id).catch(() => {});
-    fmt = await audioFor(c.env.KV, id);
-    if (!fmt) return c.json({ error: 'no stream' }, 502);
-    upstream = await upstreamFetch(fmt);
-  }
-  if (!upstream.ok && upstream.status !== 206) {
-    return c.json({ error: 'upstream ' + upstream.status }, 502);
+  const chunk = async (from: number, to: number, allowRetry: boolean): Promise<Response> => {
+    // googlevideo's own `range` query param passes where the Range header is
+    // rejected for non-zero offsets (PO-token era first-chunk-only behavior)
+    const u = fmt!.url + `&range=${from}-${to}`;
+    const res = await fetch(u, { headers: { 'user-agent': fmt!.ua } });
+    if ((res.status === 403 || res.status === 410) && allowRetry) {
+      await kv.delete('yta2:' + id).catch(() => {});
+      fmt = await audioFor(kv, id);
+      if (fmt) return chunk(from, to, false); // fresh URL, one retry
+    }
+    return res;
+  };
+
+  // Probe the first chunk before committing to a streamed response
+  const firstTo = Math.min(start + AUDIO_CHUNK - 1, endWanted);
+  const first = await chunk(start, firstTo, true);
+  if (!first.ok && first.status !== 206) {
+    return c.json({ error: 'upstream ' + first.status }, 502);
   }
 
-  const headers = new Headers({ 'content-type': fmt.mime, 'accept-ranges': 'bytes' });
-  headers.set('cache-control', 'no-store');
-  if (!clientRange && upstream.status === 206) {
-    // client wanted the whole file — present the full-range 206 as a 200
-    const total = upstream.headers.get('content-range')?.split('/')[1];
-    if (total) headers.set('content-length', total);
-    return new Response(upstream.body, { status: 200, headers });
+  const total = endWanted - start + 1;
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        let res = first;
+        let from = start;
+        for (;;) {
+          const reader = res.body?.getReader();
+          if (!reader) break;
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+          from += AUDIO_CHUNK;
+          if (from > endWanted) break;
+          res = await chunk(from, Math.min(from + AUDIO_CHUNK - 1, endWanted), true);
+          if (!res.ok && res.status !== 206) break;
+        }
+      } catch {
+        /* client went away or upstream died mid-stream */
+      }
+      try {
+        controller.close();
+      } catch {
+        /* already closed */
+      }
+    },
+  });
+
+  const headers = new Headers({
+    'content-type': fmt.mime,
+    'accept-ranges': 'bytes',
+    'cache-control': 'no-store',
+    'content-length': String(total),
+  });
+  if (clientRanged) {
+    headers.set('content-range', `bytes ${start}-${endWanted}/${size}`);
+    return new Response(stream, { status: 206, headers });
   }
-  for (const h of ['content-range', 'content-length'] as const) {
-    const v = upstream.headers.get(h);
-    if (v) headers.set(h, v);
-  }
-  return new Response(upstream.body, { status: upstream.status, headers });
+  return new Response(stream, { status: 200, headers });
 });
 
 app.notFound((c) => c.json({ error: 'not found' }, 404));

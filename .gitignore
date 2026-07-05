@@ -14,6 +14,10 @@ npm-debug.log*
 # Wrangler local state
 .wrangler/
 
+# Tauri build artifacts
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+
 # Editor / OS
 .vscode/
 .idea/

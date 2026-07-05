@@ -58,30 +58,46 @@ JSON dönmeli.
 
 ---
 
-## 3) Microsoft Store (Windows / MSIX)
+## 3) Windows uygulaması (mağazasız — doğrudan indirilebilir kurulum)
 
-1. **PWABuilder**: https://www.pwabuilder.com → `https://iacbi.github.io/seseri/`
-   adresini gir → **Start**. Rapor kartının yeşil olduğunu doğrula
-   (manifest, service worker, HTTPS).
-2. **Package for Stores → Windows** seç.
-3. Partner Center'da uygulama adını rezerve et:
-   https://partner.microsoft.com/dashboard → **Apps and games → New product →
-   MSIX or PWA app** → ad: `Seseri`.
-4. Partner Center'ın verdiği üç değeri PWABuilder formuna gir:
-   **Package ID**, **Publisher ID** (`CN=...`), **Publisher display name**
-   (Partner Center → Product identity sayfasında).
-5. PWABuilder'ın ürettiği `.msixbundle` dosyasını indir.
-6. **Önce yerelde dene (sideload):** dosyaya çift tıkla → kur → uygulamayı aç;
-   ses çalarken pencereyi simge durumuna küçült ve kilit ekranında medya
-   tuşlarını doğrula.
-7. Partner Center → ürünün → **Start submission**:
-   - Paket: `.msixbundle`'ı yükle
-   - Fiyat: Free · Pazarlar: tümü (veya seçim)
-   - Yaş: IARC anketi (podcast çalar → genellikle 3+/E)
-   - Store listing: açıklama + `public/screenshots/` görselleri
-     (wide-feed.png vb.) + 512 ikon
-   - Privacy policy URL: yukarıdaki adres
-8. **Submit** → inceleme genellikle 24–72 saat.
+Masaüstü sürümü `desktop/` altındaki **Tauri v2** sarmalayıcısıdır: canlı
+siteyi WebView2 içinde açar, yani web'e yapılan her deploy masaüstü
+kullanıcılarına da anında yansır. Kurulum dosyası ~3-5 MB'dir.
+
+### Kurulum dosyasını üretme
+
+```bash
+cd desktop
+npm install          # bir kez
+npx tauri build      # ilk seferde Rust bağımlılıklarını derler (5-15 dk)
+```
+
+Çıktı: `desktop/src-tauri/target/release/bundle/nsis/Seseri_3.0.0_x64-setup.exe`
+
+### Dağıtma (GitHub Releases)
+
+```bash
+gh release create v3.0.0 \
+  "desktop/src-tauri/target/release/bundle/nsis/Seseri_3.0.0_x64-setup.exe" \
+  --repo IACBI/seseri --title "Seseri 3.0.0" \
+  --notes "Windows kurulumu — indir, çalıştır, kur."
+```
+
+İndirme linkini README'ye / siteye koy:
+`https://github.com/IACBI/seseri/releases/latest`
+
+### Bilinmesi gerekenler
+
+- **SmartScreen uyarısı:** exe imzasız olduğu için Windows ilk açılışta
+  "Windows korumalı" uyarısı gösterir — kullanıcı **Daha fazla bilgi →
+  Yine de çalıştır** der. Bunu kaldırmak için kod imzalama sertifikası
+  gerekir (Azure Trusted Signing ~10 $/ay veya OV sertifikası ~70+ $/yıl);
+  indirme sayısı arttıkça SmartScreen uyarısı kendiliğinden de azalır.
+- **Sürüm güncelleme:** uygulama içeriği web'den geldiği için yeni installer
+  yalnızca ikon/pencere gibi kabuk değişikliklerinde gerekir
+  (`tauri.conf.json` → `version` artır, yeniden `tauri build`, yeni release).
+- İkonlar `npx tauri icon ../public/icons/icon-512.png` ile S-monogramından
+  yeniden üretilir.
 
 ---
 

@@ -7,7 +7,7 @@
   "observability": { "enabled": true },
   // KV: rate-limit counters + health-checked YT instance list
   "kv_namespaces": [
-    { "binding": "KV", "id": "REPLACE_ON_DEPLOY" }
+    { "binding": "KV", "id": "8a295a8885fb4ac6a70b21d9c81c64d9" }
   ],
   // Refresh the healthy Piped/Invidious list twice an hour
   "triggers": { "crons": ["*/30 * * * *"] }

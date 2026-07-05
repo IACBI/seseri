@@ -5,6 +5,7 @@
  * the browser. Search/listing come from the same session.
  */
 import { Innertube } from 'youtubei.js';
+import { fetchWithTimeout } from './safe-fetch';
 
 let tube: Promise<Innertube> | null = null;
 
@@ -19,6 +20,11 @@ export function innertube(): Promise<Innertube> {
     });
   }
   return tube;
+}
+
+/** YouTube often hands out protocol-relative thumbnail URLs. */
+function absThumb(u: string): string {
+  return u.startsWith('//') ? 'https:' + u : u;
 }
 
 export interface YtSearchRow {
@@ -53,7 +59,7 @@ export async function tubeSearch(q: string): Promise<YtSearchRow[]> {
             id: v.video_id,
             title: v.title?.text ?? '',
             author: v.author?.name ?? '',
-            thumb: v.thumbnails?.[0]?.url ?? '',
+            thumb: absThumb(v.thumbnails?.[0]?.url ?? ""),
             extra: v.duration?.seconds ?? 0,
           });
         }
@@ -68,7 +74,7 @@ export async function tubeSearch(q: string): Promise<YtSearchRow[]> {
             id: c.id,
             title: c.author?.name ?? '',
             author: '',
-            thumb: c.author?.thumbnails?.[0]?.url ?? '',
+            thumb: absThumb(c.author?.thumbnails?.[0]?.url ?? ""),
             extra: 0,
           });
         }
@@ -90,10 +96,11 @@ export async function tubeSearch(q: string): Promise<YtSearchRow[]> {
             id,
             title: p.title?.text ?? p.metadata?.title?.text ?? '',
             author: p.author?.name ?? '',
-            thumb:
+            thumb: absThumb(
               p.thumbnails?.[0]?.url ??
-              p.content_image?.primary_thumbnail?.image?.[0]?.url ??
-              '',
+                p.content_image?.primary_thumbnail?.image?.[0]?.url ??
+                '',
+            ),
             extra: parseInt(p.video_count?.text ?? '0') || 0,
           });
         }
@@ -115,20 +122,28 @@ export interface TubeAudio {
   ua: string;
 }
 
+const TV_UA = 'Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version';
+const WEB_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const CLIENT_UA: Record<string, string> = {
   IOS: 'com.google.ios.youtube/20.20.7 (iPhone16,2; U; CPU iOS 18_1_1 like Mac OS X;)',
   ANDROID: 'com.google.android.youtube/20.20.41 (Linux; U; Android 14; en_US) gzip',
-  TV: 'Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version',
+  TV: TV_UA,
+  TV_EMBEDDED: TV_UA,
+  TV_SIMPLY: TV_UA,
+  WEB_EMBEDDED: WEB_UA,
   MWEB: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
-  WEB: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  WEB: WEB_UA,
 };
 
 /**
  * Best audio-only format for a video (URL usable from THIS worker's IP).
- * Since the SABR rollout, some clients only expose a server-ABR stream; the
- * clients below are tried in order until one hands out per-format URLs.
+ * Clients are tried in order until one yields a decipherable format whose URL
+ * also serves MID-FILE ranges — under PO-token enforcement many clients only
+ * get the first chunk, which breaks streaming/seek. TV/embedded clients are
+ * typically exempt, hence they go first.
  */
-const STREAM_CLIENTS = ['IOS', 'TV', 'ANDROID', 'MWEB', 'WEB'] as const;
+const STREAM_CLIENTS = ['TV_EMBEDDED', 'TV_SIMPLY', 'TV', 'WEB_EMBEDDED', 'IOS', 'ANDROID', 'MWEB', 'WEB'] as const;
 
 export async function tubeAudio(videoId: string): Promise<TubeAudio | null> {
   const yt = await innertube();
@@ -148,12 +163,28 @@ export async function tubeAudio(videoId: string): Promise<TubeAudio | null> {
       // async since v17 (n-sig solving); may resolve to a URL instance → String()
       const url = String((await best.decipher(yt.session.player)) ?? '');
       if (!/^https?:\/\//.test(url)) continue;
+      const ua = CLIENT_UA[client] ?? WEB_UA;
+      const len = Number(best.content_length ?? 0);
+
+      // Mid-file probe: only accept URLs that stream beyond the first chunk
+      if (len > 4096) {
+        const mid = Math.floor(len / 2);
+        const probe = await fetchWithTimeout(`${url}&range=${mid}-${mid + 1023}`, 8000, {
+          headers: { 'user-agent': ua },
+        });
+        await probe.body?.cancel().catch(() => {});
+        if (!probe.ok) {
+          console.error(`tubeAudio[${client}]: mid-range probe ${probe.status}`);
+          continue;
+        }
+      }
+
       return {
         url,
         mime: (best.mime_type ?? 'audio/mp4').split(';')[0] ?? 'audio/mp4',
         bitrate: best.bitrate ?? 0,
-        contentLength: Number(best.content_length ?? 0),
-        ua: CLIENT_UA[client] ?? CLIENT_UA.WEB ?? '',
+        contentLength: len,
+        ua,
       };
     } catch (e) {
       console.error(`tubeAudio[${client}]:`, (e as Error).message);
