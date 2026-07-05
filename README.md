@@ -10,7 +10,8 @@ YouTube link — stream, resume, queue and download episodes for offline
 listening. Vite + strict TypeScript frontend, optional Cloudflare Worker
 backend, installable as a PWA / Microsoft Store / Google Play app.
 
-**▶ Live:** https://iacbi.github.io/seseri/
+**▶ Live:** https://iacbi.github.io/seseri/ ·
+**🪟 Windows app:** [download the installer](https://github.com/IACBI/seseri/releases/latest)
 
 **Language / Dil:** **[English](#lang-en)** · **[Türkçe](#lang-tr)**
 
@@ -106,11 +107,15 @@ cron-health-checked instance pool. Deploy with `npx wrangler deploy`, then set
 `VITE_API_BASE` to the workers.dev URL at build time. See
 [docs/STORE.md](docs/STORE.md) for the full release pipeline.
 
-### 🏪 Store packaging
+### 📦 Distribution
 
-Microsoft Store (MSIX) and Google Play (TWA) packages are produced from the
-live PWA with [PWABuilder](https://www.pwabuilder.com/) — step-by-step
-instructions live in [docs/STORE.md](docs/STORE.md).
+- **Windows**: a Tauri v2 shell (`desktop/`) wraps the live site in WebView2 —
+  a ~4 MB NSIS installer published on
+  [GitHub Releases](https://github.com/IACBI/seseri/releases/latest); the app
+  updates itself with every web deploy.
+- **Google Play**: TWA package produced from the live PWA with
+  [PWABuilder](https://www.pwabuilder.com/).
+- Step-by-step release guide: [docs/STORE.md](docs/STORE.md).
 
 ### 🔒 Privacy
 
@@ -136,7 +141,8 @@ linki yapıştır — çal, kaldığın yerden devam et, kuyruğa ekle, bölüml
 Cloudflare Worker arka ucu; PWA / Microsoft Store / Google Play uygulaması
 olarak kurulabilir.
 
-**▶ Canlı:** https://iacbi.github.io/seseri/
+**▶ Canlı:** https://iacbi.github.io/seseri/ ·
+**🪟 Windows uygulaması:** [kurulumu indir](https://github.com/IACBI/seseri/releases/latest)
 
 ### ✨ Özellikler
 
@@ -170,11 +176,15 @@ npm run worker:dev            # http://127.0.0.1:8787
 İstemci önce Worker'ı dener (`VITE_API_BASE`, bkz. `.env.development`),
 ulaşamazsa otomatik olarak halka açık CORS proxy'lerine düşer.
 
-### 🏪 Mağazalara yükleme
+### 📦 Dağıtım
 
-Microsoft Store (MSIX) ve Google Play (TWA) paketleri canlı PWA'dan
-[PWABuilder](https://www.pwabuilder.com/) ile üretilir — adım adım rehber:
-[docs/STORE.md](docs/STORE.md).
+- **Windows**: `desktop/` altındaki Tauri v2 kabuğu canlı siteyi WebView2
+  içinde açar — ~4 MB'lık NSIS kurulumu
+  [GitHub Releases](https://github.com/IACBI/seseri/releases/latest)'te;
+  uygulama her web dağıtımıyla kendini günceller.
+- **Google Play**: canlı PWA'dan [PWABuilder](https://www.pwabuilder.com/)
+  ile TWA paketi.
+- Adım adım rehber: [docs/STORE.md](docs/STORE.md).
 
 ### 🔒 Gizlilik
 
