@@ -2,12 +2,13 @@
 
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-live-brightgreen)](https://iacbi.github.io/seseri/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![PWA](https://img.shields.io/badge/PWA-ready-5b8af5)](manifest.json)
-[![No dependencies](https://img.shields.io/badge/dependencies-0-success)](#technology)
+[![PWA](https://img.shields.io/badge/PWA-ready-5b8af5)](public/manifest.webmanifest)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)](tsconfig.json)
 
-A free, no-account, browser-based podcast player. Search with the iTunes API,
-paste any RSS feed URL, or drop a YouTube playlist/channel link — no backend, no
-sign-up, no tracking. One HTML file, zero dependencies.
+A free, no-account podcast player. Search Apple Podcasts, paste any RSS feed or
+YouTube link — stream, resume, queue and download episodes for offline
+listening. Vite + strict TypeScript frontend, optional Cloudflare Worker
+backend, installable as a PWA / Microsoft Store / Google Play app.
 
 **▶ Live:** https://iacbi.github.io/seseri/
 
@@ -24,19 +25,18 @@ sign-up, no tracking. One HTML file, zero dependencies.
 | | |
 |---|---|
 | 🔍 **Podcast search** | by name, Apple Podcasts link, or a direct RSS feed URL |
-| ▶️ **YouTube shows** | paste a YouTube playlist / channel / video link — streamed as audio via public Piped/Invidious instances (ad-free, background, download, full list with dates), with an official `youtube-nocookie` embed fallback when those servers are down |
-| 🌊 **Waveform scrubber** | a per-episode waveform you can drag to seek, with a live playhead and time tooltip |
-| 🎛 **Full player** | play/pause, previous/next, skip back/forward, speed control (0.5×–2.5×) |
-| ⏯ **Resume playback** | episode progress is saved to `localStorage` |
-| ⭐ **Subscriptions** | star podcasts and find them on the home screen |
-| 🔗 **Share links** | `?podcast=<id>` / `?rss=<url>` deep links to any podcast |
-| 🌙 **Sleep timer** | pause automatically after 15 / 30 / 60 minutes |
-| 📱 **Lock-screen controls** | Media Session API (headset / lock-screen buttons) |
-| 📋 **Episode list** | date sorting, in-list filtering, per-episode download |
-| 🎨 **Themes** | Dark, Light, OLED Black; 7 accent colors |
+| ▶️ **YouTube shows** | search by name (channels/playlists/videos appear in results) or paste a link; audio streams through the Worker (Innertube + range-aware proxy → background/lock-screen playback) or public Piped instances, with an official `youtube-nocookie` embed fallback |
+| 📥 **Offline episodes** | downloads live in the Cache API and play (and seek) with no connection; feeds are cached in IndexedDB and refresh in the background (stale-while-revalidate) |
+| 🧾 **Play queue** | queue any episode as "up next" — the queue wins over list order |
+| 🎧 **Mini player** | leaving a feed keeps playing; a floating transport on the home screen takes you back |
+| 🌊 **Waveform scrubber** | per-episode waveform with drag-to-seek, live playhead and time tooltip |
+| 🎛 **Full player** | play/pause, prev/next, skip, speed 0.5×–2.5×, sleep timer, resume position |
+| 🖥 **Desktop layout** | ≥900px shows a library rail beside the episode pane |
+| ⭐ **Subscriptions** | star podcasts; OPML import/export + JSON backup |
+| 🎨 **Themes** | Auto (system), Dark, Light, OLED Black; 7 accent colors |
 | 🌍 **Multilingual** | TR / EN / DE / FR / ES / AR / JA / RU (incl. RTL) |
-| 📲 **PWA** | "Add to Home Screen"; offline shell via Service Worker |
-| ♿ **Accessible** | keyboard-operable, visible focus, full `prefers-reduced-motion` support |
+| 📲 **Installable** | PWA with maskable/monochrome icons, shortcuts, store screenshots |
+| ♿ **Accessible** | native `<dialog>` settings, aria-live status, keyboard-operable, `prefers-reduced-motion` |
 
 #### Keyboard shortcuts
 
@@ -48,66 +48,79 @@ sign-up, no tracking. One HTML file, zero dependencies.
 
 ### 🚀 Getting started
 
-Open `index.html` directly in a browser — no build step required. For local
-development, serve it over HTTP so the Service Worker can register:
-
 ```bash
-npx serve .
-# or
-python -m http.server 8080
+npm install           # once
+npm run dev           # http://localhost:5199
+
+# optional backend (feed/iTunes proxy + YouTube resolution)
+npm --prefix worker install   # once
+npm run worker:dev            # http://127.0.0.1:8787
 ```
 
-Then visit `http://localhost:8080`.
+The client tries the Worker first (`VITE_API_BASE`, see `.env.development`)
+and falls back to public CORS proxies automatically when it is unreachable.
 
-#### Deploy your own copy
+### 🧰 Scripts
 
-Fork the repository and enable **GitHub Pages**:
-`Settings → Pages → Source: GitHub Actions` (a deploy workflow is included).
+| Script | What it does |
+|---|---|
+| `npm run dev` / `build` / `preview` | Vite dev server / production build / serve `dist` |
+| `npm test` | Vitest unit suites (parser, OPML, i18n completeness, proxy chain, formatters) |
+| `npm run lint` / `typecheck` / `format` | ESLint · `tsc --noEmit` · Prettier |
+| `npm run worker:dev` / `worker:test` | wrangler dev · Worker handler tests |
+| `npm run verify` | lint + typecheck + tests + build + worker typecheck/tests |
+| `node scripts/smoke-p3-offline.cjs` | headless-Edge smoke: download → offline reload → playback |
+| `node scripts/smoke-p4-worker.cjs` | smoke: real RSS through the local Worker (needs `worker:dev`) |
+| `node scripts/smoke-p5-mini.cjs` | smoke: mini player, queue, back-navigation |
+| `node scripts/icons.cjs` | regenerate all PNG icons from `public/icons/seseri.svg` |
+| `node scripts/store-shots.cjs` | regenerate manifest/store screenshots |
 
-> The app is **path-independent**: the manifest `scope`/`start_url`, the Service
-> Worker, and the `404.html` redirect all resolve paths relative to where the app
-> is served — so it works unchanged on a project page (`/seseri/`), a user/org
-> page, or a custom domain, with no configuration.
-
-### 📁 File structure
+### 📁 Structure
 
 ```
 .
-├── index.html          # The whole app (CSS + JS inline)
-├── manifest.json       # PWA manifest
-├── sw.js               # Service Worker (network-first HTML, cache-first assets)
-├── privacy-policy.html # Privacy policy (TR + EN)
-├── 404.html            # GitHub Pages SPA fallback
-├── icons/              # PWA icons (192 / 512)
-└── .github/workflows/  # GitHub Pages deployment
+├── index.html             # Vite entry (CSP, meta, manifest link)
+├── src/
+│   ├── app.ts             # boot & wiring
+│   ├── feeds/             # iTunes / RSS / input parsing / proxy chain / resolveFeed
+│   ├── youtube/           # Piped/Invidious/Atom resolvers + iframe embed fallback
+│   ├── player/            # audio engine, media session, sleep timer, offline downloads
+│   ├── state/             # signals: settings, queue, now-playing
+│   ├── storage/           # localStorage (legacy keys), IndexedDB, OPML
+│   ├── ui/                # shell, router, screens, mini player, theme, toast, waveform
+│   ├── i18n/              # 8 languages, compile-time key completeness
+│   ├── styles/            # tokens / themes / base / components
+│   └── sw.ts              # service worker (injectManifest)
+├── worker/                # Cloudflare Worker API (Hono): /v1/feed /v1/itunes /v1/yt/*
+├── public/                # manifest, icons (incl. maskable/monochrome), screenshots,
+│                          # privacy-policy, 404, .well-known/assetlinks.json
+├── scripts/               # icon/screenshot generators + headless smoke tests
+└── docs/                  # TESTPLAN, STORE guide, ci.yml, reference screenshots
 ```
 
-### 🛠 Technology
+### ☁️ Backend (optional but recommended)
 
-- Vanilla JS (ES2022) — no framework, no build tools, zero dependencies
-- [iTunes Search API](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/) for podcast search & episode lookup, with a cache-busting workaround for the iTunes CDN's cross-origin caching quirk
-- RSS feeds (and an iTunes fallback) fetched through public CORS proxies — [AllOrigins](https://allorigins.win/), with [corsproxy.io](https://corsproxy.io/) as backup
-- `<audio>` element + Media Session API; the waveform is generated locally from a deterministic per-episode seed
-- Cache API + Service Worker for the offline shell
-- Content Security Policy + HTML escaping for all dynamic content
+`worker/` is a Cloudflare Worker (free tier friendly): RSS/iTunes proxying with
+edge caching and SSRF guards, plus YouTube listing/stream resolution over a
+cron-health-checked instance pool. Deploy with `npx wrangler deploy`, then set
+`VITE_API_BASE` to the workers.dev URL at build time. See
+[docs/STORE.md](docs/STORE.md) for the full release pipeline.
+
+### 🏪 Store packaging
+
+Microsoft Store (MSIX) and Google Play (TWA) packages are produced from the
+live PWA with [PWABuilder](https://www.pwabuilder.com/) — step-by-step
+instructions live in [docs/STORE.md](docs/STORE.md).
 
 ### 🔒 Privacy
 
-No analytics, no accounts, no server. All settings and playback progress stay in
-your browser's `localStorage`. See [privacy-policy.html](privacy-policy.html).
+No analytics, no accounts. Settings/progress stay in `localStorage`; downloads
+stay in your browser's Cache API. See
+[public/privacy-policy.html](public/privacy-policy.html).
 
-### 🤝 Contributing
+### 👤 Author / License
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
-Security reports: [SECURITY.md](SECURITY.md). Release history: [CHANGELOG.md](CHANGELOG.md).
-
-### 👤 Author
-
-**𝓐.𝓒.𝓑** — bozdogancanahmet@gmail.com
-
-### 📄 License
-
-[MIT](LICENSE) © 2026 𝓐.𝓒.𝓑
+**𝓐.𝓒.𝓑** — bozdogancanahmet@gmail.com · [MIT](LICENSE) © 2026
 
 <sub>[↑ Language / Dil](#seseri)</sub>
 
@@ -117,9 +130,11 @@ Security reports: [SECURITY.md](SECURITY.md). Release history: [CHANGELOG.md](CH
 
 ## Türkçe
 
-Ücretsiz, üyeliksiz, tarayıcı tabanlı bir podcast dinleyici. iTunes API ile ara,
-herhangi bir RSS besleme URL'si veya bir YouTube playlist/kanal linki yapıştır —
-arka uç yok, kayıt yok, takip yok. Tek HTML dosyası, sıfır bağımlılık.
+Ücretsiz, üyeliksiz podcast dinleyici. Apple Podcasts'te ara, RSS veya YouTube
+linki yapıştır — çal, kaldığın yerden devam et, kuyruğa ekle, bölümleri
+çevrimdışı dinlemek için indir. Vite + strict TypeScript ön yüz, isteğe bağlı
+Cloudflare Worker arka ucu; PWA / Microsoft Store / Google Play uygulaması
+olarak kurulabilir.
 
 **▶ Canlı:** https://iacbi.github.io/seseri/
 
@@ -127,90 +142,48 @@ arka uç yok, kayıt yok, takip yok. Tek HTML dosyası, sıfır bağımlılık.
 
 | | |
 |---|---|
-| 🔍 **Podcast arama** | isim, Apple Podcasts linki veya doğrudan RSS besleme URL'si ile |
-| ▶️ **YouTube yayınları** | YouTube playlist / kanal / video linki yapıştır — herkese açık Piped/Invidious sunucuları üzerinden ses olarak (reklamsız, arka plan, indirme, tarihli tam liste); sunucular kapalıysa resmi `youtube-nocookie` embed'e düşer |
-| 🌊 **Dalga-form çubuğu** | bölüme özel, sürükleyerek konumlandırılabilen dalga-form; canlı oynatma başı ve zaman ipucu |
-| 🎛 **Tam oynatıcı** | oynat/duraklat, önceki/sonraki, ileri/geri atlama, hız kontrolü (0.5×–2.5×) |
-| ⏯ **Kaldığın yerden devam** | bölüm ilerlemesi `localStorage`'a kaydedilir |
-| ⭐ **Abonelikler** | podcast'leri yıldızla, açılış ekranında listele |
-| 🔗 **Link paylaşımı** | `?podcast=<id>` / `?rss=<url>` derin linkleri |
-| 🌙 **Uyku zamanlayıcısı** | 15 / 30 / 60 dakika sonra otomatik duraklat |
-| 📱 **Kilit ekranı kontrolleri** | Media Session API (kulaklık / kilit ekranı tuşları) |
-| 📋 **Bölüm listesi** | tarih sıralama, liste içi arama, bölüm bazında indirme |
-| 🎨 **Temalar** | Koyu, Açık, OLED Siyah; 7 vurgu rengi |
+| 🔍 **Podcast arama** | isim, Apple Podcasts linki veya doğrudan RSS URL'si |
+| ▶️ **YouTube yayınları** | **isimle ara** (kanal/playlist/videolar sonuçlarda listelenir) veya link yapıştır; ses Worker üzerinden akar (Innertube + range destekli proxy → arka plan/kilit ekranı çalma) ya da Piped'e, o da olmazsa resmi `youtube-nocookie` embed'e düşer |
+| 📥 **Çevrimdışı bölümler** | indirilenler Cache API'de yaşar, bağlantısız çalar ve sarar; feed'ler IndexedDB'de önbelleklenir, arka planda tazelenir |
+| 🧾 **Kuyruk** | bölümü "sıradaki" olarak işaretle — kuyruk, liste sırasından önce gelir |
+| 🎧 **Mini oynatıcı** | feed'den çıkınca çalma sürer; ana ekrandaki yüzen bar seni geri götürür |
+| 🌊 **Dalga-form çubuğu** | bölüme özel, sürüklenebilir dalga-form; canlı oynatma başı |
+| 🎛 **Tam oynatıcı** | oynat/duraklat, önceki/sonraki, atlama, 0.5×–2.5× hız, uyku zamanlayıcısı |
+| 🖥 **Masaüstü düzeni** | ≥900px'te solda kütüphane rayı, sağda bölüm paneli |
+| ⭐ **Abonelikler** | yıldızla; OPML içe/dışa aktarma + JSON yedek |
+| 🎨 **Temalar** | Otomatik (sistem), Koyu, Açık, OLED Siyah; 7 vurgu rengi |
 | 🌍 **Çok dilli** | TR / EN / DE / FR / ES / AR / JA / RU (RTL dahil) |
-| 📲 **PWA** | "Ana Ekrana Ekle"; Service Worker ile çevrimdışı kabuk |
-| ♿ **Erişilebilir** | klavyeyle kullanılabilir, görünür odak, tam `prefers-reduced-motion` desteği |
-
-#### Klavye kısayolları
-
-| Tuş | İşlev |
-|-----|-------|
-| `Space` | Oynat / duraklat |
-| `←` / `→` | Geri / ileri sar |
-| `↑` / `↓` | Önceki / sonraki bölüm |
+| 📲 **Kurulabilir** | maskable/monochrome ikonlu PWA, kısayollar, mağaza görselleri |
+| ♿ **Erişilebilir** | native `<dialog>` ayarlar, aria-live durum, klavye, `prefers-reduced-motion` |
 
 ### 🚀 Hızlı başlangıç
 
-`index.html`'i doğrudan tarayıcıda açın — build adımı gerekmez. Yerel geliştirme
-için Service Worker'ın kaydolabilmesi adına HTTP üzerinden sunun:
-
 ```bash
-npx serve .
-# veya
-python -m http.server 8080
+npm install           # bir kez
+npm run dev           # http://localhost:5199
+
+# isteğe bağlı arka uç (feed/iTunes proxy + YouTube çözümleme)
+npm --prefix worker install   # bir kez
+npm run worker:dev            # http://127.0.0.1:8787
 ```
 
-Ardından `http://localhost:8080` adresini ziyaret edin.
+İstemci önce Worker'ı dener (`VITE_API_BASE`, bkz. `.env.development`),
+ulaşamazsa otomatik olarak halka açık CORS proxy'lerine düşer.
 
-#### Kendi kopyanızı yayınlayın
+### 🏪 Mağazalara yükleme
 
-Repository'yi fork edin ve **GitHub Pages**'i etkinleştirin:
-`Settings → Pages → Source: GitHub Actions` (deploy workflow'u dahildir).
-
-> Uygulama **yoldan bağımsızdır**: manifest `scope`/`start_url`, Service Worker ve
-> `404.html` yönlendirmesi tüm yolları sunulduğu yere göre çözer — yani bir proje
-> sayfasında (`/seseri/`), kullanıcı/organizasyon sayfasında veya özel alan adında
-> hiçbir ayar yapmadan çalışır.
-
-### 📁 Dosya yapısı
-
-```
-.
-├── index.html          # Tüm uygulama (CSS + JS dahil)
-├── manifest.json       # PWA manifest
-├── sw.js               # Service Worker (HTML için network-first, varlıklar için cache-first)
-├── privacy-policy.html # Gizlilik politikası (TR + EN)
-├── 404.html            # GitHub Pages SPA fallback
-├── icons/              # PWA ikonları (192 / 512)
-└── .github/workflows/  # GitHub Pages dağıtımı
-```
-
-### 🛠 Teknoloji
-
-- Vanilla JS (ES2022) — framework yok, build aracı yok, sıfır bağımlılık
-- Podcast arama ve bölüm sorgulama için [iTunes Search API](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/); iTunes CDN'inin çapraz-köken önbellek sorunu için cache-busting çözümü
-- RSS beslemeleri (ve iTunes yedeği) herkese açık CORS proxy'leri üzerinden çekilir — [AllOrigins](https://allorigins.win/), yedek olarak [corsproxy.io](https://corsproxy.io/)
-- `<audio>` elementi + Media Session API; dalga-form, bölüme özel deterministik bir tohumdan yerelde üretilir
-- Çevrimdışı kabuk için Cache API + Service Worker
-- Content Security Policy + tüm dinamik içerik için HTML kaçışlama
+Microsoft Store (MSIX) ve Google Play (TWA) paketleri canlı PWA'dan
+[PWABuilder](https://www.pwabuilder.com/) ile üretilir — adım adım rehber:
+[docs/STORE.md](docs/STORE.md).
 
 ### 🔒 Gizlilik
 
-Analitik yok, hesap yok, sunucu yok. Tüm ayarlar ve dinleme ilerlemesi
-tarayıcınızın `localStorage`'ında kalır. Bkz. [privacy-policy.html](privacy-policy.html).
+Analitik yok, hesap yok. Ayarlar/ilerleme `localStorage`'da, indirilenler
+tarayıcının Cache API'sinde kalır. Bkz.
+[public/privacy-policy.html](public/privacy-policy.html).
 
-### 🤝 Katkı
+### 👤 Yazar / Lisans
 
-Katkılarınızı bekliyoruz — bkz. [CONTRIBUTING.md](CONTRIBUTING.md).
-Güvenlik bildirimleri: [SECURITY.md](SECURITY.md). Sürüm geçmişi: [CHANGELOG.md](CHANGELOG.md).
-
-### 👤 Yazar
-
-**𝓐.𝓒.𝓑** — bozdogancanahmet@gmail.com
-
-### 📄 Lisans
-
-[MIT](LICENSE) © 2026 𝓐.𝓒.𝓑
+**𝓐.𝓒.𝓑** — bozdogancanahmet@gmail.com · [MIT](LICENSE) © 2026
 
 <sub>[↑ Language / Dil](#seseri)</sub>

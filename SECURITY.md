@@ -11,14 +11,16 @@ You can expect an initial response within a week.
 
 ## Scope
 
-This is a fully client-side application:
+- **Client:** no accounts, no cookies — settings/progress live in
+  `localStorage`, feed cache and download metadata in IndexedDB, downloaded
+  audio in the Cache API. External requests go to `itunes.apple.com`, the
+  optional Seseri Worker, public CORS proxies (allorigins/codetabs/corsproxy),
+  Piped/Invidious instances, Google Fonts, and podcast hosts' own CDNs. A
+  strict Content Security Policy (no `'unsafe-inline'` scripts) is declared in
+  `index.html`; remote data is only inserted through a typed DOM builder.
+- **Worker (`worker/`):** a stateless proxy on Cloudflare. It enforces an
+  SSRF guard on user-supplied URLs, response size caps, a CORS origin
+  allowlist and per-IP rate limiting; it stores no user data.
 
-- No backend, no accounts, no cookies — all data stays in `localStorage`.
-- External requests go only to `itunes.apple.com` (search/lookup),
-  `api.allorigins.win` / `corsproxy.io` (CORS proxies for RSS feeds and as an
-  iTunes fallback), Google Fonts, and the podcast hosts' own audio CDNs.
-- A Content Security Policy is declared in `index.html`; all dynamic content
-  is HTML-escaped before insertion.
-
-Reports about XSS via podcast/RSS metadata, CSP bypasses, or Service Worker
-cache poisoning are especially appreciated.
+Reports about XSS via podcast/RSS metadata, CSP bypasses, Service Worker
+cache poisoning, or Worker SSRF/validation gaps are especially appreciated.

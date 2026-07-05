@@ -1,5 +1,53 @@
 # Changelog
 
+## 3.0.0 — 2026-07-04
+
+Full rewrite of the 3,700-line single-file app into a Vite + strict TypeScript
+modular architecture (same features, same stored data — `pp_*` localStorage
+keys remain compatible). Highlights:
+
+### Added
+- **YouTube search by name**: search results now show a YouTube section
+  (channels, playlists, videos) next to podcasts — no link pasting needed.
+  Worker endpoint `/v1/yt/search` (Innertube with a Piped-pool fallback),
+  client falls back to public instances when the Worker is down.
+- **YouTube background / lock-screen playback**: the Worker resolves streams
+  via Innertube (multi-client, deciphered) and proxies the audio bytes
+  range-aware (`/v1/yt/audio`) — the app plays them in a plain `<audio>`
+  element with Media Session, so background and lock-screen controls work.
+  Falls back to public Piped, then the official embed.
+- **Offline listening**: episode downloads live in the Cache API and play
+  (and seek) with no connection; feeds are cached in IndexedDB and refresh in
+  the background (stale-while-revalidate).
+- **Cloudflare Worker backend** (`worker/`): RSS/iTunes proxy with edge
+  caching, SSRF guards and rate limiting, plus YouTube listing/stream
+  resolution over a cron-health-checked Piped/Invidious pool. The client
+  falls back to public proxies when the Worker is unreachable.
+- **Mini player**: leaving a feed keeps playing; a floating transport on the
+  home screen returns to the loaded feed without reloading.
+- **Play queue**: queue episodes as "up next"; the queue wins over list order.
+- **Auto theme** (default): follows the OS `prefers-color-scheme` live.
+- **Desktop two-pane layout** (≥900px): library rail beside the episode pane.
+- **OPML import/export**, JSON backup, storage usage + clear-downloads.
+- **New "S" monogram brand** — single-stroke geometric S; the in-app logo
+  draws itself once on load. Maskable + monochrome PNG variants generated
+  from one SVG master (`scripts/icons.cjs`).
+- **Store readiness**: completed web manifest (id, categories, shortcuts incl.
+  a working `?resume=1`, wide/narrow screenshots, `launch_handler`,
+  `display_override`), `.well-known/assetlinks.json` template, and a full
+  release guide in `docs/STORE.md`.
+- **Quality**: 51 frontend + 22 worker unit tests, `npm run verify` chain,
+  headless-Edge smoke scripts (offline, worker, mini-player/queue).
+
+### Changed
+- Episode rows show a progress hairline and a "listened" state; feed-load
+  errors offer a real retry button; settings drawer is a native `<dialog>`
+  (focus trap + Esc); player status is announced via `aria-live`.
+- CSP no longer needs `'unsafe-inline'` for scripts (typed DOM builder, no
+  inline handlers).
+- Back button on deep-linked visits now navigates home instead of leaving
+  the site.
+
 ## 2.3.0 — 2026-06-20
 
 ### Changed
