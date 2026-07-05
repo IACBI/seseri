@@ -1036,6 +1036,9 @@ body.settings-open .dot.loading { animation-play-state: paused; }
   .ep-item { padding: 0 16px; }
   .ep-item:hover { padding-left: 20px; }
   .sort-bar { padding: 0 16px; }
+  /* No room next to the filter input — the label wraps into 2–3 lines.
+     The toggle button still shows the direction, so drop the text. */
+  .sort-info { display: none; }
 }
 
 /* ═══════════════════════════════════════
