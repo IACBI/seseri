@@ -1,9 +1,7 @@
 import type { Lang } from '../types';
 
 const ja: Lang = {
-  brand_sub: "無料 · アカウント不要 · iTunes API",
   search_placeholder: "ポッドキャスト名またはApple Podcastsリンク...",
-  search_hint: "例: COTEN RADIO · またはApple PodcastsのURLを貼り付け",
   btn_search: "検索 →",
   btn_back: "← 戻る",
   now_playing: "再生中",
@@ -102,6 +100,21 @@ const ja: Lang = {
   dl_saved: "エピソードをオフライン保存 ✓",
   dl_removed: "ダウンロードを削除しました",
   dl_fallback_file: "オフライン保存に失敗 — ファイルとしてダウンロードします",
+  confirm_title: "本当によろしいですか？",
+  confirm_ok: "確認",
+  confirm_cancel: "キャンセル",
+  confirm_clear_downloads: "ダウンロード済みのエピソードをすべて削除します。よろしいですか？",
+  confirm_unsubscribe: "このポッドキャストを購読から削除しますか？",
+  queue_title: "再生キュー",
+  queue_empty: "キューは空です。",
+  queue_clear: "キューをクリア",
+  queue_remove: "キューから削除",
+  queue_move_up: "上へ移動",
+  queue_move_down: "下へ移動",
+  offline_banner: "オフラインです — ダウンロード済みエピソードは再生できます。",
+  toast_opml_exported: "OPMLをエクスポートしました ✓",
+  toast_json_exported: "バックアップをダウンロードしました ✓",
+  lang_select_label: "表示言語",
 };
 
 export default ja;

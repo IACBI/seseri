@@ -3,9 +3,7 @@ export type LangFn = (...args: Array<string | number>) => string;
 
 /** Bir dilin tam anahtar seti — eksik anahtar derleme hatasıdır. */
 export interface Lang {
-  brand_sub: string;
   search_placeholder: string;
-  search_hint: string;
   btn_search: string;
   btn_back: string;
   now_playing: string;
@@ -104,6 +102,21 @@ export interface Lang {
   dl_saved: string;
   dl_removed: string;
   dl_fallback_file: string;
+  confirm_title: string;
+  confirm_ok: string;
+  confirm_cancel: string;
+  confirm_clear_downloads: string;
+  confirm_unsubscribe: string;
+  queue_title: string;
+  queue_empty: string;
+  queue_clear: string;
+  queue_remove: string;
+  queue_move_up: string;
+  queue_move_down: string;
+  offline_banner: string;
+  toast_opml_exported: string;
+  toast_json_exported: string;
+  lang_select_label: string;
 }
 
 export type LangKey = keyof Lang;

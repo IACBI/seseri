@@ -1,9 +1,7 @@
 import type { Lang } from '../types';
 
 const es: Lang = {
-  brand_sub: "Gratis · Sin cuenta · iTunes API",
   search_placeholder: "Nombre del podcast o enlace de Apple Podcasts...",
-  search_hint: "p.ej. Nadie Sabe Nada · o pega una URL de Apple Podcasts",
   btn_search: "Buscar →",
   btn_back: "← Volver",
   now_playing: "REPRODUCIENDO",
@@ -102,6 +100,21 @@ const es: Lang = {
   dl_saved: "Episodio guardado sin conexión ✓",
   dl_removed: "Descarga eliminada",
   dl_fallback_file: "No se pudo guardar sin conexión — descargando archivo",
+  confirm_title: "¿Estás seguro?",
+  confirm_ok: "Confirmar",
+  confirm_cancel: "Cancelar",
+  confirm_clear_downloads: "Se eliminarán todos los episodios descargados. ¿Estás seguro?",
+  confirm_unsubscribe: "¿Quitar este pódcast de tus suscripciones?",
+  queue_title: "Cola de reproducción",
+  queue_empty: "La cola está vacía.",
+  queue_clear: "Vaciar la cola",
+  queue_remove: "Quitar de la cola",
+  queue_move_up: "Subir",
+  queue_move_down: "Bajar",
+  offline_banner: "Sin conexión — los episodios descargados siguen disponibles.",
+  toast_opml_exported: "OPML exportado ✓",
+  toast_json_exported: "Copia de seguridad descargada ✓",
+  lang_select_label: "Idioma de la interfaz",
 };
 
 export default es;

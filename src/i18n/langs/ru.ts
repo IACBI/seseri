@@ -1,9 +1,7 @@
 import type { Lang } from '../types';
 
 const ru: Lang = {
-  brand_sub: "Бесплатно · Без аккаунта · iTunes API",
   search_placeholder: "Название подкаста или ссылка Apple Podcasts...",
-  search_hint: "например: Медуза · или вставьте ссылку Apple Podcasts",
   btn_search: "Найти →",
   btn_back: "← Назад",
   now_playing: "СЕЙЧАС ИГРАЕТ",
@@ -102,6 +100,21 @@ const ru: Lang = {
   dl_saved: "Эпизод сохранён офлайн ✓",
   dl_removed: "Загрузка удалена",
   dl_fallback_file: "Не удалось сохранить офлайн — скачиваем файлом",
+  confirm_title: "Вы уверены?",
+  confirm_ok: "Подтвердить",
+  confirm_cancel: "Отмена",
+  confirm_clear_downloads: "Все загруженные выпуски будут удалены. Вы уверены?",
+  confirm_unsubscribe: "Убрать этот подкаст из подписок?",
+  queue_title: "Очередь воспроизведения",
+  queue_empty: "Очередь пуста.",
+  queue_clear: "Очистить очередь",
+  queue_remove: "Убрать из очереди",
+  queue_move_up: "Вверх",
+  queue_move_down: "Вниз",
+  offline_banner: "Вы офлайн — загруженные выпуски доступны.",
+  toast_opml_exported: "OPML экспортирован ✓",
+  toast_json_exported: "Резервная копия скачана ✓",
+  lang_select_label: "Язык интерфейса",
 };
 
 export default ru;

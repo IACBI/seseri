@@ -1,9 +1,7 @@
 import type { Lang } from '../types';
 
 const en: Lang = {
-  brand_sub: "Free · No Account · iTunes API",
   search_placeholder: "Podcast name, Apple Podcasts or YouTube link...",
-  search_hint: "e.g. Serial · Radiolab · or paste a YouTube playlist/channel link",
   btn_search: "Search →",
   btn_back: "← Back",
   now_playing: "NOW PLAYING",
@@ -102,6 +100,21 @@ const en: Lang = {
   dl_saved: "Episode saved for offline ✓",
   dl_removed: "Download removed",
   dl_fallback_file: "Offline save failed — downloading as a file",
+  confirm_title: "Are you sure?",
+  confirm_ok: "Confirm",
+  confirm_cancel: "Cancel",
+  confirm_clear_downloads: "All downloaded episodes will be deleted. Are you sure?",
+  confirm_unsubscribe: "Remove this podcast from your subscriptions?",
+  queue_title: "Play queue",
+  queue_empty: "Queue is empty.",
+  queue_clear: "Clear queue",
+  queue_remove: "Remove from queue",
+  queue_move_up: "Move up",
+  queue_move_down: "Move down",
+  offline_banner: "You're offline — downloaded episodes are still available.",
+  toast_opml_exported: "OPML exported ✓",
+  toast_json_exported: "Backup downloaded ✓",
+  lang_select_label: "Interface language",
 };
 
 export default en;

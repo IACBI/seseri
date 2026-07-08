@@ -1,9 +1,7 @@
 import type { Lang } from '../types';
 
 const ar: Lang = {
-  brand_sub: "مجاني · بدون حساب · iTunes API",
   search_placeholder: "اسم البودكاست أو رابط Apple Podcasts...",
-  search_hint: "مثال: بودكاست عربي · أو الصق رابط Apple Podcasts",
   btn_search: "← بحث",
   btn_back: "رجوع →",
   now_playing: "يُشغَّل الآن",
@@ -102,6 +100,21 @@ const ar: Lang = {
   dl_saved: "حُفظت الحلقة دون اتصال ✓",
   dl_removed: "أُزيل التنزيل",
   dl_fallback_file: "تعذر الحفظ دون اتصال — يجري تنزيل الملف",
+  confirm_title: "هل أنت متأكد؟",
+  confirm_ok: "تأكيد",
+  confirm_cancel: "إلغاء",
+  confirm_clear_downloads: "سيتم حذف جميع الحلقات المنزّلة. هل أنت متأكد؟",
+  confirm_unsubscribe: "إزالة هذا البودكاست من اشتراكاتك؟",
+  queue_title: "قائمة التشغيل التالية",
+  queue_empty: "القائمة فارغة.",
+  queue_clear: "مسح القائمة",
+  queue_remove: "إزالة من القائمة",
+  queue_move_up: "تحريك لأعلى",
+  queue_move_down: "تحريك لأسفل",
+  offline_banner: "أنت غير متصل — الحلقات المنزّلة ما زالت متاحة.",
+  toast_opml_exported: "تم تصدير OPML ✓",
+  toast_json_exported: "تم تنزيل النسخة الاحتياطية ✓",
+  lang_select_label: "لغة الواجهة",
 };
 
 export default ar;

@@ -1,9 +1,7 @@
 import type { Lang } from '../types';
 
 const de: Lang = {
-  brand_sub: "Kostenlos · Kein Konto · iTunes API",
   search_placeholder: "Podcast-Name oder Apple Podcasts Link...",
-  search_hint: "z.B. Fest & Flauschig · oder Apple Podcasts URL einfügen",
   btn_search: "Suchen →",
   btn_back: "← Zurück",
   now_playing: "JETZT LÄUFT",
@@ -102,6 +100,21 @@ const de: Lang = {
   dl_saved: "Folge offline gespeichert ✓",
   dl_removed: "Download entfernt",
   dl_fallback_file: "Offline-Speichern fehlgeschlagen — Datei wird heruntergeladen",
+  confirm_title: "Bist du sicher?",
+  confirm_ok: "Bestätigen",
+  confirm_cancel: "Abbrechen",
+  confirm_clear_downloads: "Alle heruntergeladenen Folgen werden gelöscht. Bist du sicher?",
+  confirm_unsubscribe: "Diesen Podcast aus den Abonnements entfernen?",
+  queue_title: "Warteschlange",
+  queue_empty: "Die Warteschlange ist leer.",
+  queue_clear: "Warteschlange leeren",
+  queue_remove: "Aus der Warteschlange entfernen",
+  queue_move_up: "Nach oben",
+  queue_move_down: "Nach unten",
+  offline_banner: "Du bist offline — heruntergeladene Folgen bleiben verfügbar.",
+  toast_opml_exported: "OPML exportiert ✓",
+  toast_json_exported: "Backup heruntergeladen ✓",
+  lang_select_label: "Sprache der Oberfläche",
 };
 
 export default de;

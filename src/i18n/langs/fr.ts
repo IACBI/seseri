@@ -1,9 +1,7 @@
 import type { Lang } from '../types';
 
 const fr: Lang = {
-  brand_sub: "Gratuit · Sans compte · iTunes API",
   search_placeholder: "Nom du podcast ou lien Apple Podcasts...",
-  search_hint: "ex. France Inter · ou collez une URL Apple Podcasts",
   btn_search: "Chercher →",
   btn_back: "← Retour",
   now_playing: "EN COURS",
@@ -102,6 +100,21 @@ const fr: Lang = {
   dl_saved: "Épisode enregistré hors ligne ✓",
   dl_removed: "Téléchargement supprimé",
   dl_fallback_file: "Échec hors ligne — téléchargement du fichier",
+  confirm_title: "Êtes-vous sûr ?",
+  confirm_ok: "Confirmer",
+  confirm_cancel: "Annuler",
+  confirm_clear_downloads: "Tous les épisodes téléchargés seront supprimés. Êtes-vous sûr ?",
+  confirm_unsubscribe: "Retirer ce podcast de vos abonnements ?",
+  queue_title: "File d'attente",
+  queue_empty: "La file d'attente est vide.",
+  queue_clear: "Vider la file",
+  queue_remove: "Retirer de la file",
+  queue_move_up: "Monter",
+  queue_move_down: "Descendre",
+  offline_banner: "Vous êtes hors ligne — les épisodes téléchargés restent disponibles.",
+  toast_opml_exported: "OPML exporté ✓",
+  toast_json_exported: "Sauvegarde téléchargée ✓",
+  lang_select_label: "Langue de l'interface",
 };
 
 export default fr;

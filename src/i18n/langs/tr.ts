@@ -1,9 +1,7 @@
 import type { Lang } from '../types';
 
 const tr: Lang = {
-  brand_sub: "Ücretsiz · Üyeliksiz · iTunes API",
   search_placeholder: "Podcast adı, Apple Podcasts veya YouTube linki...",
-  search_hint: "Örnek: Merdiven Altı Terapi · veya bir YouTube playlist/kanal linki yapıştır",
   btn_search: "Ara →",
   btn_back: "← Geri",
   now_playing: "ŞU AN ÇALIYOR",
@@ -102,6 +100,21 @@ const tr: Lang = {
   dl_saved: "Bölüm çevrimdışı kaydedildi ✓",
   dl_removed: "İndirme silindi",
   dl_fallback_file: "Çevrimdışı kayıt olmadı — dosya olarak indiriliyor",
+  confirm_title: "Emin misin?",
+  confirm_ok: "Onayla",
+  confirm_cancel: "Vazgeç",
+  confirm_clear_downloads: "İndirilen tüm bölümler silinecek. Emin misin?",
+  confirm_unsubscribe: "Bu podcast aboneliklerden kaldırılsın mı?",
+  queue_title: "Çalma kuyruğu",
+  queue_empty: "Kuyruk boş.",
+  queue_clear: "Kuyruğu temizle",
+  queue_remove: "Kuyruktan çıkar",
+  queue_move_up: "Yukarı taşı",
+  queue_move_down: "Aşağı taşı",
+  offline_banner: "Çevrimdışısın — indirilen bölümler kullanılabilir.",
+  toast_opml_exported: "OPML dışa aktarıldı ✓",
+  toast_json_exported: "Yedek indirildi ✓",
+  lang_select_label: "Arayüz dili",
 };
 
 export default tr;
