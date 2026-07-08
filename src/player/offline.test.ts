@@ -26,11 +26,28 @@ import {
   removeDownload,
 } from './offline';
 
-// Minimal Map-backed Cache API (jsdom has none). Like the real Cache API,
-// put() copies the body and match() hands out a fresh Response — storing the
-// original object would share its one-shot body stream across reads, which
-// breaks depending on the platform's fetch implementation.
-type CacheEntry = Map<string, ArrayBuffer>;
+// Mixing jsdom's Blob with Node's (undici) Response throws TypeError on some
+// Node versions, so the whole fetch surface is duck-typed here: a FakeResponse
+// stands in for the global Response, fetch returns a plain object, and the
+// Map-backed cache stores whatever put() receives.
+const FAKE_BLOB = { size: 11, kind: 'fake-audio-blob' };
+
+class FakeResponse {
+  ok: boolean;
+  status: number;
+  headers: { get(k: string): string | null };
+  private body: unknown;
+  constructor(body?: unknown, init?: { status?: number; headers?: Record<string, string> }) {
+    this.body = body ?? FAKE_BLOB;
+    this.status = init?.status ?? 200;
+    this.ok = this.status >= 200 && this.status < 300;
+    const h = init?.headers ?? {};
+    this.headers = { get: (k: string) => h[k.toLowerCase()] ?? h[k] ?? null };
+  }
+  blob = async (): Promise<unknown> => this.body;
+}
+
+type CacheEntry = Map<string, FakeResponse>;
 const cachesStore = new Map<string, CacheEntry>();
 
 function installCaches(): void {
@@ -43,13 +60,10 @@ function installCaches(): void {
     open: vi.fn(async (name: string) => {
       const c = cacheFor(name);
       return {
-        put: vi.fn(async (key: string, res: Response) => {
-          c.set(key, await res.clone().arrayBuffer());
+        put: vi.fn(async (key: string, res: FakeResponse) => {
+          c.set(key, res);
         }),
-        match: vi.fn(async (key: string) => {
-          const buf = c.get(key);
-          return buf === undefined ? undefined : new Response(buf.slice(0));
-        }),
+        match: vi.fn(async (key: string) => c.get(key)),
         delete: vi.fn(async (key: string) => c.delete(key)),
       };
     }),
@@ -72,10 +86,10 @@ beforeEach(() => {
   store.clear();
   cachesStore.clear();
   installCaches();
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async () => new Response(new Blob(['audio-bytes']), { status: 200 })),
-  );
+  // offline.ts wraps the fetched blob in `new Response(...)` — point the
+  // global at the fake so no real undici/jsdom classes ever mix.
+  vi.stubGlobal('Response', FakeResponse as unknown as typeof Response);
+  vi.stubGlobal('fetch', vi.fn(async () => new FakeResponse() as unknown as Response));
   // jsdom does not implement object URLs.
   URL.createObjectURL = vi.fn(() => 'blob:mock-url');
   URL.revokeObjectURL = vi.fn();
