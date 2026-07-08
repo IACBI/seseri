@@ -1,0 +1,99 @@
+/* Design tokens — extracted verbatim from legacy index.html (lines 54-143) */
+:root {
+  color-scheme: dark;
+  /* ─ Surfaces — deep studio ink, faint cool cast ─ */
+  --bg: #0b0c11;
+  --bg2: #101117;
+  --surface: #15161e;
+  --surface2: #1c1e28;
+  --border: #23252f;
+  --border2: #30333f;
+  /* ─ Signature accent — electric violet (JS-overridable) ─ */
+  --accent: #8b7cf6;
+  --accent-dim: #6c5ce0;
+  --accent-2: #c084fc;
+  --accent-glow: rgba(139,124,246,0.18);
+  --accent-soft: rgba(139,124,246,0.10);
+  --accent-text: #ffffff;
+  --accent-grad: linear-gradient(135deg, #8b7cf6 0%, #6c5ce0 100%);
+  --text: #edeff7;
+  --text2: #9aa0b8;
+  --text3: #5d6280;
+  --green: #43d49a;
+  --red: #f06a6a;
+  --yellow: #e6bb4f;
+
+  /* ─ Wordmark sheen + hero vignette — overridden per-theme so they never
+       collapse into the background (white sheen vanishes on a white canvas) ─ */
+  --wm-shine: #ffffff;
+  --hero-vignette: rgba(0,0,0,0.18);
+
+  /* ─ Translucent chrome (recomputed per-theme by .theme-* below) ─ */
+  --glass: rgba(20,21,29,0.72);
+  --glass-2: rgba(28,30,40,0.6);
+  --hairline: rgba(255,255,255,0.04);
+
+  /* ─ Typography ─ */
+  --font-display: 'Space Grotesk', 'DM Sans', sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+
+  /* ─ Motion — easings + a tuned duration scale (route transitions through these) ─ */
+  --ease-spring: cubic-bezier(0.34, 1.42, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --d-fast: 0.13s;
+  --d-base: 0.22s;
+  --d-slow: 0.42s;
+
+  /* ─ Spacing scale (4-pt rhythm) ─ */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  /* ─ Type scale ─ */
+  --fs-xs: 10.5px;
+  --fs-sm: 12px;
+  --fs-md: 13.5px;
+  --fs-lg: 16px;
+  --fs-xl: 22px;
+  --fs-2xl: 46px;
+
+  /* ─ Radii ─ */
+  --r-xs: 8px;
+  --r-sm: 11px;
+  --r: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  /* ─ Elevation — layered, diffuse ramp for depth on ink ─ */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.30), 0 2px 8px -5px rgba(0,0,0,0.45);
+  --shadow-md: 0 2px 6px -3px rgba(0,0,0,0.40), 0 8px 24px -10px rgba(0,0,0,0.55);
+  --shadow-lg: 0 8px 24px -12px rgba(0,0,0,0.50), 0 30px 70px -24px rgba(0,0,0,0.65);
+
+  /* ─ Waveform scrubber (signature) ─ */
+  --wave-track: var(--border2);
+  --wave-played: var(--accent);
+
+  /* ─ Settings (JS-overridable) ─ */
+  --player-font-size: 14px;
+  --list-row-height: 56px;
+
+  /* ─ Layout ─ */
+  --header-h: 66px;
+  --status-h: 30px;
+  --sortbar-h: 40px;
+
+  /* ─ Stacking order — one scale for the layered UI (low → high). Local
+       stacking inside a single component (0/1/2/3) stays literal. ─ */
+  --z-header: 5;
+  --z-banner: 10;
+  --z-mini: 60;
+  --z-panel: 101;
+  --z-toast: 300;
+}

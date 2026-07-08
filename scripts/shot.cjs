@@ -1,0 +1,90 @@
+/* Screenshot helper for UI review: home + feed at desktop/mobile widths. */
+const { spawn } = require('child_process');
+const http = require('http');
+const path = require('path');
+const puppeteer = require('puppeteer-core');
+
+const PORT = 5202;
+const ORIGIN = `http://localhost:${PORT}`;
+const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const OUT = process.argv[2] || path.join(__dirname, '..', 'docs', 'screens-p5');
+
+const LOOKUP = {
+  resultCount: 4,
+  results: [
+    { wrapperType: 'collection', kind: 'podcast', collectionId: 777000111, collectionName: 'Design Notes', artistName: 'Studio FM', artworkUrl100: '' },
+    { wrapperType: 'podcastEpisode', trackId: 111, trackName: 'The grid is a promise you make to the reader', releaseDate: '2026-01-05T00:00:00Z', episodeUrl: 'https://api.allorigins.win/fake/ep1.wav', trackTimeMillis: 2520000 },
+    { wrapperType: 'podcastEpisode', trackId: 222, trackName: 'Typography as interface', releaseDate: '2026-02-11T00:00:00Z', episodeUrl: 'https://api.allorigins.win/fake/ep2.wav', trackTimeMillis: 1980000 },
+    { wrapperType: 'podcastEpisode', trackId: 333, trackName: 'Color systems that survive dark mode', releaseDate: '2026-03-02T00:00:00Z', episodeUrl: 'https://api.allorigins.win/fake/ep3.wav', trackTimeMillis: 3120000 },
+  ],
+};
+
+function waitServer(url, tries = 60) {
+  return new Promise((resolve, reject) => {
+    const ping = (n) => http.get(url, (r) => { r.resume(); resolve(); }).on('error', () =>
+      n <= 0 ? reject(new Error('no server')) : setTimeout(() => ping(n - 1), 500));
+    ping(tries);
+  });
+}
+
+(async () => {
+  require('fs').mkdirSync(OUT, { recursive: true });
+  const server = spawn('npx.cmd', ['vite', 'preview', '--port', String(PORT), '--strictPort'],
+    { cwd: path.join(__dirname, '..'), shell: true, stdio: 'ignore' });
+  let browser;
+  try {
+    await waitServer(ORIGIN + '/');
+    browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio'] });
+    const page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const u = req.url();
+      try {
+        if (u.includes('itunes.apple.com/lookup')) {
+          return req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(LOOKUP) }).catch(() => {});
+        }
+        if (u.includes('itunes.apple.com/search')) {
+          return req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ results: [ { collectionId: 777000111, collectionName: 'Design Notes', artistName: 'Studio FM', artworkUrl100: '', trackCount: 3 } ] }) }).catch(() => {});
+        }
+        if (u.includes('/fake/ep')) return req.abort().catch(() => {});
+        return req.continue().catch(() => {});
+      } catch { /* disabled */ }
+    });
+
+    const shots = [
+      { name: 'desktop-home', w: 1280, h: 800, url: '/' },
+      { name: 'desktop-feed', w: 1280, h: 800, url: '/?podcast=777000111' },
+      { name: 'tablet-feed', w: 768, h: 1024, url: '/?podcast=777000111' },
+      { name: 'mobile-home', w: 390, h: 844, url: '/' },
+      { name: 'mobile-feed', w: 390, h: 844, url: '/?podcast=777000111' },
+    ];
+    for (const s of shots) {
+      await page.setViewport({ width: s.w, height: s.h });
+      await page.goto(ORIGIN + s.url, { waitUntil: 'networkidle2' });
+      if (s.url.includes('podcast')) await page.waitForSelector('.ep-item', { timeout: 15000 }).catch(() => {});
+      await new Promise((r) => setTimeout(r, 900));
+      await page.screenshot({ path: path.join(OUT, s.name + '.png') });
+      console.log('shot', s.name);
+    }
+
+    // Settings drawer (native dialog)
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.goto(ORIGIN + '/?podcast=777000111', { waitUntil: 'networkidle2' });
+    await page.waitForSelector('.ep-item', { timeout: 15000 }).catch(() => {});
+    await page.click('#settingsBtn');
+    await new Promise((r) => setTimeout(r, 700));
+    const dlg = await page.evaluate(() => {
+      const d = document.getElementById('settingsPanel');
+      return { open: d.open, focusInside: d.contains(document.activeElement) };
+    });
+    console.log('settings dialog', JSON.stringify(dlg));
+    await page.screenshot({ path: path.join(OUT, 'settings-dialog.png') });
+    await page.keyboard.press('Escape');
+    await new Promise((r) => setTimeout(r, 700));
+    console.log('after esc: open =', await page.evaluate(() => document.getElementById('settingsPanel').open));
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    server.kill('SIGTERM');
+    try { process.kill(server.pid); } catch {}
+  }
+})();

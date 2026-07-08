@@ -1,5 +1,6 @@
 # Seseri
 
+[![CI](https://github.com/IACBI/seseri/actions/workflows/ci.yml/badge.svg)](https://github.com/IACBI/seseri/actions/workflows/ci.yml)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-live-brightgreen)](https://iacbi.github.io/seseri/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-ready-5b8af5)](public/manifest.webmanifest)

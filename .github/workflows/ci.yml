@@ -1,0 +1,33 @@
+# Quality gate — runs the same chain as `npm run verify`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix worker ci
+      - run: npm run verify
+
+  # Non-blocking dependency vulnerability signal (runtime deps only).
+  audit:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm audit --omit=dev
+      - run: npm audit --omit=dev --prefix worker

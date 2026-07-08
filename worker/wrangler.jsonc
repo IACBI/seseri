@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "seseri-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // KV: rate-limit counters + health-checked YT instance list
+  "kv_namespaces": [
+    { "binding": "KV", "id": "8a295a8885fb4ac6a70b21d9c81c64d9" }
+  ],
+  // Refresh the healthy Piped/Invidious list twice an hour
+  "triggers": { "crons": ["*/30 * * * *"] }
+}

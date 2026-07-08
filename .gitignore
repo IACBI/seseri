@@ -6,9 +6,17 @@ dist/
 *.log
 npm-debug.log*
 
-# Environment
+# Environment (local worker URL is not a secret — keep it versioned)
 .env
 .env.*
+!.env.development
+
+# Wrangler local state
+.wrangler/
+
+# Tauri build artifacts
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
 
 # Editor / OS
 .vscode/
