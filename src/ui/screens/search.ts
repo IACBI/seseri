@@ -20,6 +20,12 @@ export interface SearchScreen {
   show(): void;
   renderFavs(): void;
   focusInput(): void;
+  /**
+   * Return keyboard focus to the home screen after navigating back from a feed.
+   * Restores the result/fav row the user activated (if still on screen),
+   * otherwise falls back to the search input.
+   */
+  restoreFocus(): void;
 }
 
 /** Convert a legacy subscription id into a feed request. */
@@ -49,6 +55,8 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
 
   let searchAbort: AbortController | null = null;
   let hasSearchResults = false;
+  // The row the user activated to open a feed — restored on back navigation.
+  let lastFocusedRow: HTMLElement | null = null;
 
   function resultRow(opts: {
     art: string;
@@ -97,12 +105,14 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
         opts.onRemove();
         return;
       }
+      lastFocusedRow = row;
       opts.onOpen();
     });
     row.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       if (e.target !== row) return; // let the unfav button keep its native keys
       e.preventDefault();
+      lastFocusedRow = row;
       opts.onOpen();
     });
     return row;
@@ -125,6 +135,7 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
 
     btn.disabled = true;
     btn.textContent = '...';
+    list.setAttribute('aria-busy', 'true');
     list.replaceChildren(stateBox('loading', t('searching')));
 
     // Direct input: Apple id / YouTube link / RSS URL
@@ -132,6 +143,7 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
     if (direct) {
       clearTimeout(searchTimeout);
       restoreBtn();
+      list.setAttribute('aria-busy', 'false');
       list.replaceChildren();
       deps.openFeed(direct);
       return;
@@ -150,6 +162,7 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
       if (podsDone) restoreBtn(); // main path answered — button is usable again
       if (!podsDone || !ytDone) return;
       clearTimeout(searchTimeout);
+      list.setAttribute('aria-busy', 'false');
       if (!podsBox.hasChildNodes() && !ytBox.hasChildNodes()) {
         list.replaceChildren(
           podsErr
@@ -280,5 +293,10 @@ export function initSearchScreen(deps: SearchScreenDeps): SearchScreen {
     },
     renderFavs,
     focusInput: () => input.focus(),
+    restoreFocus() {
+      if (lastFocusedRow?.isConnected) lastFocusedRow.focus({ preventScroll: false });
+      else input.focus({ preventScroll: false });
+      lastFocusedRow = null;
+    },
   };
 }

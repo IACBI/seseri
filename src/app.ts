@@ -10,6 +10,7 @@ import { loadSettings, settings } from './state/settings';
 import type { FeedRequest } from './feeds/types';
 import { bindI18nDom } from './ui/i18n-dom';
 import { initMiniPlayer } from './ui/mini-player';
+import { initOfflineBanner } from './ui/offline-banner';
 import { initRouter, parseLocation } from './ui/router';
 import { renderShell, must } from './ui/shell';
 import { initPlayerScreen } from './ui/screens/player';
@@ -35,6 +36,7 @@ export function boot(): void {
   bindI18nDom();
   setQuotaListener(() => toast(t('storage_full'), 'error'));
   requestPersistence(); // keep downloads/idb safe from storage-pressure eviction
+  initOfflineBanner();
 
   // ── screens & router ─────────────────────────────────────────────
   let lastFeedReq: FeedRequest | null = null;
@@ -57,7 +59,10 @@ export function boot(): void {
       rememberFeed(req);
       /* URL handled by the router (avoids double push) */
     },
-    onClosed: () => search.show(),
+    onClosed: () => {
+      search.show();
+      search.restoreFocus(); // return focus to the row/input that opened the feed
+    },
     onBack: () => {
       if (router.canGoBack()) history.back();
       else router.goHome();
@@ -125,7 +130,7 @@ export function boot(): void {
         : null;
   if (initialReq) {
     rememberFeed(initialReq);
-    player.openFeed(initialReq);
+    player.openFeed(initialReq, false); // cold deep-link: don't steal focus on first paint
     router.feedOpened(initialReq, false);
     search.renderFavs(); // desktop rail is visible alongside the feed
   } else {
