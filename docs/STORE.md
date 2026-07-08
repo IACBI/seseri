@@ -25,8 +25,9 @@ npx wrangler login                      # tarayıcıda onayla
 npx wrangler kv namespace create KV     # çıktıdaki id'yi kopyala
 ```
 
-`worker/wrangler.jsonc` içindeki `"id": "REPLACE_ON_DEPLOY"` alanına bu id'yi
-yaz, sonra:
+`worker/wrangler.jsonc` içindeki `"id"` alanına bu id'yi yaz (mevcut depoda
+canlı bir KV id'si zaten tanımlı — yalnızca **yeni bir hesaba** kurarken
+değiştirmen gerekir), sonra:
 
 ```bash
 npx wrangler deploy
@@ -139,7 +140,35 @@ gh release create v3.0.0 \
 
 ---
 
-## 5) Güncelleme akışı
+## 5) iOS (App Store) — durum ve yol haritası
+
+**Şu an paketlenmiş bir iOS sürümü yok.** Seseri iPhone/iPad'de Safari
+üzerinden PWA olarak kullanılabilir (Paylaş → Ana Ekrana Ekle), ancak iOS
+PWA'larının bilinen sınırları geçerlidir:
+
+- Arka plan/kilit ekranı sesi Safari PWA'da çalışır ama medya kontrolleri
+  Android'deki kadar tutarlı değildir.
+- Depolama (Cache API/IndexedDB) Safari tarafından ~%80 doluluk veya uzun
+  süre kullanmama durumunda **silinebilir** — indirilen bölümler kalıcılık
+  garantisi taşımaz (`navigator.storage.persist()` iOS'ta sınırlı).
+- Kurulum önerisi (install prompt) yoktur; kullanıcı elle eklemelidir.
+
+**App Store'a gerçek paket için yol:** PWABuilder'ın iOS paketi (WKWebView
+sarmalayıcı) veya Capacitor kabuğu. Her ikisi de şunları gerektirir
+(**credential-blocked** — kod tarafında engel yok):
+
+1. Apple Developer Program üyeliği ($99/yıl).
+2. Xcode ile imzalama (macOS gerekir) + App Store Connect kaydı.
+3. App Review: "sadece web sitesi sarmalayıcı" retleri riskine karşı
+   yerel değer katmanı (ör. offline indirme, medya oturumu) vurgulanmalı;
+   YouTube sesi özelliği Play'dekiyle aynı ToS riskini taşır — gerekirse
+   `VITE_ENABLE_YT=false` bayrağıyla iOS build'inden çıkarılır.
+
+Bu adımlar tamamlanana kadar iOS desteği "Safari PWA" olarak belgelenir.
+
+---
+
+## 6) Güncelleme akışı
 
 - **Uygulama içeriği/kodu:** sadece web'i yeniden deploy et — Store/Play
   paketleri aynı canlı siteyi açtığı için kullanıcılar anında güncellenir.
@@ -149,7 +178,9 @@ gh release create v3.0.0 \
 
 ## Sürüm kontrol listesi
 
-- [ ] `npm run verify` yeşil (lint, tsc, 51+22 test, build)
+- [ ] `npm run verify` yeşil (lint, tsc, 102+26 test, build)
+- [ ] `v*` tag'i push edilince `.github/workflows/desktop.yml` NSIS
+      kurulumunu taslak Release olarak üretir (imzasız — SmartScreen uyarısı)
 - [ ] `node scripts/smoke-p3-offline.cjs` ve `smoke-p5-mini.cjs` yeşil
 - [ ] Worker deploy + `VITE_API_BASE` prod build'e gömülü
 - [ ] CSP `connect-src` Worker adresini içeriyor

@@ -1,6 +1,6 @@
 {
   "name": "seseri-desktop",
-  "version": "1.0.0",
+  "version": "3.1.0",
   "description": "Tauri desktop shell for Seseri — loads the hosted web app in a native window.",
   "private": true,
   "scripts": {

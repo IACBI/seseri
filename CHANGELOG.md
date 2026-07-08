@@ -1,13 +1,63 @@
 # Changelog
 
-## Unreleased
+## 3.1.0 — 2026-07-08
 
 ### Added
+- **Queue panel** (`src/ui/queue-panel.ts`): the play queue finally has a UI —
+  a dropdown on the sort bar lists queued episodes with keyboard-accessible
+  move up/down, remove and clear controls, plus a count badge.
+- **Styled confirm dialog** (`src/ui/confirm.ts`): replaces native `confirm()`
+  and covers all four destructive actions consistently — clear progress,
+  clear all data, **clear downloads and unsubscribe now confirm too**
+  (previously they ran without asking). Cancel is default-focused.
+- **Offline banner** (`src/ui/offline-banner.ts`): a quiet status strip when
+  the connection drops (downloads keep playing).
+- Success toasts on OPML / JSON backup export.
+- **Desktop CI** (`.github/workflows/desktop.yml`): pushing a `v*` tag builds
+  the NSIS installer on `windows-latest` and attaches it to a draft GitHub
+  Release; non-blocking `npm audit` job added to `ci.yml`.
 - CI quality gate on GitHub Actions (`.github/workflows/ci.yml` — the full
   `npm run verify` chain on every push/PR; formerly parked in `docs/`).
 - Unified loading/empty/error boxes (`src/ui/states.ts`): search and player
   now share one pattern; errors get `role="alert"` and a retry button.
 - Localized `close` label (8 languages) for the settings close button.
+- **Unit tests 51 → 104** (+ worker 22 → 26): queue, router history, offline
+  cache-key invariant, feed resolution, theme-token parity, redirect guard.
+
+### Security
+- **Worker redirect SSRF closed** (`worker/src/safe-fetch.ts`): upstream
+  redirects are now followed manually (max 3 hops) and every `Location`
+  target is re-validated against the private-host guard.
+- **Production CSP no longer ships dev origins**: a build-only Vite plugin
+  strips `http://127.0.0.1:8787` and bare `ws:` from `dist/index.html`
+  (dev stays untouched; the plugin fails the build on token drift).
+
+### Accessibility / UX
+- Focus management on navigation: opening a feed moves focus to the feed
+  title; going back restores it to the originating row/search input;
+  deep-link cold loads don't steal focus.
+- `aria-label` on the language and speed selects; `aria-busy` on result and
+  episode lists while loading.
+- **RTL**: direction-relevant physical CSS converted to logical properties —
+  Arabic now mirrors the episode list, badges, settings drawer and toggles.
+- **Touch targets**: interactive controls extended to ≥44px hit areas
+  (settings, sort, transport, back, list actions) without visual changes.
+- **Safe areas**: `viewport-fit=cover` + `safe-area-inset-top` padding on the
+  header, home top bar and settings drawer (notched devices in standalone
+  PWA mode).
+- Design-token adoption across `components.css` (type/spacing/radius/motion)
+  plus a single z-index scale (`--z-*`).
+
+### Desktop
+- `Cargo.toml`/`desktop/package.json` metadata fixed (crate `seseri`, real
+  author/license/repository — was scaffold "A Tauri App"/"you"); all four
+  version fields aligned at 3.1.0.
+
+### Docs
+- `SECURITY.md`: redirect re-validation documented; DNS-rebinding residual
+  and unsigned-installer status listed as known risks.
+- `docs/STORE.md`: iOS (App Store) durum/yol haritası section; KV id
+  instruction de-drifted; release checklist updated.
 
 ### Changed
 - **YouTube stream resolution rewritten** (`worker/src/innertube.ts`): the old
