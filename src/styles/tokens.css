@@ -88,4 +88,12 @@
   --header-h: 66px;
   --status-h: 30px;
   --sortbar-h: 40px;
+
+  /* ─ Stacking order — one scale for the layered UI (low → high). Local
+       stacking inside a single component (0/1/2/3) stays literal. ─ */
+  --z-header: 5;
+  --z-banner: 10;
+  --z-mini: 60;
+  --z-panel: 101;
+  --z-toast: 300;
 }
