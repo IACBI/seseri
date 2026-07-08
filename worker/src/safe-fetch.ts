@@ -18,6 +18,15 @@ export function safeTarget(raw: string | undefined): URL | null {
   return u;
 }
 
+const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
+const MAX_REDIRECTS = 3;
+
+/**
+ * Fetch with a shared timeout budget and manual redirect handling. Every hop's
+ * Location is re-validated with `safeTarget`, closing the redirect-based SSRF
+ * gap where a public host 302s to an internal target. The `ms` budget and a
+ * single AbortController cover the whole chain.
+ */
 export async function fetchWithTimeout(
   url: string,
   ms: number,
@@ -26,7 +35,30 @@ export async function fetchWithTimeout(
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), ms);
   try {
-    return await fetch(url, { ...init, signal: ctrl.signal, redirect: 'follow' });
+    let currentUrl = url;
+    let currentInit: RequestInit = { ...init };
+    for (let hop = 0; ; hop++) {
+      const res = await fetch(currentUrl, {
+        ...currentInit,
+        signal: ctrl.signal,
+        redirect: 'manual',
+      });
+      if (!REDIRECT_STATUS.has(res.status)) return res;
+      const loc = res.headers.get('location');
+      if (!loc) return res;
+      if (hop >= MAX_REDIRECTS) throw new Error('too many redirects');
+
+      const resolved = new URL(loc, currentUrl);
+      if (!safeTarget(resolved.href)) throw new Error('unsafe redirect');
+
+      // Per fetch spec: 303, and 301/302 on POST, become GET with no body.
+      const method = (currentInit.method || 'GET').toUpperCase();
+      if (res.status === 303 || ((res.status === 301 || res.status === 302) && method === 'POST')) {
+        currentInit = { ...currentInit, method: 'GET' };
+        delete currentInit.body;
+      }
+      currentUrl = resolved.href;
+    }
   } finally {
     clearTimeout(to);
   }
