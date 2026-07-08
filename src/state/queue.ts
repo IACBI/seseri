@@ -31,6 +31,21 @@ export function dequeueNext(justEndedId?: string): string | undefined {
   return next;
 }
 
+/** Move a queued id one step up (-1) or down (+1); no-op at the edges. */
+export function moveInQueue(id: string, dir: -1 | 1): void {
+  queue.update((q) => {
+    const i = q.indexOf(id);
+    const j = i + dir;
+    const a = q[i];
+    const b = q[j];
+    if (i < 0 || a === undefined || b === undefined) return q;
+    const next = q.slice();
+    next[i] = b;
+    next[j] = a;
+    return next;
+  });
+}
+
 export function clearQueue(): void {
   queue.set([]);
 }

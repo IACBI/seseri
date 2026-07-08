@@ -1,3 +1,12 @@
+/*
+ * NOTE (post-3.1.0 refactor plan): this file is the app's largest module and
+ * concentrates feed loading, playback wiring, queue, downloads, waveform and
+ * the YouTube-embed fallback. Intended split boundaries, deferred so they
+ * don't collide with the 3.1.0 UI changes:
+ *   - episode download button state machine  → ui/screens/player-downloads.ts
+ *   - embed-fallback + blob-URL lifecycle    → player/source-select.ts
+ *   - sort/filter bar                        → ui/screens/player-listbar.ts
+ */
 import type { Episode, FeedMeta, FeedRequest, ResolvedFeed } from '../../feeds/types';
 import { resolveFeed } from '../../feeds/resolve';
 import { t, currentLang } from '../../i18n';
@@ -25,6 +34,8 @@ import { setMediaMetadata } from '../../player/media-session';
 import { setSleepTimer } from '../../player/sleep-timer';
 import { getLastPlayed, getProgress, setLastPlayed, setProgress } from '../../storage/progress';
 import { isSubscribed, toggleSubscription } from '../../storage/subscriptions';
+import { confirmDialog } from '../confirm';
+import { initQueuePanel } from '../queue-panel';
 import { nowPlaying } from '../../state/now-playing';
 import { clearQueue, dequeueNext, enqueue, queuePosition, removeFromQueue } from '../../state/queue';
 import { settings, setSetting } from '../../state/settings';
@@ -46,7 +57,12 @@ export interface PlayerScreenDeps {
 }
 
 export interface PlayerScreen {
-  openFeed(req: FeedRequest): void;
+  /**
+   * Open a feed. `moveFocus` defaults to true so user-initiated navigation
+   * lands keyboard focus on the feed title; deep-link cold loads pass false
+   * to avoid stealing focus on first paint.
+   */
+  openFeed(req: FeedRequest, moveFocus?: boolean): void;
   /** Leave the feed view but keep playback running (mini player takes over). */
   hide(): void;
   /** Stop playback and reset session. */
@@ -101,6 +117,13 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   let downloadedIds = new Set<string>();
   let currentBlobUrl: string | null = null;
   let embedNoticeShown = false;
+  // Set on user-initiated openFeed; consumed once the feed title is on screen.
+  let pendingFocus = false;
+
+  /** Land keyboard focus on the feed title (accessible landing point). */
+  function focusFeedTitle(): void {
+    elPTitle.focus({ preventScroll: false });
+  }
 
   // ── waveform ─────────────────────────────────────────────────────
   const wave: WaveformController = initWaveform(
@@ -172,6 +195,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   function render(): void {
     if (!filteredEps.length) {
       elEpList.replaceChildren(stateBox('empty', t('ep_not_found')));
+      elEpList.setAttribute('aria-busy', 'false');
       return;
     }
     const S = settings();
@@ -263,6 +287,7 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
       frag.append(row);
     });
     elEpList.replaceChildren(frag);
+    elEpList.setAttribute('aria-busy', 'false');
 
     if (animateNextRender) {
       animateNextRender = false;
@@ -292,12 +317,20 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
         ),
       );
     }
+    elEpList.setAttribute('aria-busy', 'true');
     elEpList.replaceChildren(list);
   }
 
   function showError(message: string, onRetry?: () => void): void {
     setStatus('error', t('status_err') + message);
     elEpList.replaceChildren(stateBox('error', message, { onRetry }));
+    elEpList.setAttribute('aria-busy', 'false');
+    // Load failed before any paint — don't leave focus stranded on <body>
+    // (the row that opened the feed is now display:none).
+    if (pendingFocus) {
+      pendingFocus = false;
+      focusFeedTitle();
+    }
   }
 
   // ── feed opening (unified — replaces loadPodcast/loadRss/loadYouTube) ──
@@ -312,12 +345,17 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     }
   }
 
-  function openFeed(req: FeedRequest): void {
+  function openFeed(req: FeedRequest, moveFocus = true): void {
+    pendingFocus = moveFocus;
     // Re-entering the feed that is already loaded (e.g. via the mini player):
     // just show it — reloading would interrupt playback.
     if (currentMeta?.id === feedIdOf(req) && episodes.length) {
       document.body.classList.add('feed-open');
       deps.onFeedOpened(req);
+      if (pendingFocus) {
+        pendingFocus = false;
+        focusFeedTitle();
+      }
       return;
     }
     loadAbort?.abort();
@@ -393,6 +431,12 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
       audio.playbackRate = S.defaultSpeed;
       animateNextRender = true;
       render();
+
+      // Feed title is now real — land focus here for user-initiated opens.
+      if (pendingFocus) {
+        pendingFocus = false;
+        focusFeedTitle();
+      }
 
       const lastId = getLastPlayed(resolved.meta.id);
       if (lastId) {
@@ -859,7 +903,16 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
   elSortToggle.addEventListener('click', toggleSort);
   elFilterInput.addEventListener('input', filterEps);
   elFavBtn.addEventListener('click', () => {
-    if (currentMeta) {
+    if (!currentMeta) return;
+    if (isSubscribed(currentMeta.id)) {
+      // Unsubscribing loses the star + list placement — confirm first.
+      void confirmDialog('confirm_unsubscribe').then((ok) => {
+        if (ok && currentMeta) {
+          toggleSubscription(currentMeta);
+          updateFavBtn();
+        }
+      });
+    } else {
       toggleSubscription(currentMeta);
       updateFavBtn();
     }
@@ -962,10 +1015,25 @@ export function initPlayerScreen(deps: PlayerScreenDeps): PlayerScreen {
     deps.onClosed();
   }
 
+  // ── queue panel ──────────────────────────────────────────────────
+  const queuePanel = initQueuePanel({
+    titleFor(id) {
+      const i = episodes.findIndex((e) => String(e.trackId) === id);
+      const ep = episodes[i];
+      return ep ? ep.trackName || t('ep_fallback', i + 1) : '';
+    },
+  });
+
   return {
     openFeed,
-    hide,
-    reset,
+    hide: () => {
+      queuePanel.close();
+      hide();
+    },
+    reset: () => {
+      queuePanel.close();
+      reset();
+    },
     isOpen: () => document.body.classList.contains('feed-open'),
     el: screen,
   };

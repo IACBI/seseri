@@ -21,6 +21,9 @@ const ICON_SPRITE = `
   <symbol id="ic-arrow-right" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
   <symbol id="ic-back" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
   <symbol id="ic-queue" viewBox="0 0 24 24"><line x1="3" y1="6" x2="13" y2="6"/><line x1="3" y1="12" x2="13" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/><line x1="18" y1="9" x2="18" y2="15"/><line x1="15" y1="12" x2="21" y2="12"/></symbol>
+  <symbol id="ic-up" viewBox="0 0 24 24"><polyline points="6 14 12 8 18 14"/></symbol>
+  <symbol id="ic-down" viewBox="0 0 24 24"><polyline points="6 10 12 16 18 10"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
 </svg>`;
 
 const LANG_OPTIONS = `
@@ -36,7 +39,7 @@ const LANG_OPTIONS = `
 const SEARCH_SCREEN = `
 <div id="searchScreen">
   <div class="search-screen-topbar">
-    <select class="lang-select" id="homeLangSel">${LANG_OPTIONS}
+    <select class="lang-select" id="homeLangSel" aria-label="Dil seçimi" data-i18n-aria="lang_select_label">${LANG_OPTIONS}
     </select>
   </div>
 
@@ -68,7 +71,7 @@ const PLAYER_SCREEN = `
     <button class="p-back" id="backBtn" data-i18n="btn_back">← Geri</button>
     <img class="p-thumb" id="pThumb" alt="" loading="lazy" decoding="async">
     <div class="p-meta">
-      <div class="p-title" id="pTitle">—</div>
+      <div class="p-title" id="pTitle" tabindex="-1">—</div>
       <div class="p-author" id="pAuthor">—</div>
     </div>
     <div class="p-epcount"><strong id="pEpCount">—</strong><span id="pEpUnit" data-i18n="ep_count_unit">bölüm</span></div>
@@ -117,7 +120,7 @@ const PLAYER_SCREEN = `
         </select>
       </span>
       <span class="sel-wrap">
-        <select class="seri-select speed-select" id="speedSel" data-i18n-title="speed_label" title="Hız">
+        <select class="seri-select speed-select" id="speedSel" data-i18n-title="speed_label" data-i18n-aria="speed_label" title="Hız" aria-label="Hız">
           <option value="0.5">0.5×</option>
           <option value="0.75">0.75×</option>
           <option value="1" selected>1×</option>
@@ -135,6 +138,9 @@ const PLAYER_SCREEN = `
     <div class="sort-left">
       <button class="sort-toggle" id="sortToggle"><svg class="icon" aria-hidden="true"><use href="#ic-sort"/></svg> <span data-i18n="btn_sort">Sıra</span></button>
       <span class="sort-info" id="sortInfo" data-i18n="sort_asc">Eskiden → Yeniye</span>
+      <button class="sort-toggle queue-toggle" id="queueToggle" aria-expanded="false"
+        title="Kuyruk" data-i18n-title="queue_title" data-i18n-aria="queue_title" aria-label="Kuyruk"
+        ><svg class="icon" aria-hidden="true"><use href="#ic-queue"/></svg><span class="queue-count" id="queueCount" hidden></span></button>
     </div>
     <input class="search-filter" id="filterInput" type="text"
       placeholder="Bölüm ara..." data-i18n-ph="filter_placeholder" />
