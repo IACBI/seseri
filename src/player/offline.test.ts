@@ -26,8 +26,11 @@ import {
   removeDownload,
 } from './offline';
 
-// Minimal Map-backed Cache API (jsdom has none).
-type CacheEntry = Map<string, Response>;
+// Minimal Map-backed Cache API (jsdom has none). Like the real Cache API,
+// put() copies the body and match() hands out a fresh Response — storing the
+// original object would share its one-shot body stream across reads, which
+// breaks depending on the platform's fetch implementation.
+type CacheEntry = Map<string, ArrayBuffer>;
 const cachesStore = new Map<string, CacheEntry>();
 
 function installCaches(): void {
@@ -41,9 +44,12 @@ function installCaches(): void {
       const c = cacheFor(name);
       return {
         put: vi.fn(async (key: string, res: Response) => {
-          c.set(key, res);
+          c.set(key, await res.clone().arrayBuffer());
         }),
-        match: vi.fn(async (key: string) => c.get(key)),
+        match: vi.fn(async (key: string) => {
+          const buf = c.get(key);
+          return buf === undefined ? undefined : new Response(buf.slice(0));
+        }),
         delete: vi.fn(async (key: string) => c.delete(key)),
       };
     }),
