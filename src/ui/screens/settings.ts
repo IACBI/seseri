@@ -5,6 +5,7 @@ import { local } from '../../storage/local';
 import { exportOpml, parseOpml } from '../../storage/opml';
 import { subscriptions, toggleSubscription, isSubscribed } from '../../storage/subscriptions';
 import { toast } from '../toast';
+import { confirmDialog } from '../confirm';
 import { settings, setSetting, type Settings, type SortDir, type ThemeName } from '../../state/settings';
 import { pbSetRate } from '../../player/engine';
 import { t } from '../../i18n';
@@ -148,6 +149,7 @@ export function initSettingsPanel(opts: { onDataCleared: () => void }): Settings
 
   must('btnOpmlExport').addEventListener('click', () => {
     saveFile('seseri-subscriptions.opml', 'text/x-opml', exportOpml(subscriptions()));
+    toast(t('toast_opml_exported'));
   });
 
   const opmlFile = must<HTMLInputElement>('opmlFile');
@@ -179,25 +181,33 @@ export function initSettingsPanel(opts: { onDataCleared: () => void }): Settings
       dump[key] = local.get(key, null);
     }
     saveFile('seseri-backup.json', 'application/json', JSON.stringify(dump, null, 2));
+    toast(t('toast_json_exported'));
   });
 
   must('btnClearDownloads').addEventListener('click', () => {
-    void clearAllDownloads().then(() => {
-      toast(t('dl_removed'));
-      void refreshStorageUsage();
+    void confirmDialog('confirm_clear_downloads').then((ok) => {
+      if (!ok) return;
+      void clearAllDownloads().then(() => {
+        toast(t('dl_removed'));
+        void refreshStorageUsage();
+      });
     });
   });
 
   must('btnClearProgress').addEventListener('click', () => {
-    if (!confirm(t('confirm_clear_progress'))) return;
-    clearProgress();
-    opts.onDataCleared();
+    void confirmDialog('confirm_clear_progress').then((ok) => {
+      if (!ok) return;
+      clearProgress();
+      opts.onDataCleared();
+    });
   });
   must('btnClearAll').addEventListener('click', () => {
-    if (!confirm(t('confirm_clear_all'))) return;
-    saveProgressNow();
-    local.clear();
-    location.reload();
+    void confirmDialog('confirm_clear_all').then((ok) => {
+      if (!ok) return;
+      saveProgressNow();
+      local.clear();
+      location.reload();
+    });
   });
 
   must('settingsClose').addEventListener('click', close);
