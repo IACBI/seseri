@@ -159,7 +159,8 @@ Notlar:
 - **Kuyruk auto-next'i ezer**: bir bölüm kuyruğa eklenmişken çalınan bölüm biterse, auto-next ayarı açık/kapalı fark etmeksizin kuyruktaki bölüm çalar (`playback-controller.ts` — `dequeueNext` her zaman `autoNext` kontrolünden önce denenir).
 - **Çevrimdışı indir+çal**: DevTools → Network → Offline ile denenir; indirilen bölüm hem çalar hem seek eder. YouTube'da embed fallback'e düşen bölümler indirilemez (yalnızca Worker/Piped üzerinden çözümlenen ses indirilebilir) — bu durum ayrı satırda "N/A" olarak işaretlenebilir.
 - **Medya tuşları**: kilit ekranı/bildirim paneli play/pause/next/prev; başlık+kapak görünür.
-- **Mini→Şimdi Çalıyor**: mini dock'a dokunmak/Enter yeni bölüm başlatmadan Şimdi Çalıyor panelini açar.
+- **Mini transport**: mini dock üzerinde geri/ileri sarma + oynat/duraklat (≥640px'te önceki/sonraki ortada; uyku zamanlayıcısı + hız sağ kümede, panel seçicileriyle senkron); alt ilerleme çizgisi dokun/sürükle ile sarar. Başlık alanı veya genişletme oku (Enter/Space dahil) yeni bölüm başlatmadan Şimdi Çalıyor panelini açar.
+- **Embed→ses kurtarma**: iframe fallback ile başlayan YouTube bölümünde uygulama arka planda ses çözümlemeyi yeniden dener ve akış çözüldüğünde aynı konumdan `<audio>`'ya kesintisiz geçer (kilit ekranı çalması + medya tuşları geri gelir).
 
 ### Yeni gezinme kontrolleri
 

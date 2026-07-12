@@ -187,7 +187,7 @@ Bu adımlar tamamlanana kadar iOS desteği "Safari PWA" olarak belgelenir.
 
 ## Sürüm kontrol listesi
 
-- [ ] `npm run verify` yeşil (lint, tsc, 116+ birim testi, build)
+- [ ] `npm run verify` yeşil (lint, tsc, 121 istemci + 26 worker birim testi, build)
 - [ ] `v*` tag'i push edilince `.github/workflows/desktop.yml` NSIS
       kurulumunu taslak Release olarak üretir (imzasız — SmartScreen uyarısı)
 - [ ] `node scripts/smoke-p3-offline.cjs` ve `smoke-p5-mini.cjs` yeşil
