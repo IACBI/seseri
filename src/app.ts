@@ -108,7 +108,7 @@ export function boot(): void {
   };
   initNav({ go: goView });
 
-  initMiniPlayer({ onOpen: () => nowPlayingSheet.open() });
+  initMiniPlayer({ playback, onOpen: () => nowPlayingSheet.open() });
 
   // ── media session ────────────────────────────────────────────────
   initMediaSession({

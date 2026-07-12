@@ -52,15 +52,28 @@ const MAIN = `
 </main>`;
 
 const MINI_PLAYER = `
-<div class="mini-player" id="miniPlayer" role="button" tabindex="0" data-i18n-aria="np_open" aria-label="Oynatıcıyı aç">
+<div class="mini-player" id="miniPlayer">
   <div class="mini-signal" id="miniSignal" aria-hidden="true"></div>
-  <div class="mini-progress-track"><div class="mini-progress" id="miniProgress"></div></div>
-  <img class="mini-art" id="miniArt" alt="" loading="lazy" decoding="async">
-  <div class="mini-info">
-    <div class="mini-title" id="miniTitle">—</div>
-    <div class="mini-feed" id="miniFeed"></div>
+  <div class="mini-progress-track" id="miniScrub" role="slider" tabindex="0"
+       data-i18n-aria="seek_label" aria-label="Konum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="mini-progress" id="miniProgress"></div>
   </div>
-  <button class="mini-play" id="miniPlay" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
+  <div class="mini-main" id="miniMain" role="button" tabindex="0" data-i18n-aria="np_open" aria-label="Oynatıcıyı aç">
+    <img class="mini-art" id="miniArt" alt="" loading="lazy" decoding="async">
+    <div class="mini-info">
+      <div class="mini-title" id="miniTitle">—</div>
+      <div class="mini-feed" id="miniFeed"></div>
+    </div>
+  </div>
+  <div class="mini-controls">
+    <button class="icon-btn mini-tp mini-wide" id="miniPrev" data-i18n-aria="btn_prev" aria-label="Önceki" disabled><svg class="icon" aria-hidden="true"><use href="#ic-prev"/></svg></button>
+    <button class="icon-btn mini-tp mini-skip" id="miniBack" data-i18n-aria="s_skip_back" aria-label="Geri Atla"><svg class="icon" aria-hidden="true"><use href="#ic-rewind"/></svg><span class="mini-skip-n" id="miniLblBack">15</span></button>
+    <button class="mini-play" id="miniPlay" data-i18n-aria="play" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
+    <button class="icon-btn mini-tp mini-skip" id="miniFwd" data-i18n-aria="s_skip_fwd" aria-label="İleri Atla"><svg class="icon" aria-hidden="true"><use href="#ic-forward"/></svg><span class="mini-skip-n" id="miniLblFwd">30</span></button>
+    <button class="icon-btn mini-tp mini-wide" id="miniNext" data-i18n-aria="btn_next" aria-label="Sonraki" disabled><svg class="icon" aria-hidden="true"><use href="#ic-next"/></svg></button>
+    <select class="seri-select mini-speed" id="miniSpeed" data-i18n-aria="speed_label" aria-label="Oynatma hızı"></select>
+    <button class="icon-btn mini-tp mini-expand" id="miniExpand" data-i18n-aria="np_open" aria-label="Oynatıcıyı aç"><svg class="icon" aria-hidden="true"><use href="#ic-up"/></svg></button>
+  </div>
 </div>`;
 
 const NP_SHEET = `

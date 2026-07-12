@@ -5,8 +5,15 @@
 .home-brand {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--s-3);
   margin-block-end: var(--s-5);
+}
+.home-brand-id {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
 }
 .home-brand-mark {
   display: inline-flex;
@@ -29,9 +36,11 @@
   margin-block-start: 2px;
 }
 
-/* Desktop (≥900px): the sidebar already carries the brand. */
+/* Desktop (≥900px): the sidebar already carries the brand — keep only the
+   language menu, parked at the header's end. */
 @media (min-width: 900px) {
-  .home-brand { display: none; }
+  .home-brand { justify-content: flex-end; margin-block-end: var(--s-3); }
+  .home-brand-id { display: none; }
 }
 
 /* ── "Devam Et" — continue-listening rows with a thin progress bar ─── */

@@ -256,6 +256,73 @@
 }
 .badge-done { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
 
+/* ─ Language menu (custom listbox with inline SVG flags) ─ */
+.lang-menu { position: relative; display: inline-block; }
+.lang-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 40px;
+  padding: 0 var(--s-3);
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--d-fast) var(--ease-smooth), border-color var(--d-fast) var(--ease-smooth);
+}
+.lang-menu-btn:hover { background: var(--surface2); }
+.lang-menu-btn.compact { font-family: var(--font-mono); letter-spacing: 0.04em; }
+.lang-menu-chev { width: 14px; height: 14px; color: var(--text3); }
+.flag {
+  inline-size: 21px;
+  block-size: 14px;
+  border-radius: 3px;
+  /* hairline so white fields (JP/RU) don't dissolve into light surfaces */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+.lang-menu-flag { display: inline-flex; }
+.lang-menu-pop {
+  position: absolute;
+  inset-block-start: calc(100% + var(--s-1));
+  inset-inline-end: 0;
+  min-inline-size: 176px;
+  padding: var(--s-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg2);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+}
+.lang-menu-pop[hidden] { display: none; }
+.lang-menu-opt {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 40px;
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  text-align: start;
+}
+.lang-menu-opt:hover,
+.lang-menu-opt:focus-visible { background: var(--surface); outline: none; }
+.lang-menu-opt:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.lang-menu-opt.selected { color: var(--accent); font-weight: 600; }
+.lang-menu-name { flex: 1; }
+.lang-menu-check { width: 15px; height: 15px; }
+
 /* ─ Tabs (library) ─ */
 .tabs {
   display: flex;

@@ -37,7 +37,7 @@ Playing** sheet for transport, sleep timer, speed and queue access.
 | ▶️ **YouTube shows** | search by name (channels/playlists/videos appear in results) or paste a link; audio streams through the Worker (Innertube + range-aware proxy → background/lock-screen playback) or public Piped instances, with an official `youtube-nocookie` embed fallback |
 | 📥 **Offline episodes** | downloads live in the Cache API and play (and seek) with no connection; feeds are cached in IndexedDB and refresh in the background (stale-while-revalidate) |
 | 🧾 **Play queue** | queue any episode as "up next" — the queue wins over list order; own page under **Queue** |
-| 🎧 **Mini player** | leaving a feed keeps playing; a persistent dock opens the full-screen **Now Playing** sheet |
+| 🎧 **Mini transport** | leaving a feed keeps playing; the persistent dock carries skip/play controls (plus prev/next & speed on wide screens) and a seekable progress line — the chevron expands the full **Now Playing** sheet |
 | 🌊 **Frequency-line scrubber** | signature waveform motif — drag-to-seek hero scrubber in Now Playing, animated line on the mini player while playing |
 | 🎛 **Now Playing sheet** | full-screen (mobile) / floating panel (desktop): play/pause, prev/next, skip, speed 0.5×–2.5×, sleep timer, resume position |
 | 🖥 **Desktop layout** | ≥900px swaps the tab bar for a persistent left sidebar (Home/Search/Library/Settings) |
@@ -182,7 +182,7 @@ oynatma, uyku zamanlayıcısı, hız ve kuyruğa erişim için tam ekran **Şimd
 | ▶️ **YouTube yayınları** | **isimle ara** (kanal/playlist/videolar sonuçlarda listelenir) veya link yapıştır; ses Worker üzerinden akar (Innertube + range destekli proxy → arka plan/kilit ekranı çalma) ya da Piped'e, o da olmazsa resmi `youtube-nocookie` embed'e düşer |
 | 📥 **Çevrimdışı bölümler** | indirilenler Cache API'de yaşar, bağlantısız çalar ve sarar; feed'ler IndexedDB'de önbelleklenir, arka planda tazelenir |
 | 🧾 **Kuyruk** | bölümü "sıradaki" olarak işaretle — kuyruk, liste sırasından önce gelir; kendi sayfası **Kuyruk** görünümünde |
-| 🎧 **Mini oynatıcı** | feed'den çıkınca çalma sürer; kalıcı dock tam ekran **Şimdi Çalıyor** panelini açar |
+| 🎧 **Mini transport** | feed'den çıkınca çalma sürer; kalıcı dock üzerinde atlama/oynat kontrolleri (geniş ekranda önceki/sonraki ve hız) ve dokunarak sarılabilir ilerleme çizgisi — ok simgesi tam **Şimdi Çalıyor** panelini açar |
 | 🌊 **Frekans-çizgisi dalga-form** | imza motif — Şimdi Çalıyor panelinde sürüklenebilir kahraman dalga-form, çalarken mini oynatıcıda animasyonlu çizgi |
 | 🎛 **Şimdi Çalıyor paneli** | tam ekran (mobil) / yüzen panel (masaüstü): oynat/duraklat, önceki/sonraki, atlama, 0.5×–2.5× hız, uyku zamanlayıcısı |
 | 🖥 **Masaüstü düzeni** | ≥900px'te sekme çubuğu yerini kalıcı soldan kenar çubuğuna bırakır (Ana Sayfa/Ara/Kütüphane/Ayarlar) |

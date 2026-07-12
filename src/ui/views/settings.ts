@@ -8,7 +8,8 @@
  * --player-font-size / --list-row-height side-effect tokens on documentElement.
  */
 
-import { applyLang, isLangCode, t } from '../../i18n';
+import { t } from '../../i18n';
+import { createLangMenu } from '../lang-menu';
 import { clearAllDownloads, storageInfo } from '../../player/offline';
 import { clearProgress, saveProgressNow } from '../../storage/progress';
 import { local } from '../../storage/local';
@@ -153,16 +154,7 @@ const MARKUP = `
     <div class="s-section-title" data-i18n="s_lang_title">Dil / Language</div>
     <div class="s-row">
       <div><div class="s-label" data-i18n="s_lang_label">Arayüz Dili</div></div>
-      <select class="s-select" id="s_lang">
-        <option value="tr">🇹🇷 Türkçe</option>
-        <option value="en">🇬🇧 English</option>
-        <option value="de">🇩🇪 Deutsch</option>
-        <option value="fr">🇫🇷 Français</option>
-        <option value="es">🇪🇸 Español</option>
-        <option value="ar">🇸🇦 العربية</option>
-        <option value="ja">🇯🇵 日本語</option>
-        <option value="ru">🇷🇺 Русский</option>
-      </select>
+      <div id="s_lang"></div>
     </div>
   </section>
 
@@ -204,7 +196,8 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   const sTheme = pick<HTMLSelectElement>('s_theme');
   const sSort = pick<HTMLSelectElement>('s_defaultSort');
   const sShowDl = pick<HTMLInputElement>('s_showDl');
-  const sLang = pick<HTMLSelectElement>('s_lang');
+  // Language: the shared flag listbox (native <option> can't render flags)
+  pick<HTMLDivElement>('s_lang').append(createLangMenu());
   const swatchWrap = pick<HTMLDivElement>('colorSwatches');
   const storageUsageEl = pick<HTMLSpanElement>('storageUsage');
 
@@ -252,7 +245,6 @@ export function initSettingsView(deps: SettingsViewDeps): View {
     sTheme.value = S.theme;
     sSort.value = S.defaultSort;
     sShowDl.checked = S.showDl;
-    sLang.value = S.lang;
     updateSwatchActive();
   }
 
@@ -292,12 +284,6 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   });
   sSort.addEventListener('change', () => setSetting('defaultSort', sSort.value as SortDir));
   sShowDl.addEventListener('change', () => setSetting('showDl', sShowDl.checked));
-  sLang.addEventListener('change', () => {
-    if (isLangCode(sLang.value)) {
-      setSetting('lang', sLang.value);
-      applyLang(sLang.value);
-    }
-  });
 
   // ── data section ─────────────────────────────────────────────────
   function saveFile(name: string, mime: string, content: string): void {

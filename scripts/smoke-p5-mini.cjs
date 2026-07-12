@@ -96,8 +96,9 @@ function waitServer(url, tries = 60) {
     ok('mini button pauses in place', paused);
     await page.click('#miniPlay');
 
-    // Tapping the bar opens the Now Playing sheet (new UI) — playback continues
-    await page.click('#miniPlayer');
+    // The expand chevron (or title area) opens the Now Playing sheet — the bar
+    // itself now hosts inline transport controls, so it is no longer a button.
+    await page.click('#miniExpand');
     await page.waitForFunction(() => document.getElementById('npSheet')?.classList.contains('open'), { timeout: 8000 });
     const sheet = await page.evaluate(() => ({
       playing: document.body.classList.contains('is-playing'),

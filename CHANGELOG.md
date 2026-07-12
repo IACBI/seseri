@@ -26,6 +26,16 @@
   from the video id) instead of Piped/Invidious instance proxies, which
   frequently go dark; search-result artwork also falls back to a calm
   placeholder tile when an image fails to load.
+- **Mini player → mini transport**: skip back/forward and play/pause live
+  directly in the dock (plus previous/next and a speed selector on wider
+  screens), and the progress hairline is a tap/drag seek slider — no need to
+  open the full player for everyday control. The expand chevron or the title
+  area still opens the Now Playing sheet (scrubber, sleep timer, queue,
+  YouTube video frame).
+- **Language menu with real flags**: a custom accessible listbox
+  (`ui/lang-menu.ts`) with hand-drawn inline SVG flags (`ui/flags.ts`) —
+  Windows renders no emoji flags, and native `<option>` can't show images.
+  It now lives on the Home header too, not only in Settings.
 
 ### Information architecture — full redesign
 - New primary navigation: a bottom tab bar on mobile / left sidebar on

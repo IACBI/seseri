@@ -11,6 +11,7 @@ import { t, currentLang } from '../../i18n';
 import { httpsOnly } from '../../lib/safe';
 import { fmtTime } from '../../lib/format';
 import { BRAND_MARK } from '../icons';
+import { createLangMenu } from '../lang-menu';
 import { subscriptions } from '../../storage/subscriptions';
 import {
   continueListening,
@@ -32,14 +33,19 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
   el.innerHTML = `
     <div class="view-inner home">
       <header class="home-brand">
-        <span class="home-brand-mark" aria-hidden="true">${BRAND_MARK}</span>
-        <div class="home-brand-text">
-          <h1 class="home-wordmark wm" tabindex="-1">Seseri</h1>
-          <p class="home-tagline" data-i18n="home_tagline">Ücretsiz, hesapsız podcast çalar</p>
+        <div class="home-brand-id">
+          <span class="home-brand-mark" aria-hidden="true">${BRAND_MARK}</span>
+          <div class="home-brand-text">
+            <h1 class="home-wordmark wm" tabindex="-1">Seseri</h1>
+            <p class="home-tagline" data-i18n="home_tagline">Ücretsiz, hesapsız podcast çalar</p>
+          </div>
         </div>
+        <div class="home-lang" id="homeLangSel"></div>
       </header>
       <div class="home-sections"></div>
     </div>`;
+
+  el.querySelector('.home-lang')?.append(createLangMenu({ compact: true }));
 
   const heading = el.querySelector<HTMLElement>('.home-wordmark')!;
   const sectionsEl = el.querySelector<HTMLElement>('.home-sections')!;
