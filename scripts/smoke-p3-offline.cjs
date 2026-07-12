@@ -71,8 +71,8 @@ function waitServer(url, tries = 60) {
     await page.goto(`${ORIGIN}/?podcast=777000111`, { waitUntil: 'networkidle2' });
     console.log('  [state]', JSON.stringify(await page.evaluate(() => ({
       href: location.href,
-      search: document.getElementById('searchScreen')?.style.display,
-      player: document.getElementById('playerScreen')?.style.display,
+      view: document.body.dataset.view,
+      feedOpen: document.body.classList.contains('feed-open'),
       idb: typeof indexedDB,
     }))));
     await page.waitForSelector('.ep-item', { timeout: 20000 });
@@ -104,21 +104,26 @@ function waitServer(url, tries = 60) {
     const stillDone = await page.$('.ep-dl-btn.done');
     ok('offline: download badge persists', !!stillDone);
 
-    // 4) Play the downloaded episode offline
+    // 4) Play the downloaded episode offline (row click loads+plays; the
+    //    Now Playing sheet stays closed but #tCur updates from the engine)
     await page.click('.ep-item');
     await page.waitForFunction(() => document.body.classList.contains('is-playing'), { timeout: 15000 });
     await new Promise((r) => setTimeout(r, 2500));
     const t1 = await page.$eval('#tCur', (e) => e.textContent);
     ok('offline: downloaded episode plays', t1 !== '0:00', `tCur=${t1}`);
 
-    // 5) Seek works on the blob source
+    // 5) Seek works on the blob source — the seek keys live on the Now Playing
+    //    scrubber, so open the sheet (click the active row) and focus it first
+    await page.click('.ep-item.active');
+    await page.waitForFunction(() => document.getElementById('npSheet')?.classList.contains('open'), { timeout: 8000 });
+    await page.focus('#progressWrap');
     await page.keyboard.press('ArrowRight');
     await new Promise((r) => setTimeout(r, 800));
     const t2 = await page.$eval('#tCur', (e) => e.textContent);
     const secs = (s) => s.split(':').reduce((a, b) => a * 60 + +b, 0);
     ok('offline: seek on downloaded audio', secs(t2) >= secs(t1) + 10, `${t1} -> ${t2}`);
 
-    // 6) Episode 2 (not downloaded) must NOT play offline
+    // 6) Duration comes from the decoded blob (the sheet's #tTot)
     const dur = await page.$eval('#tTot', (e) => e.textContent);
     ok('offline: duration from blob', dur === '2:00', dur);
   } catch (e) {
@@ -130,7 +135,8 @@ function waitServer(url, tries = 60) {
         status: document.getElementById('statusText')?.textContent,
         epList: document.getElementById('epList')?.textContent?.slice(0, 150),
         title: document.getElementById('pTitle')?.textContent,
-        playerVisible: document.getElementById('playerScreen')?.style.display,
+        view: document.body.dataset.view,
+        sheetOpen: document.getElementById('npSheet')?.classList.contains('open'),
       }));
       console.log('  [dump]', JSON.stringify(dump));
     } catch {}

@@ -23,19 +23,22 @@ const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
     await page.evaluate(() => navigator.serviceWorker.ready);
     ok('service worker active', true);
 
-    // Real search → results through the deployed worker
+    // Real search → results through the deployed worker. Search is a view now,
+    // so navigate to it (the nav bar is always mounted) before typing.
+    await page.click('#navSearch');
+    await page.waitForSelector('#searchInput', { visible: true, timeout: 15000 });
     await page.type('#searchInput', 'the daily');
     await page.click('#searchBtn');
-    await page.waitForSelector('.result-item', { timeout: 60000 });
+    await page.waitForSelector('#resultsList .row', { timeout: 60000 });
     const res = await page.evaluate(() => ({
-      rows: document.querySelectorAll('.result-item').length,
+      rows: document.querySelectorAll('#resultsList .row').length,
       hints: [...document.querySelectorAll('.search-hint')].map((h) => h.textContent.trim()),
     }));
     ok('search returns results', res.rows > 0, `${res.rows} rows · ${res.hints.join(' | ')}`);
     ok('YouTube section present', res.hints.some((t) => t.includes('YouTube')));
 
     // Open the first podcast and play an episode (real audio CDN)
-    await page.click('.result-item');
+    await page.click('#resultsList .row');
     await page.waitForSelector('.ep-item', { timeout: 60000 });
     const eps = await page.$$eval('.ep-item', (n) => n.length);
     ok('feed opens', eps > 5, `${eps} eps`);

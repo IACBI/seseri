@@ -52,21 +52,21 @@
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Desktop: library rail beside the episode list"
+      "label": "Desktop: sidebar navigation beside the episode list"
     },
     {
       "src": "screenshots/narrow-home.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Home: search any podcast or paste a link"
+      "label": "Home: continue listening and subscriptions"
     },
     {
       "src": "screenshots/narrow-feed.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Player: waveform seek, speed and sleep timer"
+      "label": "Podcast: episode list, downloads and queue"
     }
   ],
   "shortcuts": [
