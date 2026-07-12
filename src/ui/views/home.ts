@@ -59,16 +59,23 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
     return h('div', { className: 'search-hint', dataset: { i18n: key } }, t(key));
   }
 
+  /** Artwork img, or a calm placeholder tile when the feed has no art. */
+  function artOrTile(className: string, art: string): HTMLElement {
+    const src = httpsOnly(art);
+    if (!src) return h('div', { className });
+    return h('img', {
+      className,
+      src,
+      alt: '',
+      attrs: { loading: 'lazy', decoding: 'async' },
+    });
+  }
+
   function continueRow(item: ContinueItem): HTMLElement {
     const row = h(
       'div',
       { className: 'row home-row', role: 'button', tabIndex: 0, dataset: { homeRow: '1' } },
-      h('img', {
-        className: 'row-art',
-        src: httpsOnly(item.episode.art || item.feed.art),
-        alt: '',
-        attrs: { loading: 'lazy', decoding: 'async' },
-      }),
+      artOrTile('row-art', item.episode.art || item.feed.art),
       h(
         'div',
         { className: 'row-info' },
@@ -99,12 +106,7 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
         dataset: { homeRow: '1' },
         title: sub.name || sub.artist || '',
       },
-      h('img', {
-        className: 'home-sub-art',
-        src: httpsOnly(sub.art),
-        alt: '',
-        attrs: { loading: 'lazy', decoding: 'async' },
-      }),
+      artOrTile('home-sub-art', sub.art),
       h('div', { className: 'home-sub-name' }, sub.name || sub.artist || '—'),
     );
     activate(tile, () => deps.openFeed(req));

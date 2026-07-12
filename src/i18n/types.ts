@@ -132,6 +132,7 @@ export interface Lang {
   lib_empty_subs: string;
   lib_empty_subs_hint: string;
   lib_empty_downloads: string;
+  lib_delete_download: string;
   lib_dl_total: LangFn;
   np_open: string;
   np_close: string;

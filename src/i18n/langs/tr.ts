@@ -129,6 +129,7 @@ const tr: Lang = {
   lib_empty_subs: "Henüz abonelik yok.",
   lib_empty_subs_hint: "Bir podcast açıp yıldıza dokunarak abone ol.",
   lib_empty_downloads: "İndirilen bölüm yok.",
+  lib_delete_download: "İndirmeyi sil",
   lib_dl_total: (n, size) => `${n} bölüm · ${size}`,
   np_open: "Oynatıcıyı aç",
   np_close: "Oynatıcıyı kapat",

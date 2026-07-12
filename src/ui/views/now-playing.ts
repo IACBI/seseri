@@ -206,14 +206,8 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
 
   // ── now-playing → artwork + feed name ────────────────────────────
   function applyNow(now: NowPlaying | null): void {
-    if (!now) {
-      art.removeAttribute('src');
-      art.style.display = 'none';
-      feedEl.textContent = '';
-      return;
-    }
-    feedEl.textContent = now.feedName;
-    const src = httpsOnly(now.art);
+    const src = now ? httpsOnly(now.art) : '';
+    feedEl.textContent = now?.feedName ?? '';
     if (src) {
       art.src = src;
       art.style.display = '';
@@ -221,6 +215,9 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
       art.removeAttribute('src');
       art.style.display = 'none';
     }
+    // Artless feeds: collapse the stage so the title doesn't float in a void
+    // (yt-mode CSS re-shows the stage for the embedded video).
+    player.classList.toggle('no-art', !src);
   }
   nowPlaying.subscribe(applyNow);
   applyNow(nowPlaying());

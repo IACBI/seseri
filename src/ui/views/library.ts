@@ -159,8 +159,8 @@ export function initLibraryView(deps: LibraryViewDeps): View {
     const trash = h('button', {
       className: 'icon-btn',
       type: 'button',
-      title: t('dl_label'),
-      attrs: { 'aria-label': t('dl_label') },
+      title: t('lib_delete_download'),
+      attrs: { 'aria-label': t('lib_delete_download') },
       on: {
         click: async () => {
           await removeDownload(rec.id);

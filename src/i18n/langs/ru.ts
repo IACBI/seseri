@@ -129,6 +129,7 @@ const ru: Lang = {
   lib_empty_subs: "Подписок пока нет.",
   lib_empty_subs_hint: "Откройте подкаст и нажмите на звезду, чтобы подписаться.",
   lib_empty_downloads: "Нет загруженных выпусков.",
+  lib_delete_download: "Удалить загрузку",
   lib_dl_total: (n, size) => `${n} выпусков · ${size}`,
   np_open: "Открыть плеер",
   np_close: "Закрыть плеер",

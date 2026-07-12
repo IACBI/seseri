@@ -129,6 +129,7 @@ const ar: Lang = {
   lib_empty_subs: "لا اشتراكات بعد.",
   lib_empty_subs_hint: "افتح بودكاست واضغط على النجمة للاشتراك.",
   lib_empty_downloads: "لا حلقات منزّلة.",
+  lib_delete_download: "حذف التنزيل",
   lib_dl_total: (n, size) => `${n} حلقة · ${size}`,
   np_open: "فتح المشغّل",
   np_close: "إغلاق المشغّل",

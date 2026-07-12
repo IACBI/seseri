@@ -129,6 +129,7 @@ const fr: Lang = {
   lib_empty_subs: "Aucun abonnement pour l'instant.",
   lib_empty_subs_hint: "Ouvrez un podcast et touchez l'étoile pour vous abonner.",
   lib_empty_downloads: "Aucun épisode téléchargé.",
+  lib_delete_download: "Supprimer le téléchargement",
   lib_dl_total: (n, size) => `${n} épisodes · ${size}`,
   np_open: "Ouvrir le lecteur",
   np_close: "Fermer le lecteur",

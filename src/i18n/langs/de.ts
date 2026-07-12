@@ -129,6 +129,7 @@ const de: Lang = {
   lib_empty_subs: "Noch keine Abonnements.",
   lib_empty_subs_hint: "Öffne einen Podcast und tippe auf den Stern, um zu abonnieren.",
   lib_empty_downloads: "Keine heruntergeladenen Folgen.",
+  lib_delete_download: "Download löschen",
   lib_dl_total: (n, size) => `${n} Folgen · ${size}`,
   np_open: "Player öffnen",
   np_close: "Player schließen",

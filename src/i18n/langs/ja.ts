@@ -129,6 +129,7 @@ const ja: Lang = {
   lib_empty_subs: "まだ購読がありません。",
   lib_empty_subs_hint: "番組を開いて星をタップすると購読できます。",
   lib_empty_downloads: "ダウンロード済みのエピソードはありません。",
+  lib_delete_download: "ダウンロードを削除",
   lib_dl_total: (n, size) => `${n}エピソード · ${size}`,
   np_open: "プレーヤーを開く",
   np_close: "プレーヤーを閉じる",

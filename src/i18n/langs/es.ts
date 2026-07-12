@@ -129,6 +129,7 @@ const es: Lang = {
   lib_empty_subs: "Aún no hay suscripciones.",
   lib_empty_subs_hint: "Abre un pódcast y toca la estrella para suscribirte.",
   lib_empty_downloads: "No hay episodios descargados.",
+  lib_delete_download: "Eliminar la descarga",
   lib_dl_total: (n, size) => `${n} episodios · ${size}`,
   np_open: "Abrir el reproductor",
   np_close: "Cerrar el reproductor",

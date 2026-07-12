@@ -80,6 +80,8 @@
 .yt-frame iframe { border: 0; display: block; }
 .np-player.yt-mode .np-art { display: none; }
 .np-player.yt-mode .yt-frame { display: block; }
+/* Artless feed (and no embedded video): drop the empty stage entirely. */
+.np-player.no-art:not(.yt-mode) .np-stage { display: none; }
 .np-player.yt-mode .np-stage {
   inline-size: min(92vw, 560px);
   aspect-ratio: 16 / 9;
