@@ -39,6 +39,11 @@ const LEGACY_ACCENT_MAP: Record<string, string> = {
   '#34d8e0': '#3fa8a0', // cyan → teal
 };
 
+/** Resolve a stored accent (possibly pre-4.0) to the hex actually painted. */
+export function normalizeAccent(stored: string): string {
+  return LEGACY_ACCENT_MAP[stored.toLowerCase()] ?? stored;
+}
+
 const prefersLight =
   typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: light)') : null;
 
@@ -68,7 +73,7 @@ export function applyTheme(theme: ThemeName): void {
 }
 
 export function applyAccent(stored: string): void {
-  const c = LEGACY_ACCENT_MAP[stored.toLowerCase()] ?? stored;
+  const c = normalizeAccent(stored);
   const r = parseInt(c.slice(1, 3), 16);
   const g = parseInt(c.slice(3, 5), 16);
   const b = parseInt(c.slice(5, 7), 16);
