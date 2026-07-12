@@ -1,0 +1,16 @@
+/* Style barrel — cascade order matters: tokens → themes → base → frame →
+   shared kit → overlays → signature → views. main.ts imports only this file. */
+@import './tokens.css';
+@import './themes.css';
+@import './base.css';
+@import './layout.css';
+@import './controls.css';
+@import './overlays.css';
+@import './signal-line.css';
+@import './views/home.css';
+@import './views/search.css';
+@import './views/library.css';
+@import './views/podcast.css';
+@import './views/now-playing.css';
+@import './views/queue.css';
+@import './views/settings.css';

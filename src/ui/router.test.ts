@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FeedRequest } from '../feeds/types';
-import { initRouter, parseLocation, urlFor } from './router';
+import { initRouter, parseLocation, urlFor, type AppView } from './router';
 
 function setUrl(search: string): void {
   history.replaceState(null, '', '/' + search);
 }
 
 function makeHandlers() {
-  return { showFeed: vi.fn<(req: FeedRequest) => void>(), showHome: vi.fn<() => void>() };
+  return {
+    showFeed: vi.fn<(req: FeedRequest) => void>(),
+    showHome: vi.fn<() => void>(),
+    showView: vi.fn<(view: AppView) => void>(),
+  };
 }
 
 beforeEach(() => {
@@ -57,6 +61,24 @@ describe('parseLocation', () => {
     setUrl('');
     expect(parseLocation()).toEqual({ kind: 'home' });
   });
+
+  it.each(['search', 'library', 'queue', 'settings'] as const)(
+    'parses ?view=%s into a view route',
+    (view) => {
+      setUrl('?view=' + view);
+      expect(parseLocation()).toEqual({ kind: 'view', view });
+    },
+  );
+
+  it('falls back to home for an unknown ?view= value', () => {
+    setUrl('?view=bogus');
+    expect(parseLocation()).toEqual({ kind: 'home' });
+  });
+
+  it('lets feed params win over ?view=', () => {
+    setUrl('?view=library&podcast=1550551126');
+    expect(parseLocation()).toEqual({ kind: 'feed', req: { kind: 'itunes', id: '1550551126' } });
+  });
 });
 
 describe('urlFor', () => {
@@ -74,6 +96,60 @@ describe('urlFor', () => {
 
   it('maps home to the bare pathname', () => {
     expect(urlFor({ kind: 'home' })).toBe(location.pathname);
+  });
+
+  it('round-trips every view through parseLocation', () => {
+    for (const view of ['search', 'library', 'queue', 'settings'] as const) {
+      history.replaceState(null, '', urlFor({ kind: 'view', view }));
+      expect(parseLocation()).toEqual({ kind: 'view', view });
+    }
+  });
+});
+
+describe('viewOpened', () => {
+  it('pushes a history entry and enables back when opening a view from home', () => {
+    const router = initRouter(makeHandlers());
+    const lenBefore = history.length;
+
+    router.viewOpened('library');
+
+    expect(location.search).toBe('?view=library');
+    expect(router.canGoBack()).toBe(true);
+    expect(history.length).toBe(lenBefore + 1);
+  });
+
+  it('replaces (not pushes) on a view→view navigation', () => {
+    setUrl('?view=search');
+    const router = initRouter(makeHandlers());
+    const lenBefore = history.length;
+
+    router.viewOpened('settings');
+
+    expect(location.search).toBe('?view=settings');
+    expect(history.length).toBe(lenBefore);
+    expect(router.canGoBack()).toBe(false);
+  });
+
+  it('replaces without enabling back when push=false (initial deep-link load)', () => {
+    const router = initRouter(makeHandlers());
+    const lenBefore = history.length;
+
+    router.viewOpened('queue', false);
+
+    expect(location.search).toBe('?view=queue');
+    expect(history.length).toBe(lenBefore);
+    expect(router.canGoBack()).toBe(false);
+  });
+
+  it('replaces on a feed→view navigation (one back step still returns home)', () => {
+    setUrl('?podcast=1550551126');
+    const router = initRouter(makeHandlers());
+    const lenBefore = history.length;
+
+    router.viewOpened('library');
+
+    expect(location.search).toBe('?view=library');
+    expect(history.length).toBe(lenBefore);
   });
 });
 
@@ -152,6 +228,16 @@ describe('goHome', () => {
 });
 
 describe('popstate', () => {
+  it('routes to showView with the parsed view when navigating to a ?view= URL', () => {
+    const h = makeHandlers();
+    initRouter(h);
+
+    setUrl('?view=library');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+
+    expect(h.showView).toHaveBeenCalledWith('library');
+  });
+
   it('routes to showFeed with the parsed request when navigating to a feed URL', () => {
     const h = makeHandlers();
     initRouter(h);

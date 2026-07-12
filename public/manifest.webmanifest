@@ -6,8 +6,8 @@
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "any",
-  "background_color": "#0b0c11",
-  "theme_color": "#0b0c11",
+  "background_color": "#151210",
+  "theme_color": "#151210",
   "start_url": "./",
   "scope": "./",
   "lang": "tr",
@@ -81,7 +81,7 @@
       "name": "Ara / Search",
       "short_name": "Ara",
       "description": "Podcast ara",
-      "url": "./",
+      "url": "./?view=search",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ]

@@ -1,8 +1,7 @@
-import { applyLang } from './i18n';
-import { t } from './i18n';
+import { applyLang, t } from './i18n';
 import { initMediaSession } from './player/media-session';
 import { requestPersistence } from './player/offline';
-import { pbCurrent, pbDuration, pbPaused, pbSeekTo } from './player/engine';
+import { pbCurrent, pbDuration, pbSeekTo } from './player/engine';
 import { loadProgress, saveProgressNow, setQuotaListener } from './storage/progress';
 import { local } from './storage/local';
 import { loadSubscriptions } from './storage/subscriptions';
@@ -10,18 +9,24 @@ import { loadSettings, settings } from './state/settings';
 import type { FeedRequest } from './feeds/types';
 import { bindI18nDom } from './ui/i18n-dom';
 import { initMiniPlayer } from './ui/mini-player';
+import { initNav, type NavDestination } from './ui/nav';
 import { initOfflineBanner } from './ui/offline-banner';
-import { initRouter, parseLocation } from './ui/router';
+import { createPlaybackController } from './ui/playback-controller';
+import { initRouter, parseLocation, type AppView } from './ui/router';
 import { renderShell, must } from './ui/shell';
-import { initPlayerScreen } from './ui/screens/player';
-import { initSearchScreen } from './ui/screens/search';
-import { initSettingsPanel } from './ui/screens/settings';
 import { applyAccent, applyTheme } from './ui/theme';
 import { toast } from './ui/toast';
+import { showView, type ViewName } from './ui/views';
+import { initHomeView } from './ui/views/home';
+import { initLibraryView } from './ui/views/library';
+import { initNowPlaying } from './ui/views/now-playing';
+import { initPodcastView } from './ui/views/podcast';
+import { initQueueView } from './ui/views/queue';
+import { initSearchView } from './ui/views/search';
+import { initSettingsView } from './ui/views/settings';
 
 export function boot(): void {
-  const app = must('app');
-  renderShell(app);
+  renderShell(must('app'));
 
   // ── state & appearance ───────────────────────────────────────────
   loadSettings();
@@ -33,69 +38,77 @@ export function boot(): void {
   applyLang(S.lang);
   document.documentElement.style.setProperty('--player-font-size', S.fontSize);
   document.documentElement.style.setProperty('--list-row-height', S.rowHeight);
-  bindI18nDom();
   setQuotaListener(() => toast(t('storage_full'), 'error'));
   requestPersistence(); // keep downloads/idb safe from storage-pressure eviction
   initOfflineBanner();
 
-  // ── screens & router ─────────────────────────────────────────────
-  let lastFeedReq: FeedRequest | null = null;
+  // ── playback session (single instance, shared by all views) ──────
+  const playback = createPlaybackController();
+
   // Remembered across sessions for the "Resume" app shortcut (?resume=1)
   const rememberFeed = (req: FeedRequest): void => {
-    lastFeedReq = req;
     local.set('pp_last_feed', req);
   };
 
-  const search = initSearchScreen({
-    openFeed: (req) => {
-      rememberFeed(req);
-      player.openFeed(req);
-      router.feedOpened(req);
-    },
-  });
+  /** Central "open a feed" intent — every entry point funnels through here. */
+  const openFeed = (req: FeedRequest, opts: { push?: boolean; focus?: boolean } = {}): void => {
+    rememberFeed(req);
+    playback.openFeed(req);
+    showView('podcast', { focus: opts.focus ?? true });
+    router.feedOpened(req, opts.push ?? true);
+  };
 
-  const player = initPlayerScreen({
-    onFeedOpened: (req) => {
-      rememberFeed(req);
-      /* URL handled by the router (avoids double push) */
-    },
-    onClosed: () => {
-      search.show();
-      search.restoreFocus(); // return focus to the row/input that opened the feed
-    },
+  // ── views ─────────────────────────────────────────────────────────
+  const home = initHomeView({ openFeed: (req) => openFeed(req) });
+  // (Phase 3 wires search.restoreFocus into back-navigation focus hand-off.)
+  initSearchView({ openFeed: (req) => openFeed(req) });
+  initLibraryView({ openFeed: (req) => openFeed(req) });
+  const nowPlayingSheet = initNowPlaying({
+    playback,
+    openQueue: () => goView('queue'),
+  });
+  initPodcastView({
+    playback,
     onBack: () => {
       if (router.canGoBack()) history.back();
       else router.goHome();
     },
+    openNowPlaying: () => nowPlayingSheet.open(),
   });
+  initQueueView({ playback });
+  initSettingsView({ onDataCleared: () => home.refresh() });
 
+  // Static markup is in place — localize it (re-runs on language change).
+  bindI18nDom();
+
+  // ── router & navigation ───────────────────────────────────────────
   const router = initRouter({
     showFeed: (req) => {
       rememberFeed(req);
-      player.openFeed(req);
+      playback.openFeed(req);
+      showView('podcast');
     },
     showHome: () => {
       saveProgressNow();
-      player.hide(); // playback continues — the mini player takes over
+      nowPlayingSheet.close();
+      showView('home'); // playback continues — the mini player takes over
     },
+    showView: (view: AppView) => showView(view as ViewName),
   });
 
-  initMiniPlayer({
-    onOpen: () => {
-      if (!lastFeedReq) return;
-      player.openFeed(lastFeedReq);
-      router.feedOpened(lastFeedReq);
-    },
-  });
+  /** Nav/tab intent: home is the bare path, other views get ?view=. */
+  const goView = (dest: NavDestination | 'queue'): void => {
+    nowPlayingSheet.close();
+    if (dest === 'home') {
+      router.goHome();
+      return;
+    }
+    showView(dest);
+    router.viewOpened(dest);
+  };
+  initNav({ go: goView });
 
-  const settingsPanel = initSettingsPanel({
-    onDataCleared: () => {
-      if (player.isOpen()) {
-        /* list re-render happens via settings subscription */
-      }
-    },
-  });
-  must('settingsBtn').addEventListener('click', () => settingsPanel.open());
+  initMiniPlayer({ onOpen: () => nowPlayingSheet.open() });
 
   // ── media session ────────────────────────────────────────────────
   initMediaSession({
@@ -104,10 +117,9 @@ export function boot(): void {
       const d = pbDuration();
       if (d) pbSeekTo(Math.min(pbCurrent() + settings().skipForward, d));
     },
-    prevTrack: () => must('btnPrev').click(),
-    nextTrack: () => must('btnNext').click(),
+    prevTrack: () => playback.prev(),
+    nextTrack: () => playback.next(),
   });
-  void pbPaused;
 
   // ── persistence on exit ──────────────────────────────────────────
   window.addEventListener('beforeunload', saveProgressNow);
@@ -129,12 +141,11 @@ export function boot(): void {
         ? resumeReq
         : null;
   if (initialReq) {
-    rememberFeed(initialReq);
-    player.openFeed(initialReq, false); // cold deep-link: don't steal focus on first paint
-    router.feedOpened(initialReq, false);
-    search.renderFavs(); // desktop rail is visible alongside the feed
+    // Cold deep link: don't steal focus on first paint, replace (no push).
+    openFeed(initialReq, { push: false, focus: false });
+  } else if (route.kind === 'view') {
+    showView(route.view as ViewName, { focus: false });
   } else {
-    search.show();
-    search.focusInput();
+    showView('home', { focus: false });
   }
 }

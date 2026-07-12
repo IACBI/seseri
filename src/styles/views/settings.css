@@ -1,0 +1,3 @@
+/* Settings view — owned by WP-F. Ported .s-row/.s-label/.s-select/.s-toggle
+   markup keeps working via controls.css; add view-specific layout here.
+   Tokens only, logical properties only. */

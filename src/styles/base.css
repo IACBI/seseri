@@ -1,4 +1,4 @@
-/* Reset, a11y, icon system, body — legacy lines 52 + 165-214 */
+/* Reset, a11y, icon system, typography, body. */
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
 /* Respect reduced-motion */
@@ -35,7 +35,7 @@
 /* mirror directional icons in RTL */
 [dir="rtl"] .icon-flip { transform: scaleX(-1); }
 
-/* The mount node is transparent to layout: screens are body flex items */
+/* The mount node is transparent to layout: the frame is a body flex item */
 #app { display: contents; }
 
 body {
@@ -54,3 +54,19 @@ body {
   text-rendering: optimizeLegibility;
   transition: background-color 0.45s var(--ease-out), color 0.35s var(--ease-out);
 }
+
+/* ─ Typography defaults — display face carries the personality ─ */
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+time, .mono, .time-row {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum';
+  letter-spacing: 0;
+}
+
+a { color: var(--accent); }
+
+img { max-width: 100%; }

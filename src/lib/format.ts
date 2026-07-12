@@ -34,6 +34,13 @@ export function fmtDur(ms: number): string {
   return h > 0 ? `${h}${t('dur_h')} ${String(m).padStart(2, '0')}${t('dur_m')}` : `${m}${t('dur_m')}`;
 }
 
+export function fmtBytes(n: number): string {
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + ' GB';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + ' KB';
+  return n + ' B';
+}
+
 export function fmtTime(s: number): string {
   if (!Number.isFinite(s) || isNaN(s)) return '0:00';
   const h = Math.floor(s / 3600);

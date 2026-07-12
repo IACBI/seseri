@@ -115,6 +115,23 @@ const tr: Lang = {
   toast_opml_exported: "OPML dışa aktarıldı ✓",
   toast_json_exported: "Yedek indirildi ✓",
   lang_select_label: "Arayüz dili",
+  nav_home: "Ana Sayfa",
+  nav_search: "Ara",
+  nav_library: "Kütüphane",
+  nav_settings: "Ayarlar",
+  home_tagline: "Ücretsiz, hesapsız podcast çalar",
+  home_continue: "Devam Et",
+  home_empty: "Henüz bir şey dinlemedin.",
+  home_empty_hint: "Bir podcast ara ve dinlemeye başla — son dinlediklerin burada görünecek.",
+  home_see_all: "Tümünü gör",
+  lib_tab_subs: "Abonelikler",
+  lib_tab_downloads: "İndirilenler",
+  lib_empty_subs: "Henüz abonelik yok.",
+  lib_empty_subs_hint: "Bir podcast açıp yıldıza dokunarak abone ol.",
+  lib_empty_downloads: "İndirilen bölüm yok.",
+  lib_dl_total: (n, size) => `${n} bölüm · ${size}`,
+  np_open: "Oynatıcıyı aç",
+  np_close: "Oynatıcıyı kapat",
 };
 
 export default tr;

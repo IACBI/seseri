@@ -115,6 +115,23 @@ const en: Lang = {
   toast_opml_exported: "OPML exported ✓",
   toast_json_exported: "Backup downloaded ✓",
   lang_select_label: "Interface language",
+  nav_home: "Home",
+  nav_search: "Search",
+  nav_library: "Library",
+  nav_settings: "Settings",
+  home_tagline: "Free, no-account podcast player",
+  home_continue: "Continue listening",
+  home_empty: "Nothing here yet.",
+  home_empty_hint: "Search for a podcast to start — your recent shows will appear here.",
+  home_see_all: "See all",
+  lib_tab_subs: "Subscriptions",
+  lib_tab_downloads: "Downloads",
+  lib_empty_subs: "No subscriptions yet.",
+  lib_empty_subs_hint: "Open a podcast and tap the star to subscribe.",
+  lib_empty_downloads: "No downloaded episodes.",
+  lib_dl_total: (n, size) => `${n} episodes · ${size}`,
+  np_open: "Open player",
+  np_close: "Close player",
 };
 
 export default en;

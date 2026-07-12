@@ -115,6 +115,23 @@ const ja: Lang = {
   toast_opml_exported: "OPMLをエクスポートしました ✓",
   toast_json_exported: "バックアップをダウンロードしました ✓",
   lang_select_label: "表示言語",
+  nav_home: "ホーム",
+  nav_search: "検索",
+  nav_library: "ライブラリ",
+  nav_settings: "設定",
+  home_tagline: "無料・アカウント不要のポッドキャストプレーヤー",
+  home_continue: "続きを聴く",
+  home_empty: "まだ何もありません。",
+  home_empty_hint: "ポッドキャストを検索して始めましょう。最近聴いた番組がここに表示されます。",
+  home_see_all: "すべて表示",
+  lib_tab_subs: "購読中",
+  lib_tab_downloads: "ダウンロード",
+  lib_empty_subs: "まだ購読がありません。",
+  lib_empty_subs_hint: "番組を開いて星をタップすると購読できます。",
+  lib_empty_downloads: "ダウンロード済みのエピソードはありません。",
+  lib_dl_total: (n, size) => `${n}エピソード · ${size}`,
+  np_open: "プレーヤーを開く",
+  np_close: "プレーヤーを閉じる",
 };
 
 export default ja;

@@ -1,0 +1,4 @@
+/* Signature "frequency line" motif — owned by WP-E (Now Playing + mini player).
+   Rules: consume --wave-track / --wave-played / --accent tokens; the animated
+   variant must go static under prefers-reduced-motion (base.css already zeroes
+   animation durations — do not fight it). */

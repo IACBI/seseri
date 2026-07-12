@@ -1,0 +1,3 @@
+/* Podcast detail view (feed header + episode list) — owned by WP-D.
+   Episode rows must consume --list-row-height and --player-font-size.
+   Compose controls.css primitives; tokens only, logical properties only. */
