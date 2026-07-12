@@ -27,11 +27,17 @@
   frequently go dark; search-result artwork also falls back to a calm
   placeholder tile when an image fails to load.
 - **Mini player → mini transport**: skip back/forward and play/pause live
-  directly in the dock (plus previous/next and a speed selector on wider
-  screens), and the progress hairline is a tap/drag seek slider — no need to
-  open the full player for everyday control. The expand chevron or the title
-  area still opens the Now Playing sheet (scrubber, sleep timer, queue,
-  YouTube video frame).
+  directly in the dock, and the progress hairline is a tap/drag seek slider —
+  no need to open the full player for everyday control. On wider screens the
+  transport (prev / skip / play / skip / next) sits centred, with the sleep
+  timer and speed selector grouped at the end (both kept in sync with the
+  sheet's controls). The expand chevron or the title area still opens the
+  Now Playing sheet (scrubber, queue, YouTube video frame).
+- **YouTube embed → audio background rescue**: when a track has to start on
+  the iframe fallback (which a locked phone pauses), the app keeps retrying
+  audio resolution in the background and hot-swaps to the `<audio>` element
+  at the same position the moment a stream resolves — restoring lock-screen
+  playback and Media Session controls without interrupting the listener.
 - **Language menu with real flags**: a custom accessible listbox
   (`ui/lang-menu.ts`) with hand-drawn inline SVG flags (`ui/flags.ts`) —
   Windows renders no emoji flags, and native `<option>` can't show images.

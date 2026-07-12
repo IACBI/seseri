@@ -312,6 +312,7 @@ export function createPlaybackController(): PlaybackController {
     const id = String(ep.trackId);
     const meta = s.meta;
 
+    cancelEmbedRescue();
     patch({ currentIndex: idx, currentTrackId: id });
 
     if (s.isYT) {
@@ -410,7 +411,64 @@ export function createPlaybackController(): PlaybackController {
         toast(t('yt_embed_bg'), 'info');
       }
       await embedLoadEp(ep, autoplay);
+      // …but keep hunting for a real audio stream in the background: the
+      // instant one resolves we hot-swap to <audio>, which DOES keep playing
+      // with the screen locked (plus lock-screen Media Session controls).
+      scheduleEmbedRescue(ep, id);
     }
+  }
+
+  // ── embed → audio background rescue ──────────────────────────────
+  let rescueTimer: ReturnType<typeof setTimeout> | null = null;
+  let rescueTry = 0;
+  const RESCUE_DELAYS = [8000, 30000, 60000, 120000, 180000];
+
+  function cancelEmbedRescue(): void {
+    if (rescueTimer) {
+      clearTimeout(rescueTimer);
+      rescueTimer = null;
+    }
+    rescueTry = 0;
+  }
+
+  /** Retry audio resolution while the embed fallback plays; on success swap
+   *  to <audio> at the embed's current position, preserving play state. */
+  function scheduleEmbedRescue(ep: Episode, id: string): void {
+    cancelEmbedRescue();
+    const stillOnEmbed = (): boolean =>
+      session().isYT && session().currentTrackId === id && isUsingEmbed();
+    const attempt = async (): Promise<void> => {
+      rescueTimer = null;
+      if (!stillOnEmbed()) return;
+      let url: string | null = null;
+      try {
+        url = await ytServiceAudioUrl(ep.ytId ?? '', loadAbort?.signal);
+      } catch {
+        url = null;
+      }
+      if (!stillOnEmbed()) return;
+      if (url) {
+        ep.episodeUrl = url; // real media URL → download works too
+        const pos = pbCurrent();
+        const wasPlaying = !pbPaused();
+        startAudio(url, id, wasPlaying);
+        // Land where the embed was (applyPrefs' saved-progress seek targets
+        // roughly the same second; this exact seek wins on loadedmetadata).
+        const seekBack = (): void => {
+          if (pos > 0 && isFinite(audio.duration) && pos < audio.duration - 2) {
+            audio.currentTime = pos;
+          }
+        };
+        if (audio.readyState >= 1) seekBack();
+        else audio.addEventListener('loadedmetadata', seekBack, { once: true });
+        return;
+      }
+      if (rescueTry < RESCUE_DELAYS.length - 1) {
+        rescueTry++;
+        rescueTimer = setTimeout(() => void attempt(), RESCUE_DELAYS[rescueTry]);
+      }
+    };
+    rescueTimer = setTimeout(() => void attempt(), RESCUE_DELAYS[0]);
   }
 
   async function embedLoadEp(ep: Episode, autoplay: boolean): Promise<void> {
@@ -556,6 +614,7 @@ export function createPlaybackController(): PlaybackController {
   }
 
   function reset(): void {
+    cancelEmbedRescue();
     audio.pause();
     if (currentBlobUrl) {
       audio.removeAttribute('src');

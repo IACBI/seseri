@@ -161,12 +161,30 @@
 }
 .mini-main:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-/* Inline transport cluster */
-.mini-controls {
+/* Inline transport cluster — centred between title (start) and the
+   secondary cluster (speed + sleep + expand, end) on wide screens */
+.mini-controls,
+.mini-secondary {
   display: flex;
   align-items: center;
   gap: 0;
   flex-shrink: 0;
+}
+.mini-sec-ctl {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  color: var(--text3);
+}
+.mini-sec-ctl .icon { inline-size: 14px; block-size: 14px; }
+@media (min-width: 640px) {
+  body.has-track .mini-player {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .mini-main { min-inline-size: 0; }
+  .mini-controls { justify-self: center; }
+  .mini-secondary { justify-self: end; }
 }
 .mini-tp {
   min-inline-size: 38px;
@@ -192,20 +210,22 @@
   pointer-events: none;
 }
 
-.mini-speed {
-  display: none;
+.mini-sel {
   min-block-size: 34px;
   margin-inline: var(--s-1);
   padding-inline: var(--s-2);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
 }
+.mini-sel.active { color: var(--accent); border-color: var(--accent); }
+select.mini-wide2 { display: none; }
 .mini-wide { display: none; }
 @media (min-width: 640px) {
   .mini-wide { display: inline-flex; }
 }
 @media (min-width: 760px) {
-  .mini-speed { display: block; }
+  .mini-sec-ctl.mini-wide2 { display: inline-flex; }
+  select.mini-wide2 { display: block; }
 }
 
 .mini-expand { color: var(--text3); }

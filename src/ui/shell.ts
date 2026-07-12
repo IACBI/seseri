@@ -71,7 +71,13 @@ const MINI_PLAYER = `
     <button class="mini-play" id="miniPlay" data-i18n-aria="play" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
     <button class="icon-btn mini-tp mini-skip" id="miniFwd" data-i18n-aria="s_skip_fwd" aria-label="İleri Atla"><svg class="icon" aria-hidden="true"><use href="#ic-forward"/></svg><span class="mini-skip-n" id="miniLblFwd">30</span></button>
     <button class="icon-btn mini-tp mini-wide" id="miniNext" data-i18n-aria="btn_next" aria-label="Sonraki" disabled><svg class="icon" aria-hidden="true"><use href="#ic-next"/></svg></button>
-    <select class="seri-select mini-speed" id="miniSpeed" data-i18n-aria="speed_label" aria-label="Oynatma hızı"></select>
+  </div>
+  <div class="mini-secondary">
+    <span class="mini-sec-ctl mini-wide2">
+      <svg class="icon" aria-hidden="true"><use href="#ic-moon"/></svg>
+      <select class="seri-select mini-sel" id="miniSleep" data-i18n-aria="sleep_timer" aria-label="Uyku zamanlayıcısı (dk)"></select>
+    </span>
+    <select class="seri-select mini-sel mini-speed mini-wide2" id="miniSpeed" data-i18n-aria="speed_label" aria-label="Oynatma hızı"></select>
     <button class="icon-btn mini-tp mini-expand" id="miniExpand" data-i18n-aria="np_open" aria-label="Oynatıcıyı aç"><svg class="icon" aria-hidden="true"><use href="#ic-up"/></svg></button>
   </div>
 </div>`;

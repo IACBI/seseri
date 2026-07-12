@@ -1,11 +1,13 @@
-import { t } from '../i18n';
+import { currentLang, t } from '../i18n';
 import { fmtTime } from '../lib/format';
 import { httpsOnly } from '../lib/safe';
 import { onEngine, pbDuration, pbSeekTo, pbSetRate } from '../player/engine';
+import { setSleepTimer } from '../player/sleep-timer';
 import { nowPlaying } from '../state/now-playing';
 import { setSetting, settings } from '../state/settings';
 import type { PlaybackController } from './playback-controller';
 import { must } from './shell';
+import { toast } from './toast';
 
 /**
  * Persistent mini transport — a real transport bar, not just a "reopen"
@@ -19,6 +21,7 @@ import { must } from './shell';
  * body.is-playing; a clean static line when paused or under reduced motion). */
 const MINI_BARS = 24;
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5];
+const SLEEPS = [0, 15, 30, 60];
 
 export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () => void }): void {
   const { playback } = deps;
@@ -34,6 +37,7 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
   const lblBack = must('miniLblBack');
   const lblFwd = must('miniLblFwd');
   const speedSel = must<HTMLSelectElement>('miniSpeed');
+  const sleepSel = must<HTMLSelectElement>('miniSleep');
   const expand = must<HTMLButtonElement>('miniExpand');
   const scrub = must('miniScrub');
   const progress = must('miniProgress');
@@ -49,6 +53,19 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
     o.textContent = v + '×';
     speedSel.appendChild(o);
   }
+  function buildSleepOptions(): void {
+    const cur = sleepSel.value || '0';
+    sleepSel.replaceChildren();
+    for (const n of SLEEPS) {
+      const o = document.createElement('option');
+      o.value = String(n);
+      o.textContent = n === 0 ? '—' : n + ' ' + t('dur_m');
+      sleepSel.appendChild(o);
+    }
+    sleepSel.value = cur;
+  }
+  buildSleepOptions();
+  currentLang.subscribe(buildSleepOptions);
 
   function setIcon(playing: boolean): void {
     const u = btnPlay.querySelector('use');
@@ -107,6 +124,27 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
     const v = parseFloat(speedSel.value) || 1;
     setSetting('defaultSpeed', v);
     pbSetRate(v);
+  });
+  sleepSel.addEventListener('change', () => {
+    const min = parseInt(sleepSel.value) || 0;
+    sleepSel.classList.toggle('active', min > 0);
+    // Mirror into the sheet's select so both surfaces show the same timer
+    // (sleep-timer.ts holds one global timer — last caller wins either way).
+    const sheetSel = document.getElementById('sleepSel') as HTMLSelectElement | null;
+    if (sheetSel) {
+      sheetSel.value = sleepSel.value;
+      sheetSel.classList.toggle('active', min > 0);
+    }
+    if (min > 0) toast(t('sleep_set', min));
+    setSleepTimer(min, () => {
+      sleepSel.value = '0';
+      sleepSel.classList.remove('active');
+      if (sheetSel) {
+        sheetSel.value = '0';
+        sheetSel.classList.remove('active');
+      }
+      toast(t('sleep_done'));
+    });
   });
 
   settings.subscribe((S) => {

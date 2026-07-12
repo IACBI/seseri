@@ -265,10 +265,20 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   sleepSel.addEventListener('change', () => {
     const min = parseInt(sleepSel.value) || 0;
     sleepSel.classList.toggle('active', min > 0);
+    // Mirror into the mini bar's select so both surfaces show the same timer.
+    const miniSel = document.getElementById('miniSleep') as HTMLSelectElement | null;
+    if (miniSel) {
+      miniSel.value = sleepSel.value;
+      miniSel.classList.toggle('active', min > 0);
+    }
     if (min > 0) toast(t('sleep_set', min));
     setSleepTimer(min, () => {
       sleepSel.value = '0';
       sleepSel.classList.remove('active');
+      if (miniSel) {
+        miniSel.value = '0';
+        miniSel.classList.remove('active');
+      }
       toast(t('sleep_done'));
     });
   });
