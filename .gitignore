@@ -26,3 +26,6 @@ thumbs.db
 
 # Tooling
 .claude/
+
+# Vite dev-server cache (created when --force or custom cacheDir is used)
+.vite/
