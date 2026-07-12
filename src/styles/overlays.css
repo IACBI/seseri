@@ -79,13 +79,19 @@
   flex-direction: column;
   overflow-y: auto;
   transform: translateY(100%);
-  transition: transform var(--d-slow) var(--ease-out), visibility var(--d-slow);
+  /* visibility flips instantly on open (so focus() can land inside) and only
+     after the slide-out on close. The sheet is never display:none — #ytHost
+     lives in here and the YT embed must stay rendered while dismissed. */
+  transition: transform var(--d-slow) var(--ease-out), visibility 0s var(--d-slow);
   visibility: hidden;
   padding-block-start: env(safe-area-inset-top, 0px);
   padding-block-end: env(safe-area-inset-bottom, 0px);
 }
-.np-sheet.open { transform: none; visibility: visible; }
-.np-sheet[hidden] { display: none; }
+.np-sheet.open {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--d-slow) var(--ease-out), visibility 0s;
+}
 
 @media (min-width: 900px) {
   .np-sheet {

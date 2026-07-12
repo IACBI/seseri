@@ -72,7 +72,10 @@ export function initWaveform(
 
   function frac(clientX: number): number {
     const rect = wrap.getBoundingClientRect();
-    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const f = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    // .signal-layers is mirrored under [dir="rtl"] — invert so the visual
+    // start (right edge) maps to 0, matching the mini player's math.
+    return document.documentElement.dir === 'rtl' ? 1 - f : f;
   }
   function seekAt(clientX: number): void {
     const dur = pbDuration();

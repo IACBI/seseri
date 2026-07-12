@@ -83,7 +83,7 @@ const MINI_PLAYER = `
 </div>`;
 
 const NP_SHEET = `
-<div class="np-sheet" id="npSheet" hidden role="dialog" aria-modal="false" data-i18n-aria="now_playing" aria-label="Şu an çalıyor"></div>`;
+<div class="np-sheet" id="npSheet" role="dialog" aria-modal="false" data-i18n-aria="now_playing" aria-label="Şu an çalıyor"></div>`;
 
 export function renderShell(app: HTMLElement): void {
   app.innerHTML =

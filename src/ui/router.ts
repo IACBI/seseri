@@ -77,11 +77,14 @@ export function initRouter(handlers: {
     }
   });
 
-  /** Shared push/replace policy: one back step always returns home. */
-  function reflect(url: string, push: boolean): void {
+  /** Shared push/replace policy: same-kind hops collapse (feed→feed, tab→tab
+   *  replace so history never stacks), but view→feed pushes so back returns
+   *  to the search/library position the feed was opened from. */
+  function reflect(route: Route, push: boolean): void {
+    const url = urlFor(route);
     if (location.pathname + location.search === url) return;
-    if (push && parseLocation().kind !== 'home') {
-      // feed/view → feed/view: replace, so back always returns home in one step
+    const cur = parseLocation().kind;
+    if (push && cur !== 'home' && !(cur === 'view' && route.kind === 'feed')) {
       history.replaceState(null, '', url);
     } else if (push) {
       history.pushState(null, '', url);
@@ -93,10 +96,10 @@ export function initRouter(handlers: {
 
   return {
     feedOpened(req, push = true) {
-      reflect(urlFor({ kind: 'feed', req }), push);
+      reflect({ kind: 'feed', req }, push);
     },
     viewOpened(view, push = true) {
-      reflect(urlFor({ kind: 'view', view }), push);
+      reflect({ kind: 'view', view }, push);
     },
     canGoBack: () => hasHomeBehind,
     goHome() {

@@ -35,8 +35,6 @@ export interface NowPlayingSheet {
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5];
 const SLEEPS = [0, 15, 30, 60];
-/** Matches the sheet transition (--d-slow) so we re-hide only after it ends. */
-const CLOSE_MS = 420;
 
 export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   const { playback } = deps;
@@ -301,34 +299,25 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   });
 
   // ── open / close ─────────────────────────────────────────────────
+  // The closed sheet stays rendered (visibility:hidden, never display:none):
+  // #ytHost lives in here, and the YT embed fallback must keep playing — and
+  // be creatable — while the sheet is dismissed.
   let lastFocus: HTMLElement | null = null;
-  let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
   function open(): void {
     if (isOpen()) return;
-    if (hideTimer) {
-      clearTimeout(hideTimer);
-      hideTimer = null;
-    }
     lastFocus = document.activeElement as HTMLElement | null;
-    el.hidden = false;
-    void el.offsetWidth;
     el.classList.add('open');
     must('npClose').focus();
   }
   function close(): void {
     if (!isOpen()) return;
     el.classList.remove('open');
-    if (hideTimer) clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => {
-      el.hidden = true;
-      hideTimer = null;
-    }, CLOSE_MS);
     lastFocus?.focus({ preventScroll: true });
     lastFocus = null;
   }
   function isOpen(): boolean {
-    return !el.hidden;
+    return el.classList.contains('open');
   }
 
   must('npClose').addEventListener('click', close);
