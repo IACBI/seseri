@@ -1,4 +1,244 @@
 /* Signature "frequency line" motif — owned by WP-E (Now Playing + mini player).
-   Rules: consume --wave-track / --wave-played / --accent tokens; the animated
-   variant must go static under prefers-reduced-motion (base.css already zeroes
-   animation durations — do not fight it). */
+   Sound made visible: a row of amber bars over a hairline baseline. The design
+   is drawn for its RESTING state first (a clean line); the playing state adds a
+   gentle shimmer. base.css zeroes animation durations under prefers-reduced-
+   motion — the static line is the correct fallback, so we never fight it.
+   Rules: consume --wave-track / --wave-played / --accent tokens; logical
+   properties throughout; the fill mirrors under [dir="rtl"]. */
+
+/* ═══════════════════ Hero scrubber (Now Playing) ═══════════════════ */
+.signal-scrub {
+  position: relative;
+  block-size: 84px;
+  padding-block: var(--s-3);
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.signal-scrub:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+  border-radius: var(--r-sm);
+}
+
+/* Layers box holds the bars + baseline + playhead. In RTL the whole box is
+   mirrored so the clip-path fill (physical, inset from the end) reads right. */
+.signal-layers { position: absolute; inset: var(--s-3) 0; }
+[dir="rtl"] .signal-layers { transform: scaleX(-1); }
+
+/* base = unplayed silhouette; fill = amber overlay clipped to progress.
+   waveform.ts builds identical <i> bars in both, so the fill tracks the base
+   exactly. Fill clip-path is set inline: inset(0 <remaining>% 0 0). */
+.signal-base,
+.signal-fill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+}
+.signal-base i,
+.signal-fill i {
+  flex: 1 1 0;
+  min-inline-size: 2px;
+  min-block-size: 2px;
+  border-radius: 999px;
+  transform-origin: center;
+}
+.signal-base i { background: var(--wave-track); }
+.signal-fill i {
+  background: var(--accent);
+  box-shadow: 0 0 5px var(--accent-glow);
+}
+
+/* the fine hairline that gives the motif its name */
+.signal-baseline {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 50%;
+  block-size: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, transparent, var(--border2) 10%, var(--border2) 90%, transparent);
+  pointer-events: none;
+}
+
+/* playhead: a slim amber tick with a glowing node — left% set by waveform.ts */
+.signal-head {
+  position: absolute;
+  inset-block: 3px;
+  inline-size: 2px;
+  margin-inline-start: -1px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  box-shadow: 0 0 8px 1px var(--accent-glow);
+  pointer-events: none;
+}
+.signal-head::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 10px;
+  block-size: 10px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 12px 3px var(--accent-glow);
+}
+
+/* scrub/hover time bubble (mono) — left% set by waveform.ts */
+.signal-tip {
+  position: absolute;
+  inset-block-end: 100%;
+  margin-block-end: var(--s-1);
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border-radius: var(--r-xs);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--d-fast) var(--ease-smooth);
+}
+[dir="rtl"] .signal-tip { transform: translateX(-50%) scaleX(-1); }
+.signal-scrub:hover .signal-tip,
+.signal-scrub.scrubbing .signal-tip { opacity: 1; }
+.signal-scrub.scrubbing .signal-head { inline-size: 3px; }
+.signal-scrub.scrubbing .signal-head::after { inline-size: 13px; block-size: 13px; }
+
+/* Playing shimmer — a travelling scaleY pulse, staggered by nth-child so it
+   reads as an organic wave. base + fill animate in lockstep (same heights,
+   same delays) so the amber never drifts off its silhouette. */
+@keyframes signal-shimmer {
+  0%, 100% { transform: scaleY(0.6); }
+  50% { transform: scaleY(1); }
+}
+.np-player.playing .signal-base i,
+.np-player.playing .signal-fill i {
+  animation: signal-shimmer 1.15s var(--ease-smooth) infinite;
+}
+.np-player.playing .signal-base i:nth-child(3n),
+.np-player.playing .signal-fill i:nth-child(3n) { animation-duration: 1.4s; animation-delay: -0.25s; }
+.np-player.playing .signal-base i:nth-child(3n+1),
+.np-player.playing .signal-fill i:nth-child(3n+1) { animation-duration: 0.95s; animation-delay: -0.55s; }
+.np-player.playing .signal-base i:nth-child(4n),
+.np-player.playing .signal-fill i:nth-child(4n) { animation-delay: -0.85s; }
+
+/* ═══════════════════════ Mini-player dock ═════════════════════════ */
+/* layout.css fixes the .mini-player position; the look lives here. */
+.mini-player {
+  align-items: center;
+  gap: var(--s-3);
+  padding-inline: var(--s-3);
+  padding-block: 0;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: border-color var(--d-fast) var(--ease-smooth), transform var(--d-fast) var(--ease-spring);
+}
+.mini-player:hover { border-color: var(--border2); }
+.mini-player:active { transform: scale(0.99); }
+.mini-player:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* slim frequency line across the dock's top edge */
+.mini-signal {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: var(--s-4);
+  block-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.mini-signal i {
+  flex: 1 1 0;
+  block-size: 3px;
+  border-radius: 999px;
+  background: var(--wave-track);
+  transform-origin: center;
+}
+body.is-playing .mini-signal { opacity: 1; }
+body.is-playing .mini-signal i {
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent-glow);
+  animation: signal-shimmer 1.15s var(--ease-smooth) infinite;
+}
+body.is-playing .mini-signal i:nth-child(3n) { animation-duration: 1.4s; animation-delay: -0.25s; }
+body.is-playing .mini-signal i:nth-child(3n+1) { animation-duration: 0.95s; animation-delay: -0.55s; }
+body.is-playing .mini-signal i:nth-child(4n) { animation-delay: -0.85s; }
+
+/* progress hairline pinned to the dock's bottom edge */
+.mini-progress-track {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: 0;
+  block-size: 2px;
+  background: var(--border);
+}
+.mini-progress {
+  block-size: 100%;
+  inline-size: 0;
+  background: var(--accent);
+  border-radius: 0 999px 999px 0;
+  transition: width 0.25s linear;
+}
+[dir="rtl"] .mini-progress { border-radius: 999px 0 0 999px; }
+
+.mini-art {
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--surface2);
+  flex-shrink: 0;
+}
+.mini-info { flex: 1; min-inline-size: 0; }
+.mini-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-feed {
+  font-size: var(--fs-xs);
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-block-start: 1px;
+}
+
+.mini-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  color: var(--accent-text);
+  cursor: pointer;
+  box-shadow: 0 2px 10px -3px var(--accent);
+  transition: transform var(--d-fast) var(--ease-spring), filter var(--d-fast) var(--ease-smooth);
+}
+.mini-play svg { inline-size: 20px; block-size: 20px; }
+.mini-play:hover { filter: brightness(1.06); }
+.mini-play:active { transform: scale(0.92); }

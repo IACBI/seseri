@@ -1,3 +1,230 @@
 /* Now Playing sheet contents — owned by WP-E (sheet chrome is in overlays.css).
    Hero scrubber = the signature frequency line (see signal-line.css).
    Tokens only, logical properties only. */
+
+.np-inner {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100%;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-5) var(--s-6);
+}
+@media (min-width: 900px) {
+  .np-inner { padding: var(--s-4) var(--s-6) var(--s-5); }
+}
+
+/* ─ Top bar: dismiss chevron + feed eyebrow ─ */
+.np-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+}
+.np-close svg { inline-size: 24px; block-size: 24px; }
+.np-feed {
+  min-inline-size: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─ Player body ─ */
+.np-player {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: center;
+  gap: var(--s-5);
+}
+.np-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+/* ─ Artwork / embedded video stage ─ */
+.np-stage {
+  position: relative;
+  align-self: center;
+  inline-size: min(72vw, 320px);
+  aspect-ratio: 1;
+  margin-block: var(--s-2);
+}
+.np-art {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  border-radius: var(--r-xl);
+  background: var(--surface2);
+  box-shadow: var(--shadow-lg);
+}
+.yt-frame {
+  position: absolute;
+  inset: 0;
+  display: none;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: #000;
+}
+.yt-frame,
+#ytHost,
+.yt-frame iframe {
+  inline-size: 100%;
+  block-size: 100%;
+}
+.yt-frame iframe { border: 0; display: block; }
+.np-player.yt-mode .np-art { display: none; }
+.np-player.yt-mode .yt-frame { display: block; }
+.np-player.yt-mode .np-stage {
+  inline-size: min(92vw, 560px);
+  aspect-ratio: 16 / 9;
+}
+
+/* ─ Episode title (display face, crossfades on track change) ─ */
+.np-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  text-align: center;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: opacity 0.15s var(--ease-smooth);
+}
+.np-title.swapping { opacity: 0; }
+
+/* ─ Time row (mono) ─ */
+.np-times {
+  display: flex;
+  justify-content: space-between;
+  margin-block-start: calc(-1 * var(--s-4));
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─ Transport row ─ */
+.np-transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+}
+@media (min-width: 380px) {
+  .np-transport { gap: var(--s-5); }
+}
+.np-tp { color: var(--text2); }
+.np-tp:hover { color: var(--text); }
+.np-tp svg { inline-size: 22px; block-size: 22px; }
+.np-tp:disabled { opacity: 0.3; cursor: default; }
+.np-tp:disabled:hover { background: none; color: var(--text2); }
+
+/* skip buttons: seconds badge centred inside the circular-arrow glyph */
+.np-skip { position: relative; }
+.np-skip-n {
+  position: absolute;
+  inset-block-start: 52%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  color: currentColor;
+  pointer-events: none;
+}
+
+/* the amber hero: big circular play/pause */
+.np-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 68px;
+  block-size: 68px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  color: var(--accent-text);
+  cursor: pointer;
+  box-shadow: 0 6px 20px -6px var(--accent), 0 0 0 6px var(--accent-soft);
+  transition: transform var(--d-fast) var(--ease-spring),
+    box-shadow var(--d-base) var(--ease-out), filter var(--d-fast) var(--ease-smooth);
+}
+.np-play svg { inline-size: 28px; block-size: 28px; }
+.np-play:hover { filter: brightness(1.06); }
+.np-play:active { transform: scale(0.95); }
+.np-player.playing .np-play {
+  box-shadow: 0 8px 26px -4px var(--accent), 0 0 0 9px var(--accent-soft);
+}
+
+/* ─ Secondary row: sleep, speed, queue ─ */
+.np-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--s-3) var(--s-5);
+  margin-block-start: var(--s-1);
+}
+.np-sec-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  color: var(--text2);
+}
+.np-sec-ctl svg { inline-size: 16px; block-size: 16px; }
+.np-sec-glyph { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text3); }
+.np-sel { min-block-size: 40px; }
+.np-sel.active { color: var(--accent); border-color: var(--accent); }
+
+.np-queue { position: relative; color: var(--text2); }
+.np-queue:hover { color: var(--text); }
+.np-queue.has-queue { color: var(--accent); }
+.np-queue-badge {
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-end: 3px;
+  min-inline-size: 16px;
+  block-size: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity var(--d-fast) var(--ease-out), transform var(--d-fast) var(--ease-spring);
+}
+.np-queue.has-queue .np-queue-badge { opacity: 1; transform: none; }
+
+/* ─ Desktop: two columns inside the floating panel ─ */
+@media (min-width: 900px) {
+  .np-player {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--s-7);
+  }
+  .np-stage {
+    flex: 0 0 auto;
+    align-self: center;
+    inline-size: min(38%, 300px);
+    margin: 0;
+  }
+  .np-controls { flex: 1; min-inline-size: 0; }
+  .np-title { text-align: start; }
+  .np-transport { justify-content: flex-start; }
+  .np-secondary { justify-content: flex-start; }
+}

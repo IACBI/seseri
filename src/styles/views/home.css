@@ -1,2 +1,107 @@
 /* Home view — owned by WP-A. Compose controls.css primitives (.row, .search-hint,
    .empty-state); tokens only, logical properties only. */
+
+/* ── Compact brand header (mobile-first) ───────────────────────────── */
+.home-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-block-end: var(--s-5);
+}
+.home-brand-mark {
+  display: inline-flex;
+  inline-size: 42px;
+  block-size: 42px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.home-brand-mark svg { inline-size: 100%; block-size: 100%; }
+.home-wordmark {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  outline: none;
+}
+.home-tagline {
+  font-size: var(--fs-sm);
+  color: var(--text2);
+  margin-block-start: 2px;
+}
+
+/* Desktop (≥900px): the sidebar already carries the brand. */
+@media (min-width: 900px) {
+  .home-brand { display: none; }
+}
+
+/* ── "Devam Et" — continue-listening rows with a thin progress bar ─── */
+.home-continue-item { margin-block-end: 2px; }
+.home-progress {
+  block-size: 3px;
+  border-radius: 2px;
+  background: var(--border2);
+  margin: 3px var(--s-3) 0;
+  overflow: hidden;
+}
+.home-progress-fill {
+  block-size: 100%;
+  min-inline-size: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: inline-size var(--d-base) var(--ease-out);
+}
+
+/* ── "Aboneliklerim" — artwork tile grid ───────────────────────────── */
+.home-subs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--s-3);
+  padding-inline: var(--s-3);
+  margin-block-start: var(--s-2);
+}
+.home-sub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background var(--d-fast) var(--ease-smooth);
+}
+.home-sub:hover { background: var(--surface); }
+.home-sub:focus-visible {
+  background: var(--surface);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.home-sub-art {
+  inline-size: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--r-xs);
+  object-fit: cover;
+  background: var(--surface2);
+}
+.home-sub-name {
+  font-size: var(--fs-sm);
+  color: var(--text2);
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Very narrow screens: fall back to rows. */
+@media (max-width: 380px) {
+  .home-subs { grid-template-columns: 1fr; gap: var(--s-1); }
+  .home-sub { flex-direction: row; align-items: center; }
+  .home-sub-art {
+    inline-size: 48px;
+    block-size: 48px;
+    aspect-ratio: auto;
+    flex-shrink: 0;
+  }
+  .home-sub-name { -webkit-line-clamp: 1; line-clamp: 1; }
+}

@@ -1,2 +1,55 @@
 /* Queue view — owned by WP-F. Compose controls.css primitives; tokens only,
    logical properties only. */
+
+.queue-inner {
+  max-width: 560px;
+}
+
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.queue-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.queue-pos {
+  flex-shrink: 0;
+  min-inline-size: 1.5em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text3);
+  text-align: end;
+}
+
+.queue-name {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: var(--player-font-size);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Move/remove controls: compact icon-btn variant, still 44px tall targets */
+.queue-row .icon-btn {
+  min-inline-size: 40px;
+  block-size: 40px;
+}
+.queue-row .icon-btn:last-child:hover { color: var(--red); }
+
+.queue-foot {
+  display: flex;
+  justify-content: center;
+  margin-block-start: var(--s-5);
+}
+.queue-clear[hidden] { display: none; }

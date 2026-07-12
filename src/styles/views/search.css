@@ -1,2 +1,57 @@
-/* Search view — owned by WP-B. Compose controls.css primitives; tokens only,
-   logical properties only. */
+/* Search view — owned by WP-B. Compose controls.css primitives (.row, .row-art,
+   .row-info, .row-name, .row-sub, .row-meta, .search-hint, .empty-state);
+   tokens only, logical properties only.
+
+   This view is the app's front door: a generous, confident search field under a
+   display-font headline, results rendered as calm rows below. */
+
+.search-inner {
+  padding-block-start: var(--s-7);
+}
+
+/* Front-door headline — larger and more confident than the standard view title. */
+.search-title {
+  font-size: var(--fs-2xl);
+  line-height: 1.05;
+  margin-block-end: var(--s-5);
+}
+
+/* Prominent search row: input grows to fill, amber button holds its size. */
+.search-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-2);
+  margin-block-end: var(--s-3);
+}
+.search-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  font-size: var(--fs-lg);
+}
+.search-btn {
+  flex-shrink: 0;
+  min-height: 52px;
+  padding-inline: var(--s-5);
+  white-space: nowrap;
+}
+
+/* Results sit directly under the search row; the primitives carry the styling. */
+.results-list {
+  margin-block-start: var(--s-3);
+}
+/* First section label needs no extra top gap under the search row. */
+.results-list > div:first-child > .search-hint:first-child {
+  margin-block-start: var(--s-2);
+}
+
+/* Desktop: a slightly wider, airier column. */
+@media (min-width: 900px) {
+  .search-inner {
+    max-width: 820px;
+    padding-block-start: var(--s-8);
+  }
+  .search-title {
+    margin-block-end: var(--s-6);
+  }
+}
