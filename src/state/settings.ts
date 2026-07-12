@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'auto',
   defaultSort: 'asc',
   showDl: true,
-  accentColor: '#8b7cf6',
+  accentColor: '#f2a33c',
   lang: 'tr',
 };
 

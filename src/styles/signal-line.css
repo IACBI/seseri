@@ -1,0 +1,336 @@
+/* Signature "frequency line" motif — owned by WP-E (Now Playing + mini player).
+   Sound made visible: a row of amber bars over a hairline baseline. The design
+   is drawn for its RESTING state first (a clean line); the playing state adds a
+   gentle shimmer. base.css zeroes animation durations under prefers-reduced-
+   motion — the static line is the correct fallback, so we never fight it.
+   Rules: consume --wave-track / --wave-played / --accent tokens; logical
+   properties throughout; the fill mirrors under [dir="rtl"]. */
+
+/* ═══════════════════ Hero scrubber (Now Playing) ═══════════════════ */
+.signal-scrub {
+  position: relative;
+  block-size: 84px;
+  padding-block: var(--s-3);
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.signal-scrub:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+  border-radius: var(--r-sm);
+}
+
+/* Layers box holds the bars + baseline + playhead. In RTL the whole box is
+   mirrored so the clip-path fill (physical, inset from the end) reads right. */
+.signal-layers { position: absolute; inset: var(--s-3) 0; }
+[dir="rtl"] .signal-layers { transform: scaleX(-1); }
+
+/* base = unplayed silhouette; fill = amber overlay clipped to progress.
+   waveform.ts builds identical <i> bars in both, so the fill tracks the base
+   exactly. Fill clip-path is set inline: inset(0 <remaining>% 0 0). */
+.signal-base,
+.signal-fill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+}
+.signal-base i,
+.signal-fill i {
+  flex: 1 1 0;
+  min-inline-size: 2px;
+  min-block-size: 2px;
+  border-radius: 999px;
+  transform-origin: center;
+}
+.signal-base i { background: var(--wave-track); }
+.signal-fill i {
+  background: var(--accent);
+  box-shadow: 0 0 5px var(--accent-glow);
+}
+
+/* the fine hairline that gives the motif its name */
+.signal-baseline {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 50%;
+  block-size: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, transparent, var(--border2) 10%, var(--border2) 90%, transparent);
+  pointer-events: none;
+}
+
+/* playhead: a slim amber tick with a glowing node — left% set by waveform.ts */
+.signal-head {
+  position: absolute;
+  inset-block: 3px;
+  inline-size: 2px;
+  margin-inline-start: -1px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  box-shadow: 0 0 8px 1px var(--accent-glow);
+  pointer-events: none;
+}
+.signal-head::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 10px;
+  block-size: 10px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 12px 3px var(--accent-glow);
+}
+
+/* scrub/hover time bubble (mono) — left% set by waveform.ts */
+.signal-tip {
+  position: absolute;
+  inset-block-end: 100%;
+  margin-block-end: var(--s-1);
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border-radius: var(--r-xs);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--d-fast) var(--ease-smooth);
+}
+[dir="rtl"] .signal-tip { transform: translateX(-50%) scaleX(-1); }
+.signal-scrub:hover .signal-tip,
+.signal-scrub.scrubbing .signal-tip { opacity: 1; }
+.signal-scrub.scrubbing .signal-head { inline-size: 3px; }
+.signal-scrub.scrubbing .signal-head::after { inline-size: 13px; block-size: 13px; }
+
+/* Playing shimmer — a travelling scaleY pulse, staggered by nth-child so it
+   reads as an organic wave. base + fill animate in lockstep (same heights,
+   same delays) so the amber never drifts off its silhouette. */
+@keyframes signal-shimmer {
+  0%, 100% { transform: scaleY(0.6); }
+  50% { transform: scaleY(1); }
+}
+.np-player.playing .signal-base i,
+.np-player.playing .signal-fill i {
+  animation: signal-shimmer 1.15s var(--ease-smooth) infinite;
+}
+.np-player.playing .signal-base i:nth-child(3n),
+.np-player.playing .signal-fill i:nth-child(3n) { animation-duration: 1.4s; animation-delay: -0.25s; }
+.np-player.playing .signal-base i:nth-child(3n+1),
+.np-player.playing .signal-fill i:nth-child(3n+1) { animation-duration: 0.95s; animation-delay: -0.55s; }
+.np-player.playing .signal-base i:nth-child(4n),
+.np-player.playing .signal-fill i:nth-child(4n) { animation-delay: -0.85s; }
+
+/* ═══════════════════════ Mini transport dock ══════════════════════ */
+/* layout.css fixes the .mini-player position; the look lives here.
+   The dock IS the transport now: skip/play/skip (+prev/next/speed on wider
+   screens) live inline; the chevron or the title area expands the full sheet. */
+.mini-player {
+  align-items: center;
+  gap: var(--s-2);
+  padding-inline: var(--s-3) var(--s-2);
+  padding-block: 0;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-md);
+}
+
+/* Title/art region — the tap target that expands the full player */
+.mini-main {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex: 1;
+  min-inline-size: 0;
+  align-self: stretch;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+.mini-main:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Inline transport cluster — centred between title (start) and the
+   secondary cluster (speed + sleep + expand, end) on wide screens */
+.mini-controls,
+.mini-secondary {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+.mini-sec-ctl {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  color: var(--text3);
+}
+.mini-sec-ctl .icon { inline-size: 14px; block-size: 14px; }
+@media (min-width: 640px) {
+  body.has-track .mini-player {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .mini-main { min-inline-size: 0; }
+  .mini-controls { justify-self: center; }
+  .mini-secondary { justify-self: end; }
+}
+.mini-tp {
+  min-inline-size: 38px;
+  min-block-size: 44px;
+  color: var(--text2);
+}
+.mini-tp:hover { color: var(--text); background: none; }
+.mini-tp:disabled { opacity: 0.3; cursor: default; }
+.mini-tp:disabled:hover { color: var(--text2); }
+.mini-tp svg { inline-size: 19px; block-size: 19px; }
+
+/* skip buttons: seconds badge centred inside the circular-arrow glyph */
+.mini-skip { position: relative; }
+.mini-skip-n {
+  position: absolute;
+  inset-block-start: 53%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  font-weight: 700;
+  color: currentColor;
+  pointer-events: none;
+}
+
+.mini-sel {
+  min-block-size: 34px;
+  margin-inline: var(--s-1);
+  padding-inline: var(--s-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.mini-sel.active { color: var(--accent); border-color: var(--accent); }
+select.mini-wide2 { display: none; }
+.mini-wide { display: none; }
+@media (min-width: 640px) {
+  .mini-wide { display: inline-flex; }
+}
+@media (min-width: 760px) {
+  .mini-sec-ctl.mini-wide2 { display: inline-flex; }
+  select.mini-wide2 { display: block; }
+}
+
+.mini-expand { color: var(--text3); }
+.mini-expand:hover { color: var(--accent); }
+
+/* slim frequency line across the dock's top edge */
+.mini-signal {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: var(--s-4);
+  block-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.mini-signal i {
+  flex: 1 1 0;
+  block-size: 3px;
+  border-radius: 999px;
+  background: var(--wave-track);
+  transform-origin: center;
+}
+body.is-playing .mini-signal { opacity: 1; }
+body.is-playing .mini-signal i {
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent-glow);
+  animation: signal-shimmer 1.15s var(--ease-smooth) infinite;
+}
+body.is-playing .mini-signal i:nth-child(3n) { animation-duration: 1.4s; animation-delay: -0.25s; }
+body.is-playing .mini-signal i:nth-child(3n+1) { animation-duration: 0.95s; animation-delay: -0.55s; }
+body.is-playing .mini-signal i:nth-child(4n) { animation-delay: -0.85s; }
+
+/* progress hairline pinned to the dock's bottom edge — now a seek slider:
+   the ::before pseudo widens the touch target without changing the look */
+.mini-progress-track {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: 0;
+  block-size: 3px;
+  background: var(--border);
+  cursor: pointer;
+  touch-action: none;
+}
+.mini-progress-track::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block: -10px 0;
+}
+.mini-progress-track:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mini-progress-track:hover .mini-progress { background: var(--accent-2); }
+.mini-progress {
+  block-size: 100%;
+  inline-size: 0;
+  background: var(--accent);
+  border-radius: 0 999px 999px 0;
+  transition: width 0.25s linear;
+}
+[dir="rtl"] .mini-progress { border-radius: 999px 0 0 999px; }
+
+.mini-art {
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--surface2);
+  flex-shrink: 0;
+}
+.mini-info { flex: 1; min-inline-size: 0; }
+.mini-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-feed {
+  font-size: var(--fs-xs);
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-block-start: 1px;
+}
+
+.mini-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 42px;
+  block-size: 42px;
+  flex-shrink: 0;
+  margin-inline: var(--s-1);
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  color: var(--accent-text);
+  cursor: pointer;
+  box-shadow: 0 2px 10px -3px var(--accent);
+  transition: transform var(--d-fast) var(--ease-spring), filter var(--d-fast) var(--ease-smooth);
+}
+.mini-play svg { inline-size: 19px; block-size: 19px; }
+.mini-play:hover { filter: brightness(1.06); }
+.mini-play:active { transform: scale(0.92); }

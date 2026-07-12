@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Seseri",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "identifier": "io.github.iacbi.seseri",
   "build": {
     "frontendDist": "https://iacbi.github.io/seseri/",

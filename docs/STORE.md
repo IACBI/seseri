@@ -73,14 +73,14 @@ npm install          # bir kez
 npx tauri build      # ilk seferde Rust bağımlılıklarını derler (5-15 dk)
 ```
 
-Çıktı: `desktop/src-tauri/target/release/bundle/nsis/Seseri_3.0.0_x64-setup.exe`
+Çıktı: `desktop/src-tauri/target/release/bundle/nsis/Seseri_4.0.0_x64-setup.exe`
 
 ### Dağıtma (GitHub Releases)
 
 ```bash
-gh release create v3.0.0 \
-  "desktop/src-tauri/target/release/bundle/nsis/Seseri_3.0.0_x64-setup.exe" \
-  --repo IACBI/seseri --title "Seseri 3.0.0" \
+gh release create v4.0.0 \
+  "desktop/src-tauri/target/release/bundle/nsis/Seseri_4.0.0_x64-setup.exe" \
+  --repo IACBI/seseri --title "Seseri 4.0.0" \
   --notes "Windows kurulumu — indir, çalıştır, kur."
 ```
 
@@ -97,8 +97,11 @@ gh release create v3.0.0 \
 - **Sürüm güncelleme:** uygulama içeriği web'den geldiği için yeni installer
   yalnızca ikon/pencere gibi kabuk değişikliklerinde gerekir
   (`tauri.conf.json` → `version` artır, yeniden `tauri build`, yeni release).
-- İkonlar `npx tauri icon ../public/icons/icon-512.png` ile S-monogramından
-  yeniden üretilir.
+- İkonlar `npx tauri icon ../public/icons/icon-512.png` ile "sinyal"
+  markasından (beş çubuklu frekans işareti) yeniden üretilir; kaynak PNG'ler
+  `node scripts/icons.cjs` ile `public/icons/seseri.svg`'den çıkar. Not:
+  4.0'ta marka S-monogramından sinyal işaretine geçti — bir sonraki masaüstü
+  sürümünde `tauri icon` adımı yeniden koşulmalı.
 
 ---
 
@@ -127,7 +130,13 @@ gh release create v3.0.0 \
    kontrolleri, URL çubuğunun görünmediği doğrulanır.
 7. **Grow → Store presence → Main store listing:** açıklama, 512 ikon,
    1024×500 feature graphic, telefon ekran görüntüleri
-   (`public/screenshots/narrow-*.png` kullanılabilir).
+   (`public/screenshots/narrow-*.png` kullanılabilir — 4.0 ile birlikte
+   "Sinyal" kimliğini ve yeni gezinmeyi (Ana Sayfa/Ara/Kütüphane/Ayarlar +
+   Şimdi Çalıyor paneli) yansıtacak şekilde yeniden üretilecek).
+   Açıklama metni artık sıcak antrasit/kehribar "Sinyal" kimliğini ve
+   alttan sekme çubuğu / soldan kenar çubuğu ile Ana Sayfa, Ara, Kütüphane,
+   Ayarlar ekranlarını anlatmalı — eski iki ekranlı (arama + oynatıcı) ve
+   menekşe renkli sürüm açıklaması artık geçerli değil.
 8. **Policy → App content:** gizlilik politikası URL'i, Data safety formu
    (veri toplanmıyor; tüm veriler cihazda), IARC anketi.
 9. **Production → Create release** → aynı `.aab` → **Submit for review**
@@ -178,7 +187,7 @@ Bu adımlar tamamlanana kadar iOS desteği "Safari PWA" olarak belgelenir.
 
 ## Sürüm kontrol listesi
 
-- [ ] `npm run verify` yeşil (lint, tsc, 102+26 test, build)
+- [ ] `npm run verify` yeşil (lint, tsc, 121 istemci + 26 worker birim testi, build)
 - [ ] `v*` tag'i push edilince `.github/workflows/desktop.yml` NSIS
       kurulumunu taslak Release olarak üretir (imzasız — SmartScreen uyarısı)
 - [ ] `node scripts/smoke-p3-offline.cjs` ve `smoke-p5-mini.cjs` yeşil

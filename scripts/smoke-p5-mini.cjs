@@ -66,6 +66,15 @@ function waitServer(url, tries = 60) {
     await page.waitForFunction(() => document.body.classList.contains('is-playing'), { timeout: 15000 });
     ok('episode playing', true);
 
+    // Queue: toggle on the 2nd episode shows position chip, toggle off clears
+    // (done here, while the feed's episode list is on screen)
+    await page.click('.ep-item:nth-child(2) .ep-q-btn');
+    const chip = await page.$eval('.ep-item:nth-child(2) .ep-q-btn', (b) => ({ q: b.classList.contains('queued'), txt: b.textContent.trim() }));
+    ok('queue chip shows position', chip.q && chip.txt === '1', chip.txt);
+    await page.click('.ep-item:nth-child(2) .ep-q-btn');
+    const off = await page.$eval('.ep-item:nth-child(2) .ep-q-btn', (b) => b.classList.contains('queued'));
+    ok('queue toggle off', !off);
+
     // Back to home — playback must survive
     await page.click('#backBtn');
     await page.waitForFunction(() => !document.body.classList.contains('feed-open'), { timeout: 8000 });
@@ -87,24 +96,16 @@ function waitServer(url, tries = 60) {
     ok('mini button pauses in place', paused);
     await page.click('#miniPlay');
 
-    // Tapping the bar returns to the same feed without a reload
-    await page.click('#miniPlayer');
-    await page.waitForFunction(() => document.body.classList.contains('feed-open'), { timeout: 8000 });
-    const back = await page.evaluate(() => ({
+    // The expand chevron (or title area) opens the Now Playing sheet — the bar
+    // itself now hosts inline transport controls, so it is no longer a button.
+    await page.click('#miniExpand');
+    await page.waitForFunction(() => document.getElementById('npSheet')?.classList.contains('open'), { timeout: 8000 });
+    const sheet = await page.evaluate(() => ({
       playing: document.body.classList.contains('is-playing'),
-      eps: document.querySelectorAll('.ep-item').length,
-      active: !!document.querySelector('.ep-item.active'),
-      url: location.search,
+      open: document.getElementById('npSheet').classList.contains('open'),
+      title: document.getElementById('nowTitle')?.textContent,
     }));
-    ok('mini opens feed again, still playing', back.playing && back.eps === 2 && back.active, back.url);
-
-    // Queue: toggle on the 2nd episode shows position chip, toggle off clears
-    await page.click('.ep-item:nth-child(2) .ep-q-btn');
-    const chip = await page.$eval('.ep-item:nth-child(2) .ep-q-btn', (b) => ({ q: b.classList.contains('queued'), txt: b.textContent.trim() }));
-    ok('queue chip shows position', chip.q && chip.txt === '1', chip.txt);
-    await page.click('.ep-item:nth-child(2) .ep-q-btn');
-    const off = await page.$eval('.ep-item:nth-child(2) .ep-q-btn', (b) => b.classList.contains('queued'));
-    ok('queue toggle off', !off);
+    ok('mini opens Now Playing sheet, still playing', sheet.playing && sheet.open, sheet.title);
   } catch (e) {
     ok('smoke run', false, e.message);
   } finally {

@@ -1,0 +1,177 @@
+/* App frame: navigation (mobile bottom tab bar / desktop left sidebar),
+   view container, mini-player dock placement, safe areas.
+   Logical properties only — RTL comes for free. */
+
+.app-frame {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ───────────────────────── main / views ───────────────────────── */
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* room for the mini dock + tab bar (mobile) — desktop overrides below */
+  padding-block-end: calc(var(--tabbar-h) + var(--mini-h) + env(safe-area-inset-bottom, 0px) + var(--s-4));
+}
+.view[hidden] { display: none; }
+
+/* Shared content column inside a view */
+.view-inner {
+  max-width: 720px;
+  margin-inline: auto;
+  padding: var(--s-5) var(--s-4);
+}
+
+/* View headline convention */
+.view-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-block-end: var(--s-4);
+}
+
+/* Enter transition — views.ts re-adds .view-enter on show */
+.view-enter { animation: view-in var(--d-base) var(--ease-out); }
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ───────────────────────── navigation ─────────────────────────── */
+.app-nav {
+  z-index: var(--z-nav);
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.nav-brand { display: none; }
+.nav-items { display: flex; list-style: none; }
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  /* Navigation labels are primary wayfinding, not metadata — text2, not text3. */
+  color: var(--text2);
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  border-radius: var(--r-xs);
+  transition: color var(--d-fast) var(--ease-smooth);
+}
+.nav-item .icon { width: 22px; height: 22px; }
+.nav-item:hover { color: var(--text); }
+.nav-item.active { color: var(--accent); }
+.nav-item.active .nav-dot { opacity: 1; transform: none; }
+/* active marker — a tiny signal tick */
+.nav-dot {
+  width: 14px; height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transform: scaleX(0.3);
+  transition: opacity var(--d-base) var(--ease-out), transform var(--d-base) var(--ease-out);
+}
+
+/* Mobile: fixed bottom tab bar */
+@media (max-width: 899px) {
+  .app-nav {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    border-block-start: 1px solid var(--hairline);
+    padding-block-end: env(safe-area-inset-bottom, 0px);
+  }
+  .nav-items { justify-content: space-around; block-size: var(--tabbar-h); }
+  .nav-item { flex: 1; max-width: 120px; }
+}
+
+/* Desktop: static left sidebar */
+@media (min-width: 900px) {
+  .app-nav {
+    inline-size: var(--nav-w);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: var(--s-5) var(--s-3);
+    border-inline-end: 1px solid var(--border);
+    background: var(--bg2);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-2) var(--s-3) var(--s-5);
+    color: var(--text);
+  }
+  .nav-brand-logo { width: 28px; height: 28px; color: var(--accent); }
+  .nav-brand-name {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .nav-items { flex-direction: column; gap: var(--s-1); }
+  .nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--s-3);
+    padding: 0 var(--s-3);
+    font-size: var(--fs-md);
+    inline-size: 100%;
+  }
+  .nav-item .icon { width: 19px; height: 19px; }
+  .nav-item.active { background: var(--accent-soft); }
+  .nav-item .nav-dot { display: none; }
+  /* settings pinned to the bottom of the rail */
+  .nav-items .nav-spring { flex: 1; }
+
+  .view {
+    padding-block-end: calc(var(--mini-h) + env(safe-area-inset-bottom, 0px) + var(--s-4));
+  }
+  .view-inner { padding: var(--s-6) var(--s-6); }
+}
+
+/* ───────────────────── mini-player dock frame ─────────────────── */
+/* Placement only — the mini player's inner look lives in signal-line.css /
+   overlays. Shown while a track is loaded (body.has-track). */
+.mini-player {
+  position: fixed;
+  inset-inline: var(--s-2);
+  inset-block-end: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--s-2));
+  block-size: var(--mini-h);
+  z-index: var(--z-mini);
+  display: none;
+}
+body.has-track .mini-player { display: flex; }
+
+@media (min-width: 900px) {
+  .mini-player {
+    inset-inline-start: calc(var(--nav-w) + var(--s-3));
+    inset-inline-end: var(--s-3);
+    inset-block-end: var(--s-3);
+  }
+}

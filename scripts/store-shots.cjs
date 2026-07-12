@@ -39,19 +39,23 @@ function waitServer(url, tries = 60) {
   try {
     await waitServer(ORIGIN + '/');
     browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio'] });
-    const page = await browser.newPage();
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      const u = req.url();
-      try {
-        if (u.includes('itunes.apple.com/lookup')) return req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(LOOKUP) }).catch(() => {});
-        if (u.includes('/fake/ep')) return req.abort().catch(() => {});
-        return req.continue().catch(() => {});
-      } catch {}
-    });
 
-    const grab = async (name, w, h, url, waitEp) => {
-      await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+    const mock = async (page) => {
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        const u = req.url();
+        try {
+          if (u.includes('itunes.apple.com/lookup')) return req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(LOOKUP) }).catch(() => {});
+          if (u.includes('/fake/ep')) return req.abort().catch(() => {});
+          return req.continue().catch(() => {});
+        } catch {}
+      });
+    };
+
+    const grab = async (page, name, w, h, dsf, url, waitEp) => {
+      // Narrow shots render the real mobile layout (CSS px < 900) and rely on
+      // deviceScaleFactor to hit the manifest's 1080×1920 output size.
+      await page.setViewport({ width: w, height: h, deviceScaleFactor: dsf });
       await page.goto(ORIGIN + url, { waitUntil: 'networkidle2' });
       if (waitEp) await page.waitForSelector('.ep-item', { timeout: 15000 }).catch(() => {});
       await new Promise((r) => setTimeout(r, 1600)); // let the S finish drawing
@@ -59,9 +63,33 @@ function waitServer(url, tries = 60) {
       console.log('store-shot', name);
     };
 
-    await grab('wide-feed', 1920, 1080, '/?podcast=777000111', true);
-    await grab('narrow-home', 1080, 1920, '/', false);
-    await grab('narrow-feed', 1080, 1920, '/?podcast=777000111', true);
+    const page = await browser.newPage();
+    await mock(page);
+    await grab(page, 'wide-feed', 1920, 1080, 1, '/?podcast=777000111', true);
+
+    // Seed a lived-in home: opening the feed above cached it in IndexedDB, so
+    // a subscription + resume position light up the continue rail + subs grid.
+    // The narrow shots run in a SECOND tab while this one stays open. This
+    // tab's app saves its own (empty) in-memory progress on pagehide AND on
+    // visibilitychange — both would clobber the seed, so silence them first.
+    await page.evaluate(() => {
+      localStorage.setItem('pp_favs', JSON.stringify([
+        { id: '777000111', name: 'Gündem Özel', artist: 'Seseri Stüdyo', art: '' },
+      ]));
+      localStorage.setItem('pp_last_777000111', '333');
+      localStorage.setItem('pp_prog', JSON.stringify({ 333: 1240 }));
+      // Block this tab's own progress writes from clobbering the seed.
+      const orig = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (k, v) {
+        if (k === 'pp_prog') return;
+        return orig.call(this, k, v);
+      };
+    });
+
+    const page2 = await browser.newPage();
+    await mock(page2);
+    await grab(page2, 'narrow-home', 360, 640, 3, '/', false);
+    await grab(page2, 'narrow-feed', 360, 640, 3, '/?podcast=777000111', true);
   } finally {
     if (browser) await browser.close().catch(() => {});
     server.kill('SIGTERM');

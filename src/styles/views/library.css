@@ -1,0 +1,46 @@
+/* Library view — owned by WP-C. Compose controls.css primitives (.tabs, .tab,
+   .row, .empty-state, .icon-btn); tokens only, logical properties only.
+   Layout (centered column) comes from .view-inner in layout.css. */
+
+/* Rows sit flush in the panel; primitives supply the inner look. */
+#view-library .lib-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Subscription rows are activatable — give keyboard focus a clear ring. */
+#view-library .row[role='button']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Downloads: summary + quiet device-usage line above the list. */
+#view-library .lib-dl-summary {
+  font-size: var(--fs-sm);
+  color: var(--text2);
+  padding-inline: var(--s-3);
+  margin-block-end: var(--s-1);
+}
+#view-library .lib-dl-usage {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text3);
+  padding-inline: var(--s-3);
+  margin-block-end: var(--s-3);
+}
+
+/* Downloaded episodes carry no artwork — a calm icon tile stands in. */
+#view-library .lib-dl-row {
+  cursor: default;
+}
+#view-library .lib-dl-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text3);
+}
+#view-library .lib-dl-icon .icon {
+  inline-size: 20px;
+  block-size: 20px;
+}

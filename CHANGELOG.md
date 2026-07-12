@@ -1,5 +1,106 @@
 # Changelog
 
+## 4.0.0 — 2026-07-12
+
+### "Sinyal" — new visual identity
+- Complete restyle: warm charcoal surfaces, amber "radio dial glow" default
+  accent (`#f2a33c`, was violet `#8b7cf6`), and a new type system —
+  Bricolage Grotesque (display) / Schibsted Grotesk (UI) / Spline Sans Mono
+  (numerals/labels).
+- Signature **frequency-line** waveform motif: the hero scrubber in the new
+  Now Playing sheet, and an animated line on the mini player while playing.
+- The 4 themes (Auto / Dark / Light / OLED Black) are kept, restyled to the
+  new palette. Dark ("Kor") and OLED ("Gece") text ramps are tuned for
+  readability — secondary text ~10:1 and tertiary/mono labels ~5.7–6.4:1 on
+  the background; navigation labels use the secondary tier. The accent picker
+  now offers **7** Sinyal swatches (Amber, Copper, Signal Red, Moss, Teal,
+  Sky, Lilac); **previously saved accents are remapped to their nearest new
+  swatch** on the fly (`ui/theme.ts` → `normalizeAccent`) — the stored
+  setting itself is left untouched, so rolling back is non-destructive.
+- **New brand mark**: the "sinyal" crest — five round-capped frequency bars —
+  replaces the S monogram everywhere (in-app logo, favicon, PWA/launcher
+  icons, monochrome themed icon). The in-app mark breathes gently and the
+  "Seseri" wordmark carries a soft signal sheen; both are static under
+  `prefers-reduced-motion`.
+- YouTube artwork now loads from the official `i.ytimg.com` CDN (derived
+  from the video id) instead of Piped/Invidious instance proxies, which
+  frequently go dark; search-result artwork also falls back to a calm
+  placeholder tile when an image fails to load.
+- **Mini player → mini transport**: skip back/forward and play/pause live
+  directly in the dock, and the progress hairline is a tap/drag seek slider —
+  no need to open the full player for everyday control. On wider screens the
+  transport (prev / skip / play / skip / next) sits centred, with the sleep
+  timer and speed selector grouped at the end (both kept in sync with the
+  sheet's controls). The expand chevron or the title area still opens the
+  Now Playing sheet (scrubber, queue, YouTube video frame).
+- **YouTube embed → audio background rescue**: when a track has to start on
+  the iframe fallback (which a locked phone pauses), the app keeps retrying
+  audio resolution in the background and hot-swaps to the `<audio>` element
+  at the same position the moment a stream resolves — restoring lock-screen
+  playback and Media Session controls without interrupting the listener.
+- **Language menu with real flags**: a custom accessible listbox
+  (`ui/lang-menu.ts`) with hand-drawn inline SVG flags (`ui/flags.ts`) —
+  Windows renders no emoji flags, and native `<option>` can't show images.
+  It now lives on the Home header too, not only in Settings.
+
+### Information architecture — full redesign
+- New primary navigation: a bottom tab bar on mobile / left sidebar on
+  desktop — **Home / Search / Library / Settings**.
+- **Home**: a "continue listening" rail built from cached progress +
+  subscriptions data, plus a subscriptions grid.
+- **Search**: iTunes search and RSS/YouTube paste share one screen, with
+  progressive dual-source results.
+- **Library**: Subscriptions and Downloads tabs with a storage-usage
+  summary; replaces the old home-screen favorites rows.
+- **Podcast detail**: episode list with sort/filter (unchanged data, new
+  frame).
+- **Now Playing**: a full-screen sheet on mobile / floating panel on
+  desktop, with transport, sleep timer, speed, and queue access — the mini
+  player now opens this sheet instead of navigating back into the feed.
+- **Queue**: promoted from a sort-bar dropdown to its own page view.
+- **Settings**: promoted from a modal `<dialog>` to its own page view (same
+  sections and stored options).
+
+### Routing
+- New `?view=search|library|queue|settings` deep links alongside the
+  existing `?podcast=` / `?rss=` / `?yt=` params, which are unchanged.
+- Back-button contract: one step from any feed/view always returns home
+  (`ui/router.ts` replaces rather than pushes between non-home states).
+- PWA manifest: `theme_color`/`background_color` updated to `#171310`; the
+  "Search" shortcut now opens `?view=search` instead of the bare start URL.
+
+### Architecture
+- UI split into a headless **playback-controller**
+  (`src/ui/playback-controller.ts`) plus per-view modules under
+  `src/ui/views/` (`home`, `search`, `library`, `podcast`, `queue`,
+  `settings`, `now-playing`) registered through a small view registry
+  (`src/ui/views.ts`) and a shared nav controller (`src/ui/nav.ts`). The
+  old `src/ui/screens/` (`player.ts`, `settings.ts`) and
+  `src/ui/queue-panel.ts` are retired; their logic moved into the new view
+  modules.
+- Styles split by concern — `tokens` / `themes` / `base` / `layout` /
+  `controls` / `overlays` / `signal-line`, plus one CSS file per view under
+  `src/styles/views/` — assembled through `src/styles/index.css`;
+  `components.css` is retired.
+- The runtime layer (`player/`, `feeds/`, `storage/`, `state/`, worker,
+  service worker) is untouched by the rewrite.
+- `src/ui/router.test.ts` grown to cover the new `?view=` routes (29 tests).
+
+### i18n
+- 18 new keys across all 8 languages for the new nav/home/library/queue/
+  now-playing UI (`nav_*`, `home_*`, `lib_*`, `np_open`, `np_close`).
+
+### Kept / compatible
+- All legacy deep links (`?podcast=`, `?rss=`, `?yt=`) still work unchanged.
+- Stored data keys (`pp_prog`, `pp_favs`, `pp_last_*`, settings) are
+  untouched — no migration needed, no data loss on upgrade.
+- Offline downloads, OPML import/export, sleep timer, media-session
+  integration, keyboard shortcuts (Space/arrows while a feed or the Now
+  Playing sheet is open), RTL (Arabic), `prefers-reduced-motion`, and focus
+  management all carry over as-is.
+- **116+ unit tests green** (client); worker suite untouched by this
+  redesign.
+
 ## 3.1.0 — 2026-07-08
 
 ### Added

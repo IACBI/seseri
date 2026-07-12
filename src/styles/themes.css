@@ -1,20 +1,21 @@
-/* Theme overrides — legacy lines 145-163 */
-/* Per-theme translucent chrome + scheme hint (theme class set on <html> by JS) */
+/* Per-theme overrides — theme class set on <html> by src/ui/theme.ts.
+   The 9 core surface/text tokens are injected by JS (THEME_VALUES); this file
+   only re-derives the translucent chrome, shadows and sheen per theme. */
 html.theme-light { color-scheme: light; }
 html.theme-light {
-  --glass: rgba(255,255,255,0.74);
-  --glass-2: rgba(255,255,255,0.55);
-  --hairline: rgba(15,18,28,0.05);
-  --shadow-sm: 0 1px 2px rgba(20,24,40,0.06), 0 2px 10px -6px rgba(20,24,40,0.12);
-  --shadow-md: 0 6px 20px -10px rgba(20,24,40,0.16), 0 2px 6px -4px rgba(20,24,40,0.10);
-  --shadow-lg: 0 30px 70px -24px rgba(30,36,60,0.28);
+  --glass: rgba(255,255,255,0.78);
+  --glass-2: rgba(255,255,255,0.58);
+  --hairline: rgba(30,25,18,0.06);
+  --shadow-sm: 0 1px 2px rgba(40,32,20,0.06), 0 2px 10px -6px rgba(40,32,20,0.12);
+  --shadow-md: 0 6px 20px -10px rgba(40,32,20,0.16), 0 2px 6px -4px rgba(40,32,20,0.10);
+  --shadow-lg: 0 30px 70px -24px rgba(50,40,24,0.28);
   /* On a light canvas the sheen must be a coloured shimmer, not white (which
-     would erase the letters); a faint cool vignette keeps depth without mud. */
+     would erase the letters); a faint warm vignette keeps depth without mud. */
   --wm-shine: var(--accent-dim);
-  --hero-vignette: rgba(24,28,48,0.05);
+  --hero-vignette: rgba(48,38,24,0.05);
 }
 html.theme-oled {
-  --glass: rgba(8,8,11,0.78);
-  --glass-2: rgba(16,16,22,0.6);
-  --hairline: rgba(255,255,255,0.05);
+  --glass: rgba(10,8,7,0.82);
+  --glass-2: rgba(18,15,12,0.6);
+  --hairline: rgba(255,255,255,0.06);
 }

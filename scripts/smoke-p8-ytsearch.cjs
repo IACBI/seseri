@@ -33,7 +33,8 @@ function waitServer(url, tries = 60) {
     const workerYt = [];
     page.on('request', (r) => { if (r.url().includes('8787/v1/yt/')) workerYt.push(r.url().replace(/^.*8787/, '')); });
     await page.setViewport({ width: 1280, height: 800 });
-    await page.goto(ORIGIN + '/', { waitUntil: 'networkidle2' });
+    // Search is a view now — deep-link straight to it so #searchInput is shown.
+    await page.goto(ORIGIN + '/?view=search', { waitUntil: 'networkidle2' });
 
     await page.type('#searchInput', 'lex fridman podcast');
     await page.click('#searchBtn');
@@ -43,38 +44,41 @@ function waitServer(url, tries = 60) {
     );
     const rows = await page.evaluate(() => {
       const hints = [...document.querySelectorAll('.search-hint')].map((h) => h.textContent.trim());
-      return { hints, items: document.querySelectorAll('.result-item').length };
+      return { hints, items: document.querySelectorAll('#resultsList .row').length };
     });
     ok('search shows YouTube section', rows.hints.some((t) => t.includes('YouTube')), rows.hints.join(' | ') + ` · ${rows.items} rows`);
     if (SHOT) await page.screenshot({ path: path.join(SHOT, 'yt-search.png') });
 
     // open the first CHANNEL/PLAYLIST under the YouTube hint (author "YouTube"
-    // and no duration badge marks channels), else fall back to the first row
+    // and no duration/count badge marks channels), else fall back to the first
+    // row. Result rows are now `.row` with `.row-sub` (author) / `.row-meta`.
     await page.evaluate(() => {
-      const nodes = [...document.getElementById('resultsList').children];
+      const nodes = [...document.getElementById('resultsList').querySelectorAll('.search-hint, .row')];
       const yi = nodes.findIndex((n) => n.classList.contains('search-hint') && n.textContent.includes('YouTube'));
-      const ytRows = nodes.slice(yi + 1);
-      const chan = ytRows.find((n) => n.querySelector('.result-author')?.textContent === 'YouTube' && !n.querySelector('.result-count'));
+      const ytRows = nodes.slice(yi + 1).filter((n) => n.classList.contains('row'));
+      const chan = ytRows.find((n) => n.querySelector('.row-sub')?.textContent === 'YouTube' && !n.querySelector('.row-meta'));
       (chan ?? ytRows[0]).click();
     });
     await page.waitForSelector('.ep-item', { timeout: 60000 });
     const eps = await page.$$eval('.ep-item', (n) => n.length);
     ok('YouTube feed opens with episodes', eps >= 1, `${eps} eps`);
 
-    // try playback: click first episode, wait for either audio playing or embed mode
+    // try playback: click first episode, wait for either audio playing (body
+    // .is-playing) or the embed fallback engaging (#npPlayer.yt-mode — the class
+    // is toggled whether or not the Now Playing sheet is open)
     await page.click('.ep-item');
     const outcome = await page
       .waitForFunction(
         () =>
-          document.body.classList.contains('is-playing')
-            ? (document.querySelector('#pPlayer').classList.contains('yt-mode') && document.querySelector('audio')) ? 'audio' : 'playing'
-            : null,
+          document.body.classList.contains('is-playing') ||
+          !!document.querySelector('#npPlayer')?.classList.contains('yt-mode'),
         { timeout: 60000 },
       )
       .then(() => true)
       .catch(() => false);
     const mode = await page.evaluate(() => ({
       playing: document.body.classList.contains('is-playing'),
+      ytMode: !!document.querySelector('#npPlayer')?.classList.contains('yt-mode'),
       status: document.getElementById('statusText')?.textContent,
     }));
     ok('playback starts (stream or embed)', outcome, JSON.stringify(mode));

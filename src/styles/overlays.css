@@ -1,0 +1,104 @@
+/* Overlays: toast, confirm dialog, offline banner, Now Playing sheet chrome.
+   The sheet's inner content is styled in views/now-playing.css. */
+
+/* ─ Toast ─ */
+.toast-host {
+  position: fixed;
+  inset-block-end: calc(var(--tabbar-h) + var(--mini-h) + env(safe-area-inset-bottom, 0px) + var(--s-4));
+  inset-inline: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  z-index: var(--z-toast);
+  pointer-events: none;
+}
+@media (min-width: 900px) {
+  .toast-host { inset-block-end: calc(var(--mini-h) + var(--s-5)); }
+}
+.toast {
+  max-width: min(420px, calc(100vw - 32px));
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-sm);
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-md);
+  color: var(--text);
+  font-size: var(--fs-md);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--d-base) var(--ease-out), transform var(--d-base) var(--ease-out);
+}
+.toast.show { opacity: 1; transform: none; }
+.toast-error { border-color: color-mix(in srgb, var(--red) 40%, transparent); color: var(--red); }
+
+/* ─ Confirm dialog ─ */
+.confirm-dialog {
+  margin: auto;
+  inline-size: min(380px, calc(100vw - 40px));
+  padding: var(--s-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--bg2);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+.confirm-dialog.open { opacity: 1; transform: none; }
+.confirm-dialog::backdrop { background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); }
+.confirm-title { font-size: var(--fs-lg); margin-block-end: var(--s-3); }
+.confirm-msg { color: var(--text2); font-size: var(--fs-md); line-height: 1.55; margin-block-end: var(--s-5); }
+.confirm-actions { display: flex; justify-content: flex-end; gap: var(--s-3); }
+
+/* ─ Offline banner ─ */
+.offline-banner {
+  position: fixed;
+  inset-block-start: env(safe-area-inset-top, 0px);
+  inset-inline: 0;
+  z-index: var(--z-banner);
+  text-align: center;
+  padding: var(--s-2) var(--s-4);
+  font-size: var(--fs-sm);
+  color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 10%, var(--bg2));
+  border-block-end: 1px solid color-mix(in srgb, var(--yellow) 25%, transparent);
+}
+.offline-banner[hidden] { display: none; }
+
+/* ─ Now Playing sheet chrome (contents in views/now-playing.css) ─ */
+.np-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform var(--d-slow) var(--ease-out), visibility var(--d-slow);
+  visibility: hidden;
+  padding-block-start: env(safe-area-inset-top, 0px);
+  padding-block-end: env(safe-area-inset-bottom, 0px);
+}
+.np-sheet.open { transform: none; visibility: visible; }
+.np-sheet[hidden] { display: none; }
+
+@media (min-width: 900px) {
+  .np-sheet {
+    inset: auto var(--s-4) var(--s-4) auto;
+    inset-inline-start: calc(var(--nav-w) + var(--s-4));
+    max-inline-size: 980px;
+    margin-inline-start: auto;
+    block-size: min(640px, calc(100dvh - 48px));
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  .np-sheet.open { transform: none; opacity: 1; }
+}

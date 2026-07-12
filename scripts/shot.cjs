@@ -1,4 +1,5 @@
-/* Screenshot helper for UI review: home + feed at desktop/mobile widths. */
+/* Screenshot helper for UI review of the "Sinyal" UI: home, search view, feed
+ * (desktop/tablet/mobile), the settings VIEW and the Now Playing sheet. */
 const { spawn } = require('child_process');
 const http = require('http');
 const path = require('path');
@@ -8,6 +9,18 @@ const PORT = 5202;
 const ORIGIN = `http://localhost:${PORT}`;
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const OUT = process.argv[2] || path.join(__dirname, '..', 'docs', 'screens-p5');
+
+function makeWav(seconds = 120) {
+  const rate = 8000;
+  const data = Buffer.alloc(rate * seconds, 128); // 8-bit silence
+  const h = Buffer.alloc(44);
+  h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8);
+  h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
+  h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate, 28); h.writeUInt16LE(1, 32); h.writeUInt16LE(8, 34);
+  h.write('data', 36); h.writeUInt32LE(data.length, 40);
+  return Buffer.concat([h, data]);
+}
+const WAV = makeWav();
 
 const LOOKUP = {
   resultCount: 4,
@@ -34,7 +47,7 @@ function waitServer(url, tries = 60) {
   let browser;
   try {
     await waitServer(ORIGIN + '/');
-    browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio'] });
+    browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio', '--autoplay-policy=no-user-gesture-required'] });
     const page = await browser.newPage();
     await page.setRequestInterception(true);
     page.on('request', (req) => {
@@ -46,7 +59,9 @@ function waitServer(url, tries = 60) {
         if (u.includes('itunes.apple.com/search')) {
           return req.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ results: [ { collectionId: 777000111, collectionName: 'Design Notes', artistName: 'Studio FM', artworkUrl100: '', trackCount: 3 } ] }) }).catch(() => {});
         }
-        if (u.includes('/fake/ep')) return req.abort().catch(() => {});
+        if (u.includes('/fake/ep')) {
+          return req.respond({ status: 200, contentType: 'audio/wav', headers: { 'access-control-allow-origin': '*' }, body: WAV }).catch(() => {});
+        }
         return req.continue().catch(() => {});
       } catch { /* disabled */ }
     });
@@ -67,21 +82,39 @@ function waitServer(url, tries = 60) {
       console.log('shot', s.name);
     }
 
-    // Settings drawer (native dialog)
+    // Search view — type a query and capture the results list
     await page.setViewport({ width: 1280, height: 800 });
+    await page.goto(ORIGIN + '/?view=search', { waitUntil: 'networkidle2' });
+    await page.type('#searchInput', 'design');
+    await page.click('#searchBtn');
+    await page.waitForSelector('#resultsList .row', { timeout: 15000 }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 700));
+    await page.screenshot({ path: path.join(OUT, 'desktop-search.png') });
+    console.log('shot desktop-search');
+
+    // Settings VIEW (formerly a native <dialog>) — now a plain page view
+    await page.goto(ORIGIN + '/?view=settings', { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#s_theme', { visible: true, timeout: 15000 }).catch(() => {});
+    const settingsOk = await page.evaluate(() => {
+      const themeSel = document.getElementById('s_theme');
+      const view = document.getElementById('view-settings');
+      return { themeVisible: !!themeSel && !themeSel.closest('[hidden]'), view: document.body.dataset.view, hasSwatches: !!document.getElementById('colorSwatches')?.children.length };
+    });
+    console.log('settings view', JSON.stringify(settingsOk));
+    await new Promise((r) => setTimeout(r, 500));
+    await page.screenshot({ path: path.join(OUT, 'settings-view.png') });
+    console.log('shot settings-view');
+
+    // Now Playing sheet — play an episode, then open the sheet from the active row
     await page.goto(ORIGIN + '/?podcast=777000111', { waitUntil: 'networkidle2' });
     await page.waitForSelector('.ep-item', { timeout: 15000 }).catch(() => {});
-    await page.click('#settingsBtn');
+    await page.click('.ep-item').catch(() => {});
+    await page.waitForFunction(() => document.body.classList.contains('is-playing'), { timeout: 15000 }).catch(() => {});
+    await page.click('.ep-item.active').catch(() => {});
+    await page.waitForFunction(() => document.getElementById('npSheet')?.classList.contains('open'), { timeout: 8000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 700));
-    const dlg = await page.evaluate(() => {
-      const d = document.getElementById('settingsPanel');
-      return { open: d.open, focusInside: d.contains(document.activeElement) };
-    });
-    console.log('settings dialog', JSON.stringify(dlg));
-    await page.screenshot({ path: path.join(OUT, 'settings-dialog.png') });
-    await page.keyboard.press('Escape');
-    await new Promise((r) => setTimeout(r, 700));
-    console.log('after esc: open =', await page.evaluate(() => document.getElementById('settingsPanel').open));
+    await page.screenshot({ path: path.join(OUT, 'now-playing-sheet.png') });
+    console.log('shot now-playing-sheet');
   } finally {
     if (browser) await browser.close().catch(() => {});
     server.kill('SIGTERM');

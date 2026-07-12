@@ -1,4 +1,4 @@
-/* Reset, a11y, icon system, body — legacy lines 52 + 165-214 */
+/* Reset, a11y, icon system, typography, body. */
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
 /* Respect reduced-motion */
@@ -35,7 +35,7 @@
 /* mirror directional icons in RTL */
 [dir="rtl"] .icon-flip { transform: scaleX(-1); }
 
-/* The mount node is transparent to layout: screens are body flex items */
+/* The mount node is transparent to layout: the frame is a body flex item */
 #app { display: contents; }
 
 body {
@@ -53,4 +53,72 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   transition: background-color 0.45s var(--ease-out), color 0.35s var(--ease-out);
+}
+
+/* ─ Typography defaults — display face carries the personality ─ */
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+time, .mono, .time-row {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum';
+  letter-spacing: 0;
+}
+
+a { color: var(--accent); }
+
+img { max-width: 100%; }
+
+/* ─ Brand: the "sinyal" mark — five bars breathing very gently ─
+   Resting frame (0%) is the natural pose, so reduced-motion (durations
+   zeroed in the block above) leaves a clean static mark. */
+.sig-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11%;
+  inline-size: 100%;
+  block-size: 100%;
+}
+.sig-mark i {
+  inline-size: 12%;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: center;
+  animation: sig-breathe 3.8s var(--ease-smooth) infinite;
+}
+.sig-mark i:nth-child(1) { block-size: 34%; animation-delay: 0s; }
+.sig-mark i:nth-child(2) { block-size: 72%; animation-delay: 0.35s; }
+.sig-mark i:nth-child(3) { block-size: 100%; animation-delay: 0.7s; }
+.sig-mark i:nth-child(4) { block-size: 52%; animation-delay: 1.05s; }
+.sig-mark i:nth-child(5) { block-size: 80%; animation-delay: 1.4s; }
+@keyframes sig-breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.18); }
+}
+
+/* ─ Brand: wordmark sheen — a soft signal sweeps through "Seseri" ─
+   The 0% frame parks the shine off-canvas, so the resting/reduced-motion
+   state reads as plain text. */
+.wm {
+  background: linear-gradient(
+    100deg,
+    var(--text) 0%,
+    var(--text) 42%,
+    var(--wm-shine) 50%,
+    var(--text) 58%,
+    var(--text) 100%
+  );
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: wm-sweep 7s var(--ease-smooth) infinite;
+}
+@keyframes wm-sweep {
+  0%, 46% { background-position: 100% 0; }
+  74%, 100% { background-position: 0% 0; }
 }

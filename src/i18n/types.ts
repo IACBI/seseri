@@ -117,6 +117,25 @@ export interface Lang {
   toast_opml_exported: string;
   toast_json_exported: string;
   lang_select_label: string;
+  /* ── 4.0 "Sinyal" IA ── */
+  nav_home: string;
+  nav_search: string;
+  nav_library: string;
+  nav_settings: string;
+  home_tagline: string;
+  home_continue: string;
+  home_empty: string;
+  home_empty_hint: string;
+  home_see_all: string;
+  lib_tab_subs: string;
+  lib_tab_downloads: string;
+  lib_empty_subs: string;
+  lib_empty_subs_hint: string;
+  lib_empty_downloads: string;
+  lib_delete_download: string;
+  lib_dl_total: LangFn;
+  np_open: string;
+  np_close: string;
 }
 
 export type LangKey = keyof Lang;
