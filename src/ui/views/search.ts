@@ -50,6 +50,22 @@ export function initSearchView(deps: SearchViewDeps): SearchView {
   // The row the user activated to open a feed — restored on back navigation.
   let lastFocusedRow: HTMLElement | null = null;
 
+  /** Artwork img with a calm placeholder fallback (missing art / dead CDN). */
+  function rowArt(art: string): HTMLElement {
+    const src = httpsOnly(art);
+    if (!src) return h('div', { className: 'row-art' });
+    const img = h('img', {
+      className: 'row-art',
+      src,
+      alt: '',
+      attrs: { loading: 'lazy', decoding: 'async' },
+    });
+    img.addEventListener('error', () => img.replaceWith(h('div', { className: 'row-art' })), {
+      once: true,
+    });
+    return img;
+  }
+
   function resultRow(opts: {
     art: string;
     name: string;
@@ -60,12 +76,7 @@ export function initSearchView(deps: SearchViewDeps): SearchView {
     const row = h(
       'div',
       { className: 'row', role: 'button', tabIndex: 0 },
-      h('img', {
-        className: 'row-art',
-        src: httpsOnly(opts.art),
-        alt: '',
-        attrs: { loading: 'lazy', decoding: 'async' },
-      }),
+      rowArt(opts.art),
       h(
         'div',
         { className: 'row-info' },
@@ -94,8 +105,11 @@ export function initSearchView(deps: SearchViewDeps): SearchView {
         : y.kind === 'playlist' && y.extra
           ? `${y.extra} ${t('ep_count_unit')}`
           : '';
+    // Piped instances proxy thumbnails through themselves and are often dead —
+    // for videos the official CDN is deterministic from the id and reliable.
+    const art = y.kind === 'video' ? `https://i.ytimg.com/vi/${y.id}/mqdefault.jpg` : y.thumb;
     return resultRow({
-      art: y.thumb,
+      art,
       name: y.title,
       author: y.author || 'YouTube',
       ...(count ? { count } : {}),

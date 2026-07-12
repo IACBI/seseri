@@ -14,7 +14,7 @@ const NAV = `
 <nav class="app-nav" id="appNav" aria-label="Seseri">
   <div class="nav-brand">
     <span class="nav-brand-logo" aria-hidden="true">${BRAND_MARK}</span>
-    <span class="nav-brand-name">Seseri</span>
+    <span class="nav-brand-name wm">Seseri</span>
   </div>
   <ul class="nav-items">
     <li><button class="nav-item" id="navHome" data-view="home" aria-current="page">

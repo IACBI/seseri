@@ -8,33 +8,48 @@ const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'public', 'icons');
 
-const S_PATH = 'M 334 184 A 78 78 0 1 0 256 262 A 78 78 0 1 1 178 340';
+/* The "sinyal" mark: five round-capped bars (frequency-line crest).
+ * Centers x = 100..412 step 78; heights echo the in-app brand mark. */
+const BARS = [
+  { x: 100, h: 102 },
+  { x: 178, h: 216 },
+  { x: 256, h: 300 },
+  { x: 334, h: 156 },
+  { x: 412, h: 240 },
+];
 const GRAD = `
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#948af9"/><stop offset="1" stop-color="#6a5ad6"/>
+      <stop offset="0" stop-color="#241c13"/><stop offset="1" stop-color="#14100c"/>
     </linearGradient>
-    <radialGradient id="sheen" cx="0.32" cy="0.22" r="0.9">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
-      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    <!-- userSpaceOnUse: zero-width line bboxes can't carry an objectBoundingBox gradient -->
+    <linearGradient id="bar" gradientUnits="userSpaceOnUse" x1="0" y1="106" x2="0" y2="406">
+      <stop offset="0" stop-color="#ffc46b"/><stop offset="0.55" stop-color="#f2a33c"/><stop offset="1" stop-color="#c98a33"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.32" cy="0.2" r="0.95">
+      <stop offset="0" stop-color="#f2a33c" stop-opacity="0.14"/>
+      <stop offset="0.6" stop-color="#f2a33c" stop-opacity="0"/>
     </radialGradient>
   </defs>`;
-const S_MARK = (scale = 1) => `
+const SIG_MARK = (scale = 1, stroke = 'url(#bar)') => `
   <g transform="translate(256 256) scale(${scale}) translate(-256 -256)">
-    <path d="${S_PATH}" fill="none" stroke="rgba(20,16,50,0.22)" stroke-width="60" stroke-linecap="round" transform="translate(0 5)"/>
-    <path d="${S_PATH}" fill="none" stroke="#ffffff" stroke-width="60" stroke-linecap="round"/>
+    ${BARS.map(
+      (b) =>
+        `<line x1="${b.x}" y1="${256 - b.h / 2}" x2="${b.x}" y2="${256 + b.h / 2}"
+           stroke="${stroke}" stroke-width="44" stroke-linecap="round"/>`,
+    ).join('\n    ')}
   </g>`;
 
 /** variant → svg body (512 box) + transparent? */
 const VARIANTS = {
   // rounded tile, transparent corners — launcher/"any"
-  'icon-192': { size: 192, alpha: true, svg: `${GRAD}<rect width="512" height="512" rx="116" fill="url(#bg)"/><rect width="512" height="512" rx="116" fill="url(#sheen)"/>${S_MARK(1)}` },
-  'icon-512': { size: 512, alpha: true, svg: `${GRAD}<rect width="512" height="512" rx="116" fill="url(#bg)"/><rect width="512" height="512" rx="116" fill="url(#sheen)"/>${S_MARK(1)}` },
+  'icon-192': { size: 192, alpha: true, svg: `${GRAD}<rect width="512" height="512" rx="116" fill="url(#bg)"/><rect width="512" height="512" rx="116" fill="url(#sheen)"/>${SIG_MARK(1)}` },
+  'icon-512': { size: 512, alpha: true, svg: `${GRAD}<rect width="512" height="512" rx="116" fill="url(#bg)"/><rect width="512" height="512" rx="116" fill="url(#sheen)"/>${SIG_MARK(1)}` },
   // full-bleed square, mark inside the 80% safe zone — Android maskable
-  'maskable-192': { size: 192, alpha: false, svg: `${GRAD}<rect width="512" height="512" fill="url(#bg)"/><rect width="512" height="512" fill="url(#sheen)"/>${S_MARK(0.74)}` },
-  'maskable-512': { size: 512, alpha: false, svg: `${GRAD}<rect width="512" height="512" fill="url(#bg)"/><rect width="512" height="512" fill="url(#sheen)"/>${S_MARK(0.74)}` },
+  'maskable-192': { size: 192, alpha: false, svg: `${GRAD}<rect width="512" height="512" fill="url(#bg)"/><rect width="512" height="512" fill="url(#sheen)"/>${SIG_MARK(0.74)}` },
+  'maskable-512': { size: 512, alpha: false, svg: `${GRAD}<rect width="512" height="512" fill="url(#bg)"/><rect width="512" height="512" fill="url(#sheen)"/>${SIG_MARK(0.74)}` },
   // white mark on transparency — Android 13 themed icon
-  'monochrome-512': { size: 512, alpha: true, svg: `<g transform="translate(256 256) scale(0.9) translate(-256 -256)"><path d="${S_PATH}" fill="none" stroke="#ffffff" stroke-width="60" stroke-linecap="round"/></g>` },
+  'monochrome-512': { size: 512, alpha: true, svg: SIG_MARK(0.9, '#ffffff') },
 };
 
 (async () => {

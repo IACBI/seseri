@@ -21,7 +21,9 @@ function epFromItem(it: YtItem): Episode {
     episodeUrl: '',
     trackTimeMillis: (it.durationSec || 0) * 1000,
     ytId: it.videoId,
-    art: it.thumb || thumbOf(it.videoId),
+    // The official CDN is deterministic from the id; Piped/Invidious thumbs
+    // are proxied through instances that frequently go dark.
+    art: thumbOf(it.videoId),
   };
 }
 
@@ -97,7 +99,7 @@ export async function resolveYouTube(
           episodeUrl: '',
           trackTimeMillis: 0,
           ytId: id,
-          art: it?.thumb || thumbOf(id),
+          art: thumbOf(id),
         };
       };
       if (fullIds && fullIds.length > parsed.items.length) {

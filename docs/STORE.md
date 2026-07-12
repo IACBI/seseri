@@ -97,8 +97,11 @@ gh release create v4.0.0 \
 - **Sürüm güncelleme:** uygulama içeriği web'den geldiği için yeni installer
   yalnızca ikon/pencere gibi kabuk değişikliklerinde gerekir
   (`tauri.conf.json` → `version` artır, yeniden `tauri build`, yeni release).
-- İkonlar `npx tauri icon ../public/icons/icon-512.png` ile S-monogramından
-  yeniden üretilir.
+- İkonlar `npx tauri icon ../public/icons/icon-512.png` ile "sinyal"
+  markasından (beş çubuklu frekans işareti) yeniden üretilir; kaynak PNG'ler
+  `node scripts/icons.cjs` ile `public/icons/seseri.svg`'den çıkar. Not:
+  4.0'ta marka S-monogramından sinyal işaretine geçti — bir sonraki masaüstü
+  sürümünde `tauri icon` adımı yeniden koşulmalı.
 
 ---
 

@@ -10,11 +10,22 @@
 - Signature **frequency-line** waveform motif: the hero scrubber in the new
   Now Playing sheet, and an animated line on the mini player while playing.
 - The 4 themes (Auto / Dark / Light / OLED Black) are kept, restyled to the
-  new palette. The accent picker now offers **7** Sinyal swatches (Amber,
-  Copper, Signal Red, Moss, Teal, Sky, Lilac); **previously saved accents are
-  remapped to their nearest new swatch** on the fly (`ui/theme.ts` →
-  `normalizeAccent`) — the stored setting itself is left untouched, so
-  rolling back is non-destructive.
+  new palette. Dark ("Kor") and OLED ("Gece") text ramps are tuned for
+  readability — secondary text ~10:1 and tertiary/mono labels ~5.7–6.4:1 on
+  the background; navigation labels use the secondary tier. The accent picker
+  now offers **7** Sinyal swatches (Amber, Copper, Signal Red, Moss, Teal,
+  Sky, Lilac); **previously saved accents are remapped to their nearest new
+  swatch** on the fly (`ui/theme.ts` → `normalizeAccent`) — the stored
+  setting itself is left untouched, so rolling back is non-destructive.
+- **New brand mark**: the "sinyal" crest — five round-capped frequency bars —
+  replaces the S monogram everywhere (in-app logo, favicon, PWA/launcher
+  icons, monochrome themed icon). The in-app mark breathes gently and the
+  "Seseri" wordmark carries a soft signal sheen; both are static under
+  `prefers-reduced-motion`.
+- YouTube artwork now loads from the official `i.ytimg.com` CDN (derived
+  from the video id) instead of Piped/Invidious instance proxies, which
+  frequently go dark; search-result artwork also falls back to a calm
+  placeholder tile when an image fails to load.
 
 ### Information architecture — full redesign
 - New primary navigation: a bottom tab bar on mobile / left sidebar on
@@ -39,7 +50,7 @@
   existing `?podcast=` / `?rss=` / `?yt=` params, which are unchanged.
 - Back-button contract: one step from any feed/view always returns home
   (`ui/router.ts` replaces rather than pushes between non-home states).
-- PWA manifest: `theme_color`/`background_color` updated to `#151210`; the
+- PWA manifest: `theme_color`/`background_color` updated to `#171310`; the
   "Search" shortcut now opens `?view=search` instead of the bare start URL.
 
 ### Architecture

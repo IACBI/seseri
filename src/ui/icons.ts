@@ -34,10 +34,8 @@ export const ICON_SPRITE = `
   <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></symbol>
 </svg>`;
 
-/** The Seseri S-mark (brand). Stroke follows currentColor. */
+/** The Seseri brand mark — a five-bar "sinyal" crest (frequency-line motif).
+ *  Bars inherit currentColor; .sig-mark CSS in base.css sizes and gently
+ *  animates them (static under prefers-reduced-motion). */
 export const BRAND_MARK = `
-<svg viewBox="0 0 512 512" aria-hidden="true">
-  <path pathLength="100"
-    d="M 334 184 A 78 78 0 1 0 256 262 A 78 78 0 1 1 178 340"
-    fill="none" stroke="currentColor" stroke-width="60" stroke-linecap="round"/>
-</svg>`;
+<span class="sig-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>`;

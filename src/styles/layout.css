@@ -70,7 +70,8 @@
   min-height: 44px;
   border: 0;
   background: none;
-  color: var(--text3);
+  /* Navigation labels are primary wayfinding, not metadata — text2, not text3. */
+  color: var(--text2);
   font-family: var(--font-body);
   font-size: var(--fs-xs);
   font-weight: 500;
@@ -80,7 +81,7 @@
   transition: color var(--d-fast) var(--ease-smooth);
 }
 .nav-item .icon { width: 22px; height: 22px; }
-.nav-item:hover { color: var(--text2); }
+.nav-item:hover { color: var(--text); }
 .nav-item.active { color: var(--accent); }
 .nav-item.active .nav-dot { opacity: 1; transform: none; }
 /* active marker — a tiny signal tick */

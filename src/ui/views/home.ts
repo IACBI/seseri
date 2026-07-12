@@ -34,7 +34,7 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
       <header class="home-brand">
         <span class="home-brand-mark" aria-hidden="true">${BRAND_MARK}</span>
         <div class="home-brand-text">
-          <h1 class="home-wordmark" tabindex="-1">Seseri</h1>
+          <h1 class="home-wordmark wm" tabindex="-1">Seseri</h1>
           <p class="home-tagline" data-i18n="home_tagline">Ücretsiz, hesapsız podcast çalar</p>
         </div>
       </header>

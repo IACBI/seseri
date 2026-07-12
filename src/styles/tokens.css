@@ -5,12 +5,12 @@
 :root {
   color-scheme: dark;
   /* ─ Surfaces — warm charcoal, faint ember cast ─ */
-  --bg: #151210;
-  --bg2: #1a1613;
-  --surface: #201b17;
-  --surface2: #28221c;
-  --border: #322a22;
-  --border2: #41372c;
+  --bg: #171310;
+  --bg2: #1e1915;
+  --surface: #262019;
+  --surface2: #302822;
+  --border: #3e342a;
+  --border2: #4e4234;
   /* ─ Signature accent — amber dial glow (JS-overridable) ─ */
   --accent: #f2a33c;
   --accent-dim: #bd7f2f;
@@ -19,9 +19,9 @@
   --accent-soft: rgba(242,163,60,0.10);
   --accent-text: #1a1510;
   --accent-grad: linear-gradient(135deg, #f2a33c 0%, #bd7f2f 100%);
-  --text: #f3ede3;
-  --text2: #a89e8f;
-  --text3: #75695a;
+  --text: #f6f1e7;
+  --text2: #cabfae;
+  --text3: #9a8d76;
   --green: #58b283;
   --red: #e0584f;
   --yellow: #d9a83c;

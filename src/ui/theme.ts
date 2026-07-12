@@ -7,8 +7,11 @@ type ResolvedTheme = Exclude<ThemeName, 'auto'>;
  *  (theme.test.ts guards the parity so there is no pre-hydration flash). */
 const THEME_VALUES: Record<ResolvedTheme, string[]> = {
   //       --bg       --bg2      --surface  --surface2 --border   --border2  --text     --text2    --text3
-  dark: ['#151210', '#1a1613', '#201b17', '#28221c', '#322a22', '#41372c', '#f3ede3', '#a89e8f', '#75695a'],
-  oled: ['#000000', '#0b0907', '#14100c', '#1c1712', '#271f18', '#362b20', '#f5efe4', '#9c9183', '#5f564a'],
+  // "Kor" — ember charcoal. Text ramp tuned for readability: --text2 ~10:1,
+  // --text3 ~5.7:1 on --bg (small mono labels stay comfortably above AA).
+  dark: ['#171310', '#1e1915', '#262019', '#302822', '#3e342a', '#4e4234', '#f6f1e7', '#cabfae', '#9a8d76'],
+  // "Gece" — true black, same warm ramp lifted for OLED (text3 ~6.4:1).
+  oled: ['#000000', '#0d0b09', '#171310', '#211b15', '#2e261e', '#3f3529', '#f8f3e9', '#c6bbaa', '#998c74'],
   // --text3 #6b6150: ≥4.5:1 on --bg/--surface (WCAG AA for the small mono labels)
   light: ['#f6f4f0', '#edeae4', '#ffffff', '#faf8f4', '#e5e0d6', '#d2cabc', '#1d1914', '#59503f', '#6b6150'],
 };
