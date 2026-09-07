@@ -3,8 +3,10 @@
  *
  *   GET /v1/feed?url=      RSS/Atom proxy (text, ≤5 MB, edge-cached 15 min)
  *   GET /v1/itunes?url=    iTunes search/lookup proxy (JSON, edge-cached 1 h)
+ *   /v1/sync               cross-device blob store (GET/PUT/DELETE, see sync.ts)
  *
- * Cross-cutting: CORS allowlist, per-IP KV rate limit.
+ * Cross-cutting: CORS allowlist, per-IP KV rate limit — except /v1/sync, which
+ * carries its own limiter so it cannot exhaust the shared KV write budget.
  */
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -12,6 +14,7 @@ import type { Env } from './env';
 import { carriesCredential } from './credential-url';
 import { edgeCached, fetchWithTimeout, readCapped, safeTarget } from './safe-fetch';
 import { rateLimited } from './ratelimit';
+import { sweepSync, syncRoutes } from './sync';
 
 // Popular feeds keep their full archive in the feed — The Daily's RSS alone
 // is ~18 MB — so the cap is generous; it only guards against abuse.
@@ -19,6 +22,8 @@ const FEED_MAX_BYTES = 20 * 1024 * 1024;
 const ALLOWED_ORIGINS = new Set(['https://iacbi.github.io']);
 // Any localhost origin is fine — it only ever means the developer's own machine.
 const LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+const SYNC_PREFIX = '/v1/sync';
 
 function allowOrigin(origin: string): string | null {
   return ALLOWED_ORIGINS.has(origin) || LOCALHOST_ORIGIN.test(origin) ? origin : null;
@@ -30,7 +35,13 @@ app.use(
   '*',
   cors({
     origin: allowOrigin,
-    allowMethods: ['GET', 'OPTIONS'],
+    allowMethods: ['GET', 'PUT', 'DELETE', 'OPTIONS'],
+    // Left empty, Hono reflects Access-Control-Request-Headers verbatim — the
+    // worker would advertise whatever the caller asked for. Pin the list.
+    allowHeaders: ['content-type', 'x-sync-id', 'if-match'],
+    // A cross-origin response hides these from the page unless they are named,
+    // and the client cannot follow compare-and-set without reading ETag.
+    exposeHeaders: ['etag', 'x-sync-time', 'x-sync-conflict'],
     maxAge: 86400,
   }),
 );
@@ -47,6 +58,16 @@ app.use('*', async (c, next) => {
     // worker, so a missing or foreign Origin means the caller is not the app.
     return c.json({ error: 'forbidden' }, 403);
   }
+
+  /**
+   * Sync runs its own limiter. Routing it through the KV one would spend a KV
+   * write per request out of a 1000/day free-tier budget shared with the feed
+   * and iTunes proxies — and that limiter degrades open once the budget is
+   * gone, because `ratelimit.ts` swallows the write error and the counter
+   * stops growing. Exhausting it would take the whole worker down, not just
+   * sync.
+   */
+  if (c.req.path.startsWith(SYNC_PREFIX)) return next();
 
   if (await rateLimited(c.env.KV, ip)) {
     return c.json(RATE_LIMITED, 429, { 'retry-after': '60' });
@@ -124,6 +145,17 @@ app.get('/v1/itunes', async (c) => {
   );
 });
 
+app.route(SYNC_PREFIX, syncRoutes);
+
 app.notFound((c) => c.json({ error: 'not found' }, 404));
 
-export default { fetch: app.fetch };
+export default {
+  fetch: app.fetch,
+  async scheduled(
+    _event: ScheduledController,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    await sweepSync(env.DB);
+  },
+};

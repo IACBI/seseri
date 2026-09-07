@@ -4,6 +4,56 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.3.0 — unreleased
+
+### Listen on one device, carry on from another
+
+Progress, subscriptions and the queue can now follow you between a PC and a
+phone. There is no account: one device generates a **pairing code**, you type it
+into the other, and that is the whole setup.
+
+The code never leaves your devices. Two independent values are derived from it
+(HKDF-SHA256): the id the server files a row under, and the AES-GCM key that
+encrypts the contents. The Worker stores opaque bytes it cannot read, and an id
+recovered from a log decrypts nothing.
+
+- **What travels:** resume positions, the last-played episode per feed,
+  subscriptions and the queue. **Settings deliberately do not** — a phone's font
+  size and volume have no business overwriting a desktop's.
+- **Conflicts.** Positions carry timestamps in new sidecar keys (`pp_prog_at`,
+  `pp_last_at`, `pp_subs_at`, `pp_subs_rm`, `pp_queue_at`); `pp_prog` itself is
+  unchanged, so old backups still restore and a rollback needs no migration.
+  Writes less than a minute apart are treated as concurrent and the *further*
+  position wins, because a position jumping backwards is the failure people
+  notice. Unsubscribing travels as a tombstone, or the other device's copy would
+  simply resurrect it.
+- **Clock skew.** Every response carries the server's time; the client measures
+  its own offset from the round-trip midpoint and compares like with like. A
+  stamp more than 48 hours ahead is treated as a wrong clock, not a newer write.
+- **Compare-and-set.** Pushes carry `If-Match`; a stale one is refused with 409
+  and the winning blob, so the client merges and retries instead of silently
+  discarding the other device's entries.
+- Unlinking is local and keeps everything on the device. "Delete server data"
+  removes the stored blob for every device. Losing the code loses the synced
+  copy — the UI says so before generating one.
+
+**Resume made reliable.** `canplay` can fire before the audio element will
+accept a seek, and the saved position was then silently dropped — playback
+started from the top and the next `timeupdate` wrote that over it. The resume
+now retries until the seek takes, and stops once the listener is genuinely under
+way. This bug predates sync; it just became much easier to see.
+
+**Service worker.** `/v1/sync` responses are never cached. The worker normally
+lives on another origin and was skipped anyway, but a same-origin deployment
+would have had stale-while-revalidate replay another device's blob, and a cache
+miss hand the client the app shell to decode as ciphertext.
+
+**Rate limiting.** Sync does not go through the KV limiter. That limiter spends
+a KV write per request out of a 1000/day free-tier budget shared with the feed
+and iTunes proxies — and it degrades open once the budget is gone, which would
+take the whole Worker down rather than just sync. Sync uses the platform rate
+limiting binding instead.
+
 ## 4.2.2 — 2026-09-06
 
 ### Volume, a sidebar worth using, and downloads that reach the CDN

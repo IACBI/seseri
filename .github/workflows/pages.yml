@@ -39,6 +39,10 @@ jobs:
           # Set the repo variable VITE_API_BASE to your deployed Worker URL
           # (e.g. https://seseri-api.<account>.workers.dev). Empty = public proxies only.
           VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+          # "1" enables cross-device sync. Its own variable on purpose: clearing
+          # VITE_API_BASE to switch sync off would take the feed and iTunes
+          # proxies down with it.
+          VITE_SYNC: ${{ vars.VITE_SYNC }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

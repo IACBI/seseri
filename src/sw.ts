@@ -76,6 +76,16 @@ sw.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== sw.location.origin) return; // APIs/media handled elsewhere (P3)
 
+  /**
+   * Sync must never be cached. Today the worker lives on another origin and is
+   * skipped above, but a same-origin deployment (a path-based proxy, or the
+   * headless smoke, which has to stay same-origin to satisfy the CSP) would
+   * otherwise land here — where stale-while-revalidate happily replays a
+   * previous device's blob, and a cache miss falls back to the app shell,
+   * handing the client an HTML page it decodes as ciphertext.
+   */
+  if (url.pathname.endsWith('/v1/sync')) return;
+
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)

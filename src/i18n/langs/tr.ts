@@ -168,6 +168,33 @@ const tr: Lang = {
   lib_dl_total: (n, size) => `${n} bölüm · ${size}`,
   np_open: "Oynatıcıyı aç",
   np_close: "Oynatıcıyı kapat",
+
+  /* cross-device sync */
+  s_sync: "Cihazlar Arası Eşitleme",
+  s_sync_state: "Durum",
+  s_sync_code: "Eşleştirme Kodu",
+  s_sync_code_sub: "Bu kodu kimseyle paylaşma. Kaybedersen eşitlenen veri geri getirilemez.",
+  s_sync_code_ph: "Kodu buraya yaz",
+  btn_sync_start: "Eşitlemeyi Başlat",
+  btn_sync_link: "Kod Gir",
+  btn_sync_link_go: "Bağlan",
+  btn_sync_now: "Şimdi Eşitle",
+  btn_sync_copy: "Kodu Kopyala",
+  btn_sync_unlink: "Bu Cihazda Durdur",
+  btn_sync_forget: "Sunucudaki Veriyi Sil",
+  sync_not_linked: "Kapalı",
+  sync_idle: "Bekliyor",
+  sync_syncing: "Eşitleniyor...",
+  sync_ok: "Eşitlendi",
+  sync_error: "Eşitlenemedi",
+  sync_unavailable: "Eşitleme şu an kullanılamıyor",
+  sync_unreadable: "Eşitleme verisi okunamadı",
+  toast_sync_linked: "Cihaz eşleştirildi.",
+  toast_sync_bad_code: "Kod hatalı. Harfleri ve rakamları kontrol et.",
+  toast_sync_copied: "Kod kopyalandı.",
+  toast_sync_copy_failed: "Kod kopyalanamadı.",
+  toast_sync_forgotten: "Sunucudaki eşitleme verisi silindi.",
+  confirm_sync_forget: "Sunucudaki eşitleme verisi silinsin mi? Diğer cihazlar eşitlemeyi durdurur; bu cihazdaki bölümler ve ilerleme kalır.",
 };
 
 export default tr;

@@ -168,6 +168,33 @@ const en: Lang = {
   lib_dl_total: (n, size) => `${n} episodes · ${size}`,
   np_open: "Open player",
   np_close: "Close player",
+
+  /* cross-device sync */
+  s_sync: "Cross-device sync",
+  s_sync_state: "Status",
+  s_sync_code: "Pairing code",
+  s_sync_code_sub: "Do not share this code. If you lose it, the synced data cannot be recovered.",
+  s_sync_code_ph: "Type the code here",
+  btn_sync_start: "Start syncing",
+  btn_sync_link: "Enter a code",
+  btn_sync_link_go: "Connect",
+  btn_sync_now: "Sync now",
+  btn_sync_copy: "Copy code",
+  btn_sync_unlink: "Stop on this device",
+  btn_sync_forget: "Delete server data",
+  sync_not_linked: "Off",
+  sync_idle: "Waiting",
+  sync_syncing: "Syncing...",
+  sync_ok: "Synced",
+  sync_error: "Sync failed",
+  sync_unavailable: "Sync is unavailable right now",
+  sync_unreadable: "Sync data could not be read",
+  toast_sync_linked: "Device paired.",
+  toast_sync_bad_code: "That code is not valid. Check the letters and digits.",
+  toast_sync_copied: "Code copied.",
+  toast_sync_copy_failed: "Could not copy the code.",
+  toast_sync_forgotten: "Server sync data deleted.",
+  confirm_sync_forget: "Delete the sync data on the server? Other devices will stop syncing; the episodes and progress on this device stay.",
 };
 
 export default en;

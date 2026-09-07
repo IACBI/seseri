@@ -168,6 +168,33 @@ const fr: Lang = {
   lib_dl_total: (n, size) => `${n} épisodes · ${size}`,
   np_open: "Ouvrir le lecteur",
   np_close: "Fermer le lecteur",
+
+  /* cross-device sync */
+  s_sync: "Synchronisation entre appareils",
+  s_sync_state: "État",
+  s_sync_code: "Code d'association",
+  s_sync_code_sub: "Ne partagez pas ce code. Perdu, les données synchronisées sont irrécupérables.",
+  s_sync_code_ph: "Saisissez le code ici",
+  btn_sync_start: "Démarrer la synchronisation",
+  btn_sync_link: "Saisir un code",
+  btn_sync_link_go: "Connecter",
+  btn_sync_now: "Synchroniser maintenant",
+  btn_sync_copy: "Copier le code",
+  btn_sync_unlink: "Arrêter sur cet appareil",
+  btn_sync_forget: "Supprimer les données du serveur",
+  sync_not_linked: "Désactivée",
+  sync_idle: "En attente",
+  sync_syncing: "Synchronisation...",
+  sync_ok: "Synchronisé",
+  sync_error: "Échec de la synchronisation",
+  sync_unavailable: "Synchronisation indisponible pour le moment",
+  sync_unreadable: "Données de synchronisation illisibles",
+  toast_sync_linked: "Appareil associé.",
+  toast_sync_bad_code: "Ce code est invalide. Vérifiez les lettres et les chiffres.",
+  toast_sync_copied: "Code copié.",
+  toast_sync_copy_failed: "Impossible de copier le code.",
+  toast_sync_forgotten: "Données de synchronisation supprimées du serveur.",
+  confirm_sync_forget: "Supprimer les données de synchronisation sur le serveur ? Les autres appareils cesseront de se synchroniser ; les épisodes et la progression de cet appareil sont conservés.",
 };
 
 export default fr;

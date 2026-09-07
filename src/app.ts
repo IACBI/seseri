@@ -29,6 +29,7 @@ import { initPodcastView } from './ui/views/podcast';
 import { initQueueView } from './ui/views/queue';
 import { initSearchView } from './ui/views/search';
 import { initSettingsView } from './ui/views/settings';
+import { initSync, syncFlush } from './sync';
 
 export function boot(): void {
   renderShell(must('app'));
@@ -55,6 +56,8 @@ export function boot(): void {
   setQuotaListener(() => toast(t('storage_full'), 'error'));
   requestPersistence(); // keep downloads/idb safe from storage-pressure eviction
   initOfflineBanner();
+  // After the loaders: sync reads what they just restored, and pushes it.
+  initSync();
 
   // ── playback session (single instance, shared by all views) ──────
   const playback = createPlaybackController();
@@ -156,11 +159,17 @@ export function boot(): void {
   });
 
   // ── persistence on exit ──────────────────────────────────────────
-  window.addEventListener('beforeunload', saveProgressNow);
-  window.addEventListener('pagehide', saveProgressNow);
+  // Sync flushes *after* the local write in each of these: the push reads what
+  // `saveProgressNow` just committed, not the value from five seconds ago.
+  const persistAndPush = (): void => {
+    saveProgressNow();
+    syncFlush();
+  };
+  window.addEventListener('beforeunload', persistAndPush);
+  window.addEventListener('pagehide', persistAndPush);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      saveProgressNow();
+      persistAndPush();
       return;
     }
     // Coming back to the foreground is the only moment iOS lets us repair

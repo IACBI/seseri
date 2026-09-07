@@ -168,6 +168,33 @@ const de: Lang = {
   lib_dl_total: (n, size) => `${n} Folgen · ${size}`,
   np_open: "Player öffnen",
   np_close: "Player schließen",
+
+  /* cross-device sync */
+  s_sync: "Geräteübergreifende Synchronisierung",
+  s_sync_state: "Status",
+  s_sync_code: "Kopplungscode",
+  s_sync_code_sub: "Teile diesen Code mit niemandem. Geht er verloren, sind die synchronisierten Daten nicht wiederherstellbar.",
+  s_sync_code_ph: "Code hier eingeben",
+  btn_sync_start: "Synchronisierung starten",
+  btn_sync_link: "Code eingeben",
+  btn_sync_link_go: "Verbinden",
+  btn_sync_now: "Jetzt synchronisieren",
+  btn_sync_copy: "Code kopieren",
+  btn_sync_unlink: "Auf diesem Gerät beenden",
+  btn_sync_forget: "Serverdaten löschen",
+  sync_not_linked: "Aus",
+  sync_idle: "Wartet",
+  sync_syncing: "Wird synchronisiert...",
+  sync_ok: "Synchronisiert",
+  sync_error: "Synchronisierung fehlgeschlagen",
+  sync_unavailable: "Synchronisierung derzeit nicht verfügbar",
+  sync_unreadable: "Synchronisierungsdaten nicht lesbar",
+  toast_sync_linked: "Gerät gekoppelt.",
+  toast_sync_bad_code: "Dieser Code ist ungültig. Prüfe Buchstaben und Ziffern.",
+  toast_sync_copied: "Code kopiert.",
+  toast_sync_copy_failed: "Code konnte nicht kopiert werden.",
+  toast_sync_forgotten: "Synchronisierungsdaten auf dem Server gelöscht.",
+  confirm_sync_forget: "Die Synchronisierungsdaten auf dem Server löschen? Andere Geräte synchronisieren nicht mehr; Episoden und Fortschritt auf diesem Gerät bleiben erhalten.",
 };
 
 export default de;

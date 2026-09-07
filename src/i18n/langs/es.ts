@@ -168,6 +168,33 @@ const es: Lang = {
   lib_dl_total: (n, size) => `${n} episodios · ${size}`,
   np_open: "Abrir reproductor",
   np_close: "Cerrar reproductor",
+
+  /* cross-device sync */
+  s_sync: "Sincronización entre dispositivos",
+  s_sync_state: "Estado",
+  s_sync_code: "Código de vinculación",
+  s_sync_code_sub: "No compartas este código. Si lo pierdes, los datos sincronizados no se pueden recuperar.",
+  s_sync_code_ph: "Escribe el código aquí",
+  btn_sync_start: "Iniciar sincronización",
+  btn_sync_link: "Introducir un código",
+  btn_sync_link_go: "Conectar",
+  btn_sync_now: "Sincronizar ahora",
+  btn_sync_copy: "Copiar código",
+  btn_sync_unlink: "Detener en este dispositivo",
+  btn_sync_forget: "Eliminar datos del servidor",
+  sync_not_linked: "Desactivada",
+  sync_idle: "En espera",
+  sync_syncing: "Sincronizando...",
+  sync_ok: "Sincronizado",
+  sync_error: "Error de sincronización",
+  sync_unavailable: "La sincronización no está disponible ahora",
+  sync_unreadable: "No se pudieron leer los datos de sincronización",
+  toast_sync_linked: "Dispositivo vinculado.",
+  toast_sync_bad_code: "Ese código no es válido. Comprueba las letras y los dígitos.",
+  toast_sync_copied: "Código copiado.",
+  toast_sync_copy_failed: "No se pudo copiar el código.",
+  toast_sync_forgotten: "Datos de sincronización del servidor eliminados.",
+  confirm_sync_forget: "¿Eliminar los datos de sincronización del servidor? Los demás dispositivos dejarán de sincronizarse; los episodios y el progreso de este dispositivo se mantienen.",
 };
 
 export default es;

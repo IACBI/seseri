@@ -50,6 +50,19 @@ export const local = {
       /* quota/private mode */
     }
   },
+  /**
+   * Stored keys starting with `prefix`. The only enumeration in the app: the
+   * `pp_last_<feedId>` pointers are one key per feed and sync has to find them
+   * all, which nothing needed before.
+   */
+  keys(prefix: string): string[] {
+    if (unavailable()) return [];
+    try {
+      return Object.keys(localStorage).filter((k) => k.startsWith(prefix));
+    } catch {
+      return []; // private mode
+    }
+  },
   remove(key: string): void {
     try {
       localStorage.removeItem(key);

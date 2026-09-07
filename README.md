@@ -63,6 +63,29 @@ so they work from any view; `[`, `Esc` and `?` are always live.
 | `Esc` | Close the Now Playing sheet |
 | `?` | Show the shortcut list |
 
+### Cross-device sync
+
+Optional, off until you turn it on, and account-free. One device generates a
+pairing code in **Settings → Cross-device sync**; type it into the other and
+they share resume positions, the last-played episode per feed, subscriptions and
+the queue.
+
+The payload is encrypted on the device. Two independent values are derived from
+the code with HKDF-SHA256 — the id the server stores a row under, and the
+AES-GCM key — so the backend holds bytes it cannot read.
+
+- Settings are **not** synced: font size, theme and volume belong to the device.
+- A write on each device within a minute of the other is treated as concurrent,
+  and the further position wins.
+- Unlinking stops syncing on that device and keeps everything it already has.
+  "Delete server data" removes the stored copy for every device.
+- **Keep the code.** It is the only credential, and losing it loses the synced
+  copy — each device keeps its own data either way.
+
+Requires the Worker (`VITE_API_BASE`) plus `VITE_SYNC=1` at build time. The two
+flags are separate on purpose: sync can be switched off without disabling the
+feed and iTunes proxies.
+
 ### Getting started
 
 ```bash
@@ -222,6 +245,29 @@ eder, yani her görünümde iş görür; `[`, `Esc` ve `?` her zaman etkindir.
 | `[` | Kenar çubuğunu daralt veya genişlet (masaüstü) |
 | `Esc` | Şimdi Çalıyor panelini kapat |
 | `?` | Kısayol listesini göster |
+
+### Cihazlar arası eşitleme
+
+İsteğe bağlı, siz açana kadar kapalı ve hesapsız. Bir cihaz **Ayarlar →
+Cihazlar Arası Eşitleme**'de bir eşleştirme kodu üretir; kodu diğerine
+yazdığınızda kaldığınız konum, her yayında en son dinlenen bölüm, abonelikler ve
+kuyruk ortak olur.
+
+Veri cihazda şifrelenir. Koddan HKDF-SHA256 ile birbirinden bağımsız iki değer
+türetilir — sunucunun satırı sakladığı kimlik ve AES-GCM anahtarı — yani arka uç
+okuyamadığı baytları tutar.
+
+- Ayarlar eşitlenmez: yazı boyutu, tema ve ses seviyesi cihaza aittir.
+- İki cihazın bir dakika içindeki yazmaları eşzamanlı sayılır ve daha ileri
+  konum kazanır.
+- Bağlantıyı kesmek yalnızca o cihazda eşitlemeyi durdurur, verisine dokunmaz.
+  "Sunucudaki veriyi sil" ise saklanan kopyayı tüm cihazlar için kaldırır.
+- **Kodu saklayın.** Tek kimlik bilgisi odur; kaybederseniz eşitlenen kopya geri
+  gelmez — her cihazdaki veri yerinde kalır.
+
+Worker (`VITE_API_BASE`) ve derleme sırasında `VITE_SYNC=1` gerektirir. İki
+bayrak bilerek ayrıdır: eşitleme kapatılırken feed ve iTunes proxy'leri ayakta
+kalır.
 
 ### Hızlı başlangıç
 

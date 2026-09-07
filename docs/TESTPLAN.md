@@ -191,3 +191,29 @@ Notlar:
 - [ ] `?view=` derin linkleri (yukarıdaki bölüm 16) soğuk yükleme + uygulama-içi gezinme ile çalışır.
 - [ ] Geri tuşu tek-adım-ana-ekran kuralı: feed → geri → ana ekran; view → geri → ana ekran; view → view → geri → ana ekran (asla iki adım gerekmez).
 - [ ] Esc: Şimdi Çalıyor paneli açıkken kapatır; Onay diyaloğu açıkken iptal eder (odak Vazgeç'te varsayılan).
+
+## 18. Cihazlar arası eşitleme
+
+Otomatik testler (`src/sync/*.test.ts`, `worker/test/sync.test.ts`,
+`node scripts/smoke-p6-sync.cjs`) tek makinede, tek saatte ve sahte bir arka uçla
+çalışır. Aşağıdakiler yalnızca elle doğrulanabilir.
+
+- [ ] Farklı ağlardaki **iki gerçek cihaz** (PC + telefon) eşleşiyor.
+- [ ] **Gerçek saat kayması:** telefonun saatini elle 3 saat ileri al, iki
+      cihazda da dinle; PC'nin daha yeni konumu yine kazanıyor. *(Tasarımın en
+      riskli davranışı; hiçbir headless test OS saatini oynatamaz.)*
+- [ ] **Gerçek Worker + gerçek D1**'e karşı (`wrangler dev`, sonra dağıtılmış
+      API): CORS, TLS ve D1 gecikmesi smoke'takinden farklı.
+- [ ] **iOS Safari**, ana ekrana kurulu PWA: uygulama arka plana atıldığında
+      keepalive push gerçekten çıkıyor mu? (`beforeunload` orada tetiklenmez.)
+- [ ] Uçak modu → dinle → yeniden bağlan → bekleyen gönderim boşalıyor.
+- [ ] Kodu **telefon klavyesinde** yazmak: gruplar okunaklı, kopyala düğmesi iOS
+      pano izniyle çalışıyor, tek harf hatası "kod hatalı" veriyor (404 değil).
+- [ ] Aynı kod **üçüncü bir cihaza** yapıştırıldığında da çalışıyor.
+- [ ] Alıcı cihazda **depolama dolu**: sidecar yazması kota altında düşse bile
+      konum kaybolmuyor (bayat damga çatışmayı kaybeder, bu güvenli yön).
+- [ ] 2 saatlik dinlemede pil ve hücresel veri maliyeti kabul edilebilir.
+- [ ] Bir cihazdan "sunucudaki veriyi sil": diğeri durumu bildiriyor ve
+      **yerel verisini silmiyor**.
+- [ ] **Senkron öncesi bir JSON yedeğini** geri yükle, sonra eşitle: eski
+      konumlar taze damga takıp diğer cihazı geri almıyor.

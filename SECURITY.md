@@ -37,6 +37,31 @@ You can expect an initial response within a week.
   fails with an explanatory message if no Worker is configured. Ordinary public
   feeds are unaffected.
 
+## Cross-device sync
+
+Sync is opt-in and account-free. The pairing code is 15 bytes from
+`crypto.getRandomValues`; two independent values are derived from it with
+HKDF-SHA256 using different `info` strings — the id the server files the row
+under, and an AES-GCM-256 key. The Worker therefore stores ciphertext it cannot
+read, and an id recovered from a log or a database dump decrypts nothing.
+
+The threat model, stated plainly:
+
+- **The code is a bearer token.** Anyone holding it can read and overwrite that
+  row. This is inherent to silent background sync — the code has to be enough to
+  re-derive the key and to pair a further device. It is kept out of URLs (a URL
+  reaches request logs, history and `Referer`) and out of the JSON backup file,
+  and it travels in the `x-sync-id` header.
+- **Losing the code loses the synced copy.** There is no recovery by design.
+  Each device keeps its own local data regardless.
+- **Revocation** is `DELETE /v1/sync` plus generating a fresh code.
+- **A clobbered row cannot destroy local state.** Anything that fails to
+  authenticate is reported and ignored; local is authoritative on every device.
+- **Rate limiting** is per IP and per hashed sync id, using the platform rate
+  limiting binding rather than the KV counter the proxies use.
+- Blobs are capped at 128 KiB, never cached (`cache-control: no-store`, and the
+  service worker skips the route), and rows untouched for 180 days are swept.
+
 ## Known residual risks
 
 - The SSRF guard is hostname-based; it cannot resolve DNS, so a hostname that

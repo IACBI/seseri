@@ -171,6 +171,33 @@ export interface Lang {
   lib_dl_total: LangFn;
   np_open: string;
   np_close: string;
+
+  /* cross-device sync */
+  s_sync: string;
+  s_sync_state: string;
+  s_sync_code: string;
+  s_sync_code_sub: string;
+  s_sync_code_ph: string;
+  btn_sync_start: string;
+  btn_sync_link: string;
+  btn_sync_link_go: string;
+  btn_sync_now: string;
+  btn_sync_copy: string;
+  btn_sync_unlink: string;
+  btn_sync_forget: string;
+  sync_not_linked: string;
+  sync_idle: string;
+  sync_syncing: string;
+  sync_ok: string;
+  sync_error: string;
+  sync_unavailable: string;
+  sync_unreadable: string;
+  toast_sync_linked: string;
+  toast_sync_bad_code: string;
+  toast_sync_copied: string;
+  toast_sync_copy_failed: string;
+  toast_sync_forgotten: string;
+  confirm_sync_forget: string;
 }
 
 export type LangKey = keyof Lang;

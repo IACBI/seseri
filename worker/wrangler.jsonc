@@ -5,8 +5,31 @@
   "compatibility_date": "2025-09-06",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
-  // KV: rate-limit counters + resolved audio formats
+  // KV: rate-limit counters for the feed/iTunes proxies only.
   "kv_namespaces": [
     { "binding": "KV", "id": "8a295a8885fb4ac6a70b21d9c81c64d9" }
-  ]
+  ],
+  // Sync blobs. D1 rather than KV for two reasons: KV's free-tier ceiling is
+  // 1000 writes/day across the whole account, below a single heavy listening
+  // day; and KV is eventually consistent, so a push on the PC followed by a
+  // pull on the phone could hand back the previous blob.
+  //
+  // Local dev and the vitest pool ignore database_id and create their own copy;
+  // only a deploy and `--remote` migrations touch the one named here.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "seseri-sync",
+      "database_id": "7bb991eb-c0c4-47d5-9717-5f05ef594c15",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // The KV limiter fails OPEN once the write quota is gone (ratelimit.ts
+  // swallows the error, so the counter stops growing). Sync uses the platform
+  // limiter instead: it costs no KV writes and cannot be starved.
+  "ratelimits": [
+    { "name": "SYNC_IP", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } },
+    { "name": "SYNC_ID", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }
+  ],
+  "triggers": { "crons": ["17 4 * * *"] }
 }

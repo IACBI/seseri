@@ -168,6 +168,33 @@ const ja: Lang = {
   lib_dl_total: (n, size) => `${n}件 · ${size}`,
   np_open: "プレーヤーを開く",
   np_close: "プレーヤーを閉じる",
+
+  /* cross-device sync */
+  s_sync: "デバイス間同期",
+  s_sync_state: "状態",
+  s_sync_code: "ペアリングコード",
+  s_sync_code_sub: "このコードは誰とも共有しないでください。紛失すると同期データは復元できません。",
+  s_sync_code_ph: "ここにコードを入力",
+  btn_sync_start: "同期を開始",
+  btn_sync_link: "コードを入力",
+  btn_sync_link_go: "接続",
+  btn_sync_now: "今すぐ同期",
+  btn_sync_copy: "コードをコピー",
+  btn_sync_unlink: "このデバイスで停止",
+  btn_sync_forget: "サーバーのデータを削除",
+  sync_not_linked: "オフ",
+  sync_idle: "待機中",
+  sync_syncing: "同期中...",
+  sync_ok: "同期済み",
+  sync_error: "同期に失敗しました",
+  sync_unavailable: "現在同期を利用できません",
+  sync_unreadable: "同期データを読み取れませんでした",
+  toast_sync_linked: "デバイスをペアリングしました。",
+  toast_sync_bad_code: "このコードは無効です。英字と数字を確認してください。",
+  toast_sync_copied: "コードをコピーしました。",
+  toast_sync_copy_failed: "コードをコピーできませんでした。",
+  toast_sync_forgotten: "サーバーの同期データを削除しました。",
+  confirm_sync_forget: "サーバーの同期データを削除しますか？他のデバイスは同期を停止します。このデバイスのエピソードと再生位置はそのまま残ります。",
 };
 
 export default ja;

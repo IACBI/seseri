@@ -9,11 +9,25 @@
  */
 
 import { t } from '../../i18n';
+import type { LangKey } from '../../i18n/types';
 import { createLangMenu } from '../lang-menu';
+import {
+  forgetRemote,
+  linkSync,
+  startSync,
+  syncNow,
+  syncState,
+  unlinkSync,
+  type SyncState,
+  type SyncStatus,
+} from '../../sync';
+import { formatCode } from '../../sync/code';
+import { SYNC_AVAILABLE } from '../../sync/transport';
 import { clearAllDownloads, storageInfo } from '../../player/offline';
 import { clearFeedCache } from '../../storage/db';
 import { clearProgress, saveProgressNow } from '../../storage/progress';
 import { local } from '../../storage/local';
+import { exportBackup, restoreBackup } from '../../storage/backup';
 import { exportOpml, parseOpml } from '../../storage/opml';
 import { subscriptions, toggleSubscription, isSubscribed } from '../../storage/subscriptions';
 import { pbSetRate } from '../../player/engine';
@@ -203,6 +217,35 @@ const MARKUP = `
     </div>
   </section>
 
+  <section class="s-section" id="s_syncSection" hidden>
+    <div class="s-section-title" data-i18n="s_sync">Cihazlar Arası Eşitleme</div>
+    <div class="s-row">
+      <div><div class="s-label" data-i18n="s_sync_state">Durum</div></div>
+      <span class="s-sublabel" id="syncStatus">—</span>
+    </div>
+    <div class="s-row" id="syncCodeRow" hidden>
+      <div>
+        <div class="s-label" data-i18n="s_sync_code">Eşleştirme Kodu</div>
+        <div class="s-sublabel" data-i18n="s_sync_code_sub">Bu kodu kimseyle paylaşma.</div>
+      </div>
+      <code class="sync-code" id="syncCode"></code>
+    </div>
+    <div class="s-row" id="syncLinkRow" hidden>
+      <input class="sync-input" id="syncCodeInput" type="text" autocomplete="off"
+             spellcheck="false" autocapitalize="characters"
+             data-i18n-ph="s_sync_code_ph" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX">
+      <button class="s-btn" id="btnSyncLinkGo" data-i18n="btn_sync_link_go">Bağlan</button>
+    </div>
+    <div class="s-data-btns">
+      <button class="s-btn" id="btnSyncStart" data-i18n="btn_sync_start">Eşitlemeyi Başlat</button>
+      <button class="s-btn" id="btnSyncLink" data-i18n="btn_sync_link">Kod Gir</button>
+      <button class="s-btn" id="btnSyncNow" data-i18n="btn_sync_now">Şimdi Eşitle</button>
+      <button class="s-btn" id="btnSyncCopy" data-i18n="btn_sync_copy">Kodu Kopyala</button>
+      <button class="s-btn danger" id="btnSyncUnlink" data-i18n="btn_sync_unlink">Bu Cihazda Durdur</button>
+      <button class="s-btn danger" id="btnSyncForget" data-i18n="btn_sync_forget">Sunucudaki Veriyi Sil</button>
+    </div>
+  </section>
+
   <section class="s-section">
     <div class="s-section-title" data-i18n="s_data">Veri</div>
     <div class="s-row">
@@ -356,6 +399,91 @@ export function initSettingsView(deps: SettingsViewDeps): View {
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
 
+  // ── cross-device sync ────────────────────────────────────────────
+  const syncSection = pick('s_syncSection');
+  syncSection.hidden = !SYNC_AVAILABLE;
+  if (SYNC_AVAILABLE) {
+    const codeRow = pick('syncCodeRow');
+    const linkRow = pick('syncLinkRow');
+    const codeEl = pick('syncCode');
+    const statusEl = pick('syncStatus');
+    const input = pick<HTMLInputElement>('syncCodeInput');
+
+    const STATUS_KEY: Record<SyncStatus, LangKey> = {
+      idle: 'sync_idle',
+      syncing: 'sync_syncing',
+      ok: 'sync_ok',
+      error: 'sync_error',
+      unavailable: 'sync_unavailable',
+      unreadable: 'sync_unreadable',
+    };
+
+    const render = (s: SyncState): void => {
+      codeRow.hidden = !s.linked;
+      codeEl.textContent = s.code ? formatCode(s.code) : '';
+      for (const id of ['btnSyncStart', 'btnSyncLink']) pick(id).hidden = s.linked;
+      for (const id of ['btnSyncNow', 'btnSyncCopy', 'btnSyncUnlink', 'btnSyncForget']) {
+        pick(id).hidden = !s.linked;
+      }
+      if (s.linked) linkRow.hidden = true;
+      const label = s.linked ? t(STATUS_KEY[s.status]) : t('sync_not_linked');
+      statusEl.textContent =
+        s.linked && s.status === 'ok' && s.lastSyncAt
+          ? label + ' · ' + new Date(s.lastSyncAt).toLocaleTimeString()
+          : label;
+    };
+    render(syncState());
+    syncState.subscribe(render);
+
+    pick('btnSyncStart').addEventListener('click', () => {
+      void startSync();
+    });
+
+    pick('btnSyncLink').addEventListener('click', () => {
+      linkRow.hidden = !linkRow.hidden;
+      if (!linkRow.hidden) input.focus();
+    });
+
+    pick('btnSyncLinkGo').addEventListener('click', () => {
+      void (async () => {
+        // The check character means a mistyped code fails here rather than
+        // reaching the server and coming back as an unexplained 404.
+        if (await linkSync(input.value)) {
+          input.value = '';
+          toast(t('toast_sync_linked'));
+        } else {
+          toast(t('toast_sync_bad_code'), 'error');
+        }
+      })();
+    });
+
+    pick('btnSyncNow').addEventListener('click', () => {
+      void syncNow();
+    });
+
+    pick('btnSyncCopy').addEventListener('click', () => {
+      const code = syncState().code;
+      if (!code) return;
+      void navigator.clipboard?.writeText(formatCode(code)).then(
+        () => toast(t('toast_sync_copied')),
+        () => toast(t('toast_sync_copy_failed'), 'error'),
+      );
+    });
+
+    pick('btnSyncUnlink').addEventListener('click', () => {
+      // Local only: this device stops syncing and keeps everything it has.
+      unlinkSync();
+    });
+
+    pick('btnSyncForget').addEventListener('click', () => {
+      void (async () => {
+        if (!(await confirmDialog('confirm_sync_forget'))) return;
+        await forgetRemote();
+        toast(t('toast_sync_forgotten'));
+      })();
+    });
+  }
+
   pick('btnOpmlExport').addEventListener('click', () => {
     saveFile('seseri-subscriptions.opml', 'text/x-opml', exportOpml(subscriptions()));
     toast(t('toast_opml_exported'));
@@ -384,43 +512,10 @@ export function initSettingsView(deps: SettingsViewDeps): View {
     });
   });
 
-  /** Keys the backup round-trips. The queue joined them when it gained its own store. */
-  const BACKUP_KEYS = ['pp_settings', 'pp_favs', 'pp_prog', 'pp_queue'] as const;
-
   pick('btnJsonExport').addEventListener('click', () => {
-    const dump: Record<string, unknown> = { exportedAt: new Date().toISOString() };
-    for (const key of BACKUP_KEYS) dump[key] = local.get(key, null);
-    saveFile('seseri-backup.json', 'application/json', JSON.stringify(dump, null, 2));
+    saveFile('seseri-backup.json', 'application/json', exportBackup());
     toast(t('toast_json_exported'));
   });
-
-  /**
-   * Restore a backup. There was an export button and no import, which makes the
-   * export not a backup at all — nothing could ever be recovered from it.
-   *
-   * Written straight to the same localStorage keys and then reloaded: every
-   * loader (`loadSettings`, `loadSubscriptions`, `loadProgress`, `loadQueue`)
-   * already validates its own shape on the way in, so a hand-edited file is
-   * rejected field by field rather than trusted here.
-   */
-  function restoreBackup(text: string): boolean {
-    let data: unknown;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return false;
-    }
-    if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
-    const dump = data as Record<string, unknown>;
-    // A file with none of the keys is somebody else's JSON, not a backup.
-    if (!BACKUP_KEYS.some((k) => dump[k] !== undefined && dump[k] !== null)) return false;
-    for (const key of BACKUP_KEYS) {
-      const value = dump[key];
-      if (value === undefined || value === null) continue;
-      local.set(key, value);
-    }
-    return true;
-  }
 
   const jsonFile = pick<HTMLInputElement>('jsonFile');
   pick('btnJsonImport').addEventListener('click', () => jsonFile.click());

@@ -22,6 +22,16 @@ export interface QueueItem {
 
 const STORE_KEY = 'pp_queue';
 
+/**
+ * When the queue was last changed. One stamp for the whole list, because sync
+ * replaces the queue wholesale rather than merging it item by item — two
+ * independently reordered lists merged element-wise produce an order neither
+ * user asked for.
+ */
+const AT_KEY = 'pp_queue_at';
+
+let queueAt = 0;
+
 export const queue = signal<QueueItem[]>([]);
 
 /** Identity of a queued episode. Titles are labels and never part of it. */
@@ -31,7 +41,25 @@ export function sameItem(a: { feedId: string; trackId: string }, b: { feedId: st
 
 function persist(list: QueueItem[]): void {
   queue.set(list);
+  queueAt = Date.now();
   local.set(STORE_KEY, list);
+  local.set(AT_KEY, queueAt);
+}
+
+/** What sync reads. */
+export function queueSnapshot(): { list: QueueItem[]; at: number } {
+  return { list: queue().slice(), at: queueAt };
+}
+
+/**
+ * Apply a merged queue, keeping the merge's own timestamp. Not `persist`, which
+ * would restamp the other device's queue as if it had just been reordered here.
+ */
+export function setQueueStamped(list: QueueItem[], at: number): void {
+  queue.set(list);
+  queueAt = at;
+  local.set(STORE_KEY, list);
+  local.set(AT_KEY, at);
 }
 
 /** Restore the persisted queue. Malformed entries are dropped, not thrown on. */
@@ -56,6 +84,8 @@ export function loadQueue(): void {
     });
   }
   queue.set(clean);
+  const at = local.get<unknown>(AT_KEY, 0);
+  queueAt = typeof at === 'number' && Number.isFinite(at) ? at : 0;
 }
 
 export function enqueue(item: QueueItem): void {

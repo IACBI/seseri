@@ -168,6 +168,33 @@ const ar: Lang = {
   lib_dl_total: (n, size) => `${n} حلقة · ${size}`,
   np_open: "فتح المشغّل",
   np_close: "إغلاق المشغّل",
+
+  /* cross-device sync */
+  s_sync: "المزامنة بين الأجهزة",
+  s_sync_state: "الحالة",
+  s_sync_code: "رمز الإقران",
+  s_sync_code_sub: "لا تشارك هذا الرمز مع أحد. إذا فقدته، لا يمكن استرجاع البيانات المُزامَنة.",
+  s_sync_code_ph: "اكتب الرمز هنا",
+  btn_sync_start: "بدء المزامنة",
+  btn_sync_link: "إدخال رمز",
+  btn_sync_link_go: "اتصال",
+  btn_sync_now: "مزامنة الآن",
+  btn_sync_copy: "نسخ الرمز",
+  btn_sync_unlink: "الإيقاف على هذا الجهاز",
+  btn_sync_forget: "حذف بيانات الخادم",
+  sync_not_linked: "متوقفة",
+  sync_idle: "في الانتظار",
+  sync_syncing: "جارٍ المزامنة...",
+  sync_ok: "تمت المزامنة",
+  sync_error: "فشلت المزامنة",
+  sync_unavailable: "المزامنة غير متاحة حالياً",
+  sync_unreadable: "تعذّرت قراءة بيانات المزامنة",
+  toast_sync_linked: "تم إقران الجهاز.",
+  toast_sync_bad_code: "هذا الرمز غير صالح. تحقق من الحروف والأرقام.",
+  toast_sync_copied: "تم نسخ الرمز.",
+  toast_sync_copy_failed: "تعذّر نسخ الرمز.",
+  toast_sync_forgotten: "تم حذف بيانات المزامنة من الخادم.",
+  confirm_sync_forget: "هل تريد حذف بيانات المزامنة من الخادم؟ ستتوقف الأجهزة الأخرى عن المزامنة؛ وتبقى الحلقات والتقدم على هذا الجهاز.",
 };
 
 export default ar;

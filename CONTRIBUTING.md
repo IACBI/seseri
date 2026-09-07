@@ -46,7 +46,15 @@ npm run verify       # lint + typecheck + unit tests + build + worker checks
   `margin-inline-start`) so RTL keeps working. One stylesheet per view.
 - **Respect the quiet defaults.** `prefers-reduced-motion` must leave a usable
   static state, focus must stay visible, and touch targets stay at 44px.
-- **New external origin?** Update the CSP in `index.html`, and say what it is
+- **Touching a stored position?** `pp_prog` has sidecar keys that must move in
+lockstep with it — `pp_prog_at`, and the same pattern for `pp_last_at`,
+`pp_subs_at`/`pp_subs_rm` and `pp_queue_at`. They carry the timestamps sync
+resolves conflicts with. Write the value first and the stamp second: a fresh
+stamp on an old position beats genuinely newer data on the other device, while a
+stale stamp on a real position only loses a conflict it should lose. Anything
+added to `BACKUP_KEYS` needs the matching guard in `restoreBackup`.
+
+**New external origin?** Update the CSP in `index.html`, and say what it is
   for in `SECURITY.md` if it changes the app's exposure.
 - **New setting?** Add it to `Settings`, `DEFAULT_SETTINGS` and — unless it is
   free-form — the `ALLOWED` map in `src/state/settings.ts`, which is what stops
