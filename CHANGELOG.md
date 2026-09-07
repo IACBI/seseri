@@ -4,7 +4,7 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
-## 4.3.0 — unreleased
+## 4.2.3 — 2026-09-07
 
 ### Listen on one device, carry on from another
 
