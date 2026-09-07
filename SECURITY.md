@@ -27,7 +27,12 @@ You can expect an initial response within a week.
   redirects are followed manually, max 3 hops, and each `Location` target must
   pass the same private-host checks), response size caps, an app-origin
   requirement so the proxy endpoints cannot be used as an open proxy, and
-  per-IP rate limiting; it stores no user data. The SSRF check parses
+  per-IP rate limiting; it stores no user data. A localhost `Origin` is
+  accepted only by a Worker that is itself running on localhost — `wrangler
+  dev` needs it, and until 4.2.4 the deployed Worker honoured the header too,
+  which any client could simply send. Proxied bodies are returned with
+  `X-Content-Type-Options: nosniff` and under a content type that cannot render
+  as a document. The SSRF check parses
   addresses rather than pattern-matching them, so IPv4-mapped IPv6
   (`::ffff:169.254.169.254`), the unspecified address, CGNAT `100.64/10`,
   link-local and NAT64-embedded private addresses are all rejected.
@@ -88,7 +93,10 @@ The threat model, stated plainly:
   third-party host. It is no wider than `media-src` and `img-src`, which
   already accept any https origin, and the app holds no account, cookie or
   token that could be exfiltrated through it. `script-src` stays `'self'`, so
-  this does not widen what can execute.
+  this does not widen what can execute. The Windows shell declares its own
+  policy in `desktop/src-tauri/tauri.conf.json`; it was left as an allow-list
+  when the web one was widened in 4.2.2 and was brought back into line in
+  4.2.4, with `tests/unit/desktop-csp.test.ts` failing if the two drift again.
 - Public CORS proxies, **when the user turns them on**, see the URL of every
   *public* feed opened, and the app races three of them and parses whichever
   answers first — so any one of them can alter the XML, enclosure URLs

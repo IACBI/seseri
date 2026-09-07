@@ -189,4 +189,29 @@ describe('sleep timer — persistence', () => {
     initSleepTimer(() => {});
     expect(sleepTimerActive()).toBe(false);
   });
+
+  it('keeps writing the remaining time when a throttled tab delivers late ticks', () => {
+    // The gate used to be `Math.round(remainingMs / 1000) % 15 === 0`: it fires
+    // only when the countdown happens to LAND on a 15-second multiple. With
+    // one-second ticks it always does, so it looked correct. A background tab
+    // gets throttled and each tick then swallows several seconds at once —
+    // the countdown steps over the multiples and the gate stops matching
+    // entirely, freezing the stored value for the rest of the listen.
+    //
+    // 592 s decremented by exactly 15 s a tick stays at 7 mod 15 forever, so
+    // the old gate never fires here and the counted one still does.
+    store.map.set('pp_sleep', { mode: 'minutes', minutes: 10, remainingMs: 592_000 });
+    initSleepTimer(() => {});
+    store.map.delete('pp_sleep');
+
+    for (let i = 0; i < 15; i++) {
+      vi.setSystemTime(Date.now() + 14_000); // the tab was asleep
+      advance(1000); // …and the interval finally runs
+    }
+
+    const saved = store.map.get('pp_sleep') as { remainingMs: number } | undefined;
+    expect(saved).toBeDefined();
+    expect(saved?.remainingMs).toBe(sleepState().remainingMs);
+    expect(sleepState().remainingMs).toBe(592_000 - 15 * 15_000);
+  });
 });

@@ -20,7 +20,7 @@ import { audio } from '../player/engine';
 import { playing } from '../player/session';
 import { noteUserIntent } from '../player/recovery';
 import { clearQueue, queue } from '../state/queue';
-import { DEFAULT_SETTINGS, settings } from '../state/settings';
+import { DEFAULT_SETTINGS, setSetting, settings } from '../state/settings';
 
 /** `dated` limits how many items carry a pubDate (the rest have none). */
 function feedXml(title: string, ids: string[], dated = ids.length): string {
@@ -281,5 +281,54 @@ describe('recovery after the stream dies mid-episode', () => {
 
     await new Promise((r) => setTimeout(r, 200));
     expect(audio.src).toContain('dead.mp3');
+  });
+});
+
+/**
+ * A settings write used to re-emit the browse session unconditionally, and the
+ * podcast view answers that by building a row signature for every episode in
+ * the archive. The volume slider writes on `input`, at pointer rate, for a
+ * value no row renders — so dragging it with a long feed open was thousands of
+ * signature builds a second.
+ */
+describe('settings writes only re-emit for what the list renders', () => {
+  /** Count session emissions caused by a settings change alone. */
+  async function emitsFor(mutate: () => void): Promise<number> {
+    await open(FEED_A.url, 3);
+    let emits = 0;
+    const off = ctl.session.subscribe(() => emits++);
+    mutate();
+    off();
+    return emits;
+  }
+
+  it('ignores volume, which no row reads', async () => {
+    expect(await emitsFor(() => setSetting('volume', 0.4))).toBe(0);
+  });
+
+  it('ignores font size and row height, which are CSS custom properties', async () => {
+    expect(
+      await emitsFor(() => {
+        setSetting('fontSize', '15px');
+        setSetting('rowHeight', '66px');
+      }),
+    ).toBe(0);
+  });
+
+  it('still re-emits for showDl, which adds or removes a button per row', async () => {
+    expect(await emitsFor(() => setSetting('showDl', !settings().showDl))).toBe(1);
+  });
+
+  it('still re-emits for resumePos, which decides the badge and the hairline', async () => {
+    expect(await emitsFor(() => setSetting('resumePos', !settings().resumePos))).toBe(1);
+  });
+
+  it('re-emits once for a burst that ends on a different value', async () => {
+    expect(
+      await emitsFor(() => {
+        for (let v = 0; v <= 10; v++) setSetting('volume', v / 10);
+        setSetting('showDl', !settings().showDl);
+      }),
+    ).toBe(1);
   });
 });

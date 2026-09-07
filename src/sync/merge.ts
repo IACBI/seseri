@@ -252,8 +252,20 @@ export function isSyncPayload(x: unknown): x is SyncPayload {
   }
   for (const v of Object.values(x['subs'])) {
     if (!isRecord(v) || typeof v['at'] !== 'number') return false;
+    // `meta` travels straight into the subscription list, which keys the feed
+    // cache and the `pp_last_<feedId>` pointers. A `meta` that is present but
+    // is not an object with a usable id is not a payload this build can apply.
+    const meta = v['meta'];
+    if (meta !== undefined && (!isRecord(meta) || typeof meta['id'] !== 'string' || !meta['id'])) {
+      return false;
+    }
   }
   const q = x['queue'];
   if (!isRecord(q) || !Array.isArray(q['list']) || typeof q['at'] !== 'number') return false;
+  for (const item of q['list']) {
+    if (!isRecord(item)) return false;
+    if (typeof item['feedId'] !== 'string' || typeof item['trackId'] !== 'string') return false;
+    if (!item['feedId'] || !item['trackId']) return false;
+  }
   return true;
 }

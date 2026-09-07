@@ -23,9 +23,43 @@ function asStamps(v: unknown): Record<string, number> {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, number>) : {};
 }
 
+/**
+ * Reject what does not fit, never throw — the same contract as `loadQueue` and
+ * `loadSettings`.
+ *
+ * This list is not only written by the app. `restoreBackup` copies `pp_favs`
+ * straight out of a hand-editable JSON file, and a sync payload from another
+ * build supplies `subs[].meta`. A single `null` in it used to reach
+ * `String(f.id)` in the loop below, which throws — inside `boot()`, before any
+ * view renders, on a value that lives in localStorage. The app came up blank
+ * and stayed blank until storage was cleared.
+ *
+ * `id` is the only load-bearing field (it keys the sidecars, the feed cache and
+ * `pp_last_<feedId>`); the three labels are coerced so a stray number renders
+ * as text instead of crashing a row.
+ */
+export function sanitizeSubscriptions(raw: unknown): Subscription[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Subscription[] = [];
+  const seen = new Set<string>();
+  for (const row of raw) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+    const r = row as Partial<Subscription>;
+    const id = typeof r.id === 'string' || typeof r.id === 'number' ? String(r.id) : '';
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      id,
+      name: typeof r.name === 'string' ? r.name : '',
+      artist: typeof r.artist === 'string' ? r.artist : '',
+      art: typeof r.art === 'string' ? r.art : '',
+    });
+  }
+  return out;
+}
+
 export function loadSubscriptions(): void {
-  const favs = local.get<Subscription[]>('pp_favs', []);
-  const list = Array.isArray(favs) ? favs : [];
+  const list = sanitizeSubscriptions(local.get<unknown>('pp_favs', []));
   subscriptions.set(list);
   subAt = asStamps(local.get<unknown>(AT_KEY, {}));
   subRm = asStamps(local.get<unknown>(RM_KEY, {}));
@@ -79,12 +113,17 @@ export function subscriptionsSnapshot(): {
  * Deliberately not `persist`: that stamps whatever changed with `Date.now()`,
  * which would restamp the other device's history as if it had just happened
  * here and make this device win every subsequent conflict.
+ *
+ * Sanitised on the way in as well as on the way out of storage: the entries
+ * come from `subs[].meta` in a remote payload, which a build newer or older
+ * than this one wrote.
  */
 export function setSubscriptionsStamped(
-  list: Subscription[],
+  rawList: Subscription[],
   at: Record<string, number>,
   removed: Record<string, number>,
 ): void {
+  const list = sanitizeSubscriptions(rawList);
   subAt = { ...at };
   subRm = { ...removed };
   subscriptions.set(list);

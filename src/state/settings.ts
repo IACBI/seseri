@@ -133,12 +133,38 @@ export function loadSettings(): void {
   if (rejected) local.set('pp_settings', next);
 }
 
+/**
+ * Persisting is throttled; the signal is not.
+ *
+ * Most settings change once when a user taps a control, but the volume slider
+ * fires `input` at pointer rate — and every one of those used to serialise the
+ * whole settings object into localStorage synchronously, on the main thread,
+ * while the pointer was still moving. The signal still updates immediately (it
+ * is what keeps the two volume controls agreeing mid-drag); only the write is
+ * coalesced.
+ */
+const SAVE_DELAY_MS = 400;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Write now, cancelling any pending throttled write. Called on the way out. */
 export function saveSettings(): void {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
   local.set('pp_settings', settings());
+}
+
+function scheduleSave(): void {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    local.set('pp_settings', settings());
+  }, SAVE_DELAY_MS);
 }
 
 /** Update one field, persist, notify subscribers. */
 export function setSetting<K extends keyof Settings>(key: K, value: Settings[K]): void {
   settings.update((s) => ({ ...s, [key]: value }));
-  saveSettings();
+  scheduleSave();
 }

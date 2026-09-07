@@ -43,7 +43,7 @@ import { setMediaMetadata, setMediaPosition, setPlaybackState } from '../player/
 import { getLastPlayed, getProgress, setLastPlayed, setProgress } from '../storage/progress';
 import { playing, nowPlayingLabel, type PlayingSession } from '../player/session';
 import { dequeueNext, enqueue, queuePosition, removeFromQueue, type QueueItem } from '../state/queue';
-import { settings } from '../state/settings';
+import { settings, type Settings } from '../state/settings';
 import { refreshSubscription } from '../storage/subscriptions';
 import { consumeSleepAtEpisodeEnd } from '../player/sleep-timer';
 import { PRIVATE_FEED_ERROR } from '../feeds/credential-url';
@@ -116,6 +116,16 @@ export interface PlaybackController {
   reset(): void;
 }
 
+/**
+ * The settings an episode row renders from — `showDl` decides whether the
+ * download button exists, `resumePos` whether the saved-position badge and the
+ * progress hairline do (see `rowSignature` in ui/views/podcast.ts). Everything
+ * else in `Settings` reaches the list through CSS or not at all.
+ */
+function settingsRowKey(s: Settings): string {
+  return `${s.showDl ? 1 : 0}${s.resumePos ? 1 : 0}`;
+}
+
 export function emptySession(): PlaybackSession {
   return {
     meta: null,
@@ -158,8 +168,6 @@ export function createPlaybackController(): PlaybackController {
   // ── private, non-reactive state ──────────────────────────────────
   /** Aborts feed LOADING only. Never cancels an in-flight audio resolution. */
   let loadAbort: AbortController | null = null;
-  /** Aborts the PLAYING track's source resolution. */
-  let playAbort: AbortController | null = null;
   let currentBlobUrl: string | null = null;
   /** One-shot: consumed by the next feed that paints. See resumeLastPlayed. */
   let resumeOnPaint = false;
@@ -344,8 +352,6 @@ export function createPlaybackController(): PlaybackController {
     const ep = next.episodes[next.index];
     if (!ep || !next.trackId) return;
 
-    playAbort?.abort();
-    playAbort = new AbortController();
     noteUserIntent(autoplay);
     playing.set(next);
     markPlayingRow();
@@ -671,7 +677,6 @@ export function createPlaybackController(): PlaybackController {
   }
 
   function reset(): void {
-    playAbort?.abort();
     noteUserIntent(false);
     audio.pause();
     if (currentBlobUrl) {
@@ -803,8 +808,21 @@ export function createPlaybackController(): PlaybackController {
     else if (s.status.kind === 'loading') patch({ status: { kind: 'loading', message: t('status_loading') } });
   });
 
-  // Settings change → re-emit so lists pick up showDl / row metrics.
-  settings.subscribe(() => {
+  /**
+   * Settings change → re-emit, but only for the two the rows actually read.
+   *
+   * `bump()` makes the podcast view rebuild a row signature for every episode
+   * in the archive, and this fired on *any* settings write — including
+   * `volume`, which the slider writes on `input`, at pointer rate. Dragging it
+   * with a 2000-episode feed open meant thousands of signature builds a second
+   * for a control the list does not render. Font size and row height are CSS
+   * custom properties on the root element, so they need no re-render at all.
+   */
+  let listPrefs = settingsRowKey(settings());
+  settings.subscribe((S) => {
+    const next = settingsRowKey(S);
+    if (next === listPrefs) return;
+    listPrefs = next;
     if (session().episodes.length) bump();
   });
 

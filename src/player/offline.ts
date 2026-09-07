@@ -77,6 +77,10 @@ export async function downloadOffline(
  * Trim self-managed copies back under the budget, oldest first. `keepId` is
  * whatever is playing right now — evicting that would undo the very reason the
  * copy exists.
+ *
+ * It is therefore also exempt from the accounting, so the real ceiling is the
+ * budget plus one episode. That is deliberate: counting it could only ever
+ * evict something else to make room for a file that is already on disk.
  */
 async function evictEphemeral(keepId: string): Promise<void> {
   try {

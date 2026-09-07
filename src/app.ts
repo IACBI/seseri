@@ -10,7 +10,7 @@ import { loadProgress, saveProgressNow, setQuotaListener } from './storage/progr
 import { local } from './storage/local';
 import { loadSubscriptions } from './storage/subscriptions';
 import { loadQueue } from './state/queue';
-import { loadSettings, settings, type Settings } from './state/settings';
+import { loadSettings, saveSettings, settings, type Settings } from './state/settings';
 import type { FeedRequest } from './feeds/types';
 import { bindI18nDom } from './ui/i18n-dom';
 import { initMiniPlayer } from './ui/mini-player';
@@ -161,7 +161,10 @@ export function boot(): void {
   // ── persistence on exit ──────────────────────────────────────────
   // Sync flushes *after* the local write in each of these: the push reads what
   // `saveProgressNow` just committed, not the value from five seconds ago.
+  // `saveSettings` is here because the settings write is throttled now — a
+  // slider let go a fraction of a second before the tab closes must still land.
   const persistAndPush = (): void => {
+    saveSettings();
     saveProgressNow();
     syncFlush();
   };

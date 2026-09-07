@@ -1,6 +1,14 @@
 /**
  * Detects feed URLs that carry a subscriber credential.
  *
+ * NOTE: `src/feeds/credential-url.ts` and `worker/src/credential-url.ts` are
+ * kept byte-identical — the client uses this to decide what may reach a public
+ * proxy, the Worker to decide what may reach the shared edge cache, and the two
+ * answers must never disagree. They are duplicated rather than shared because
+ * the Worker is a separate npm package with its own tsconfig, and a
+ * cross-package import would drag the client build graph into it.
+ * `credential-url.test.ts` fails if they drift.
+ *
  * Private podcast services (Patreon, Memberful, Substack, Supercast …) put the
  * listener's token in the feed URL itself. Handing such a URL to a public CORS
  * proxy discloses that credential to a third-party operator — on every feed

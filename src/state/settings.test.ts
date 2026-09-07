@@ -6,8 +6,8 @@
  * loader used to accept anything whose `typeof` matched, so "a string" was the
  * only requirement for reaching `style.setProperty`.
  */
-import { beforeEach, describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, loadSettings, settings } from './settings';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SETTINGS, loadSettings, saveSettings, setSetting, settings } from './settings';
 
 function store(value: unknown): void {
   localStorage.setItem('pp_settings', JSON.stringify(value));
@@ -80,5 +80,52 @@ describe('loadSettings validation', () => {
   it('defaults the third-party proxy fallback to off', () => {
     loadSettings();
     expect(settings().allowPublicProxies).toBe(false);
+  });
+});
+
+/**
+ * The volume slider writes on `input`, which fires at pointer rate. Every one
+ * of those used to serialise the whole settings object into localStorage
+ * synchronously while the pointer was still moving.
+ */
+describe('setSetting throttles the write but not the signal', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Retire any write still pending from the previous case — swapping timer
+    // implementations drops the callback but not the module's handle.
+    saveSettings();
+    settings.set({ ...DEFAULT_SETTINGS });
+    localStorage.clear();
+  });
+  afterEach(() => {
+    saveSettings();
+    vi.useRealTimers();
+  });
+
+  it('updates the signal immediately, so both volume controls stay in step', () => {
+    setSetting('volume', 0.25);
+    expect(settings().volume).toBe(0.25);
+  });
+
+  it('writes once for a whole drag rather than once per pointer sample', () => {
+    for (let v = 0; v <= 20; v++) setSetting('volume', v / 20);
+    expect(localStorage.getItem('pp_settings')).toBeNull(); // nothing yet
+    vi.advanceTimersByTime(500);
+    const written = JSON.parse(localStorage.getItem('pp_settings') ?? '{}');
+    expect(written.volume).toBe(1);
+  });
+
+  it('flushes synchronously when saveSettings is called on the way out', () => {
+    setSetting('volume', 0.5);
+    saveSettings();
+    expect(JSON.parse(localStorage.getItem('pp_settings') ?? '{}').volume).toBe(0.5);
+  });
+
+  it('does not write again after a flush cancelled the pending timer', () => {
+    setSetting('volume', 0.5);
+    saveSettings();
+    localStorage.removeItem('pp_settings');
+    vi.advanceTimersByTime(2000);
+    expect(localStorage.getItem('pp_settings')).toBeNull();
   });
 });

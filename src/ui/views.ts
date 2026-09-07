@@ -32,7 +32,6 @@ export function registerView(view: View): void {
   views.set(view.name, view);
 }
 
-
 /** Subscribe to view changes (nav active state, analytics-free). */
 export function onViewChange(fn: (name: ViewName) => void): () => void {
   changeListeners.add(fn);

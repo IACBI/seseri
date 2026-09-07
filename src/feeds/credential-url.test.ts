@@ -1,5 +1,23 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { carriesCredential } from './credential-url';
+
+/**
+ * The Worker keeps its own copy (separate npm package, own tsconfig). The two
+ * decide the same thing in two places — what may reach a third party, and what
+ * may reach the shared edge cache — so a fix applied to one and not the other
+ * is a silent credential leak. They had already drifted by a stray comment.
+ */
+describe('worker copy parity', () => {
+  it('is byte-identical to worker/src/credential-url.ts', () => {
+    const here = readFileSync(fileURLToPath(new URL('./credential-url.ts', import.meta.url)));
+    const worker = readFileSync(
+      fileURLToPath(new URL('../../worker/src/credential-url.ts', import.meta.url)),
+    );
+    expect(worker.equals(here)).toBe(true);
+  });
+});
 
 describe('carriesCredential — protects private feeds', () => {
   it.each([

@@ -11,10 +11,18 @@ declare module 'cloudflare:test' {
 
 const APP_ORIGIN = 'https://iacbi.github.io';
 
+/** A deployed worker's own hostname. `wrangler dev` serves on 127.0.0.1. */
+const DEPLOYED = 'https://api.test';
+const LOCAL_WORKER = 'http://127.0.0.1:8787';
+
 /** Proxy endpoints require the app's Origin, so send it unless a test overrides. */
-async function call(path: string, origin: string | null = APP_ORIGIN): Promise<Response> {
+async function call(
+  path: string,
+  origin: string | null = APP_ORIGIN,
+  base: string = DEPLOYED,
+): Promise<Response> {
   const ctx = createExecutionContext();
-  const req = new Request('https://api.test' + path, {
+  const req = new Request(base + path, {
     headers: origin === null ? {} : { origin },
   });
   const res = await worker.fetch(req, env, ctx);
@@ -80,14 +88,32 @@ describe('/v1/feed proxy', () => {
     expect(res.status).toBe(200);
     expect(await res.text()).toContain('<title>T</title>');
     expect(res.headers.get('content-type')).toContain('rss');
+    // The body is upstream's, under a content type upstream chose.
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
   });
 
-  it('rejects HTML masquerading as a feed', async () => {
+  it.each([
+    ['text/html', 'HTML masquerading as a feed'],
+    ['image/svg+xml', 'SVG, which renders as markup'],
+    ['application/xhtml+xml', 'XHTML, which renders as markup'],
+    ['text/javascript', 'a script'],
+  ])('rejects upstream %s (%s)', async (contentType) => {
     fetchMock
       .get('https://feeds.example.com')
       .intercept({ path: '/page' })
-      .reply(200, '<html></html>', { headers: { 'content-type': 'text/html' } });
+      .reply(200, '<html></html>', { headers: { 'content-type': contentType } });
     expect((await call('/v1/feed?url=' + encodeURIComponent('https://feeds.example.com/page'))).status).toBe(415);
+  });
+
+  it('accepts a feed served with no content type at all', async () => {
+    // Plenty of small hosts send none; the body is capped and never executed.
+    fetchMock
+      .get('https://feeds.example.com')
+      .intercept({ path: '/bare' })
+      .reply(200, '<rss><channel><title>B</title></channel></rss>', { headers: {} });
+    const res = await call('/v1/feed?url=' + encodeURIComponent('https://feeds.example.com/bare'));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/xml');
   });
 
   it('propagates upstream failure as 502', async () => {
@@ -158,17 +184,28 @@ describe('open-proxy protection', () => {
     expect((await call('/v1/feed?url=' + url, 'https://evil.example')).status).toBe(403);
   });
 
-  it('allows a localhost Origin (developer machine)', async () => {
+  it('allows a localhost Origin only when the worker is itself local', async () => {
+    // `wrangler dev`: app on 5199, worker on 8787 — cross-origin, and allowed.
     // Reaches validation rather than the origin gate, so it 400s not 403s.
-    expect((await call('/v1/feed?url=http://127.0.0.1/x', 'http://localhost:5199')).status).toBe(
-      400,
-    );
+    expect(
+      (await call('/v1/feed?url=http://127.0.0.1/x', 'http://localhost:5199', LOCAL_WORKER)).status,
+    ).toBe(400);
+  });
+
+  it.each([
+    ['http://localhost:5199', 'localhost with a port'],
+    ['http://localhost', 'bare localhost'],
+    ['http://127.0.0.1:5199', 'loopback address'],
+  ])('refuses a forged %s Origin against the deployed worker (%s)', async (origin) => {
+    // A header is not proof of anything: `curl -H 'Origin: http://localhost'`
+    // used to turn the deployed proxy into an open one.
+    const url = encodeURIComponent('https://feeds.example.com/pod.xml');
+    expect((await call('/v1/feed?url=' + url, origin)).status).toBe(403);
   });
 
   it('leaves the health endpoint open', async () => {
     expect((await call('/', null)).status).toBe(200);
   });
-
 });
 
 describe('CORS', () => {

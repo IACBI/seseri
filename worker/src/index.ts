@@ -20,13 +20,32 @@ import { sweepSync, syncRoutes } from './sync';
 // is ~18 MB — so the cap is generous; it only guards against abuse.
 const FEED_MAX_BYTES = 20 * 1024 * 1024;
 const ALLOWED_ORIGINS = new Set(['https://iacbi.github.io']);
-// Any localhost origin is fine — it only ever means the developer's own machine.
+const LOCALHOST = /^(localhost|127\.0\.0\.1)$/;
 const LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 const SYNC_PREFIX = '/v1/sync';
 
-function allowOrigin(origin: string): string | null {
-  return ALLOWED_ORIGINS.has(origin) || LOCALHOST_ORIGIN.test(origin) ? origin : null;
+/**
+ * A localhost Origin is accepted only by a worker that is ITSELF on localhost.
+ *
+ * `wrangler dev` needs it: the app runs on 5199 and the worker on 8787, so
+ * every local request is cross-origin. But a header is not proof of anything —
+ * `curl -H 'Origin: http://localhost' …` is one line, and while the deployed
+ * worker honoured it the proxy endpoints were an open proxy for anyone willing
+ * to send it, edge cache included. The request's own hostname cannot be forged
+ * the same way: Cloudflare routes by hostname, so a deployed worker only ever
+ * sees its `workers.dev` (or custom) host here.
+ */
+function allowOrigin(origin: string, requestUrl: string): string | null {
+  if (ALLOWED_ORIGINS.has(origin)) return origin;
+  if (!LOCALHOST_ORIGIN.test(origin)) return null;
+  let self: URL;
+  try {
+    self = new URL(requestUrl);
+  } catch {
+    return null;
+  }
+  return LOCALHOST.test(self.hostname) ? origin : null;
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -34,7 +53,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use(
   '*',
   cors({
-    origin: allowOrigin,
+    origin: (origin, c) => allowOrigin(origin, c.req.url),
     allowMethods: ['GET', 'PUT', 'DELETE', 'OPTIONS'],
     // Left empty, Hono reflects Access-Control-Request-Headers verbatim — the
     // worker would advertise whatever the caller asked for. Pin the list.
@@ -48,10 +67,33 @@ app.use(
 
 const RATE_LIMITED = { error: 'rate limited' } as const;
 
+/**
+ * The proxy hands back bytes it did not write, under a content type it did not
+ * choose. `nosniff` stops a browser upgrading a mislabelled body to something
+ * that executes.
+ */
+const NOSNIFF = { 'x-content-type-options': 'nosniff' } as const;
+
+/**
+ * Content types a feed may legitimately arrive as.
+ *
+ * Only `text/html` used to be refused, which left every other document type
+ * through — `image/svg+xml` and `application/xhtml+xml` both render as markup
+ * if a browser is ever pointed straight at the proxy URL. The origin gate above
+ * already refuses a plain navigation (it carries no `Origin`), so this is the
+ * second lock rather than the first, but a passthrough content type is not
+ * something to leave open-ended. An absent content type is allowed: plenty of
+ * small feed hosts send none, and the body is capped and never executed.
+ */
+function feedContentType(ct: string): boolean {
+  if (!ct) return true;
+  return !/html|svg|javascript|ecmascript/.test(ct);
+}
+
 app.use('*', async (c, next) => {
   const ip = c.req.header('cf-connecting-ip') ?? '';
 
-  if (c.req.path !== '/' && !allowOrigin(c.req.header('origin') ?? '')) {
+  if (c.req.path !== '/' && !allowOrigin(c.req.header('origin') ?? '', c.req.url)) {
     // Without this the proxy endpoints are usable as a general-purpose open
     // proxy, which also lets anyone seed our edge cache. Browsers always send
     // Origin on a cross-origin fetch and the app is never same-origin with the
@@ -89,10 +131,13 @@ app.get('/v1/feed', async (c) => {
       });
       if (!res.ok) return c.json({ error: 'upstream ' + res.status }, 502);
       const ct = (res.headers.get('content-type') || '').toLowerCase();
-      if (ct.includes('text/html')) return c.json({ error: 'not a feed' }, 415);
+      if (!feedContentType(ct)) return c.json({ error: 'not a feed' }, 415);
       const body = await readCapped(res, FEED_MAX_BYTES);
       return new Response(body, {
-        headers: { 'content-type': ct || 'application/xml; charset=utf-8' },
+        headers: {
+          'content-type': ct || 'application/xml; charset=utf-8',
+          ...NOSNIFF,
+        },
       });
     } catch (e) {
       const msg = (e as Error).message;
@@ -137,7 +182,9 @@ app.get('/v1/itunes', async (c) => {
         const res = await fetchWithTimeout(target.href, 10000);
         if (!res.ok) return c.json({ error: 'upstream ' + res.status }, 502);
         const body = await readCapped(res, FEED_MAX_BYTES);
-        return new Response(body, { headers: { 'content-type': 'application/json; charset=utf-8' } });
+        return new Response(body, {
+          headers: { 'content-type': 'application/json; charset=utf-8', ...NOSNIFF },
+        });
       } catch {
         return c.json({ error: 'fetch failed' }, 502);
       }

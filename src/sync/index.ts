@@ -108,13 +108,22 @@ function excluded(): Set<string> {
   return id ? new Set([id]) : new Set<string>();
 }
 
+/**
+ * Derive the keys for a code and mark this device linked.
+ *
+ * Deliberately does NOT persist: `initSync` adopts a code it just read from
+ * storage, and writing here would put `rev: 0` back over the revision that read
+ * carried before the caller has had a chance to restore it. Losing the revision
+ * is survivable — the first push 409s and the conflict path recovers — but it
+ * costs a needless round trip on every cold start that crashes in the window.
+ * Callers that create a *new* pairing store it themselves.
+ */
 async function adopt(codeText: string): Promise<boolean> {
   const bytes = decodeCode(codeText);
   if (!bytes) return false;
   keys = await deriveKeys(bytes);
   rev = 0;
   syncState.set({ linked: true, code: codeText, status: 'idle', lastSyncAt: 0 });
-  store();
   return true;
 }
 
@@ -123,6 +132,7 @@ export async function startSync(): Promise<string | null> {
   if (!SYNC_AVAILABLE) return null;
   const code = generateCode();
   if (!(await adopt(code))) return null;
+  store();
   void syncNow();
   return code;
 }
@@ -131,6 +141,7 @@ export async function startSync(): Promise<string | null> {
 export async function linkSync(typed: string): Promise<boolean> {
   if (!SYNC_AVAILABLE) return false;
   if (!(await adopt(typed))) return false;
+  store();
   await syncNow();
   return true;
 }

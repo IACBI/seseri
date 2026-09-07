@@ -18,6 +18,8 @@ import { sleepState, SLEEP_EXTEND_MS, SLEEP_OFF, type SleepState } from '../stat
 /** Fade the last stretch instead of cutting the audio dead. */
 const FADE_MS = 30_000;
 const TICK_MS = 1000;
+/** One crash-recovery write per 15 counted ticks of actual playback. */
+const PERSIST_EVERY_TICKS = 15;
 
 interface Persisted {
   mode: SleepState['mode'];
@@ -27,6 +29,8 @@ interface Persisted {
 
 let ticker: ReturnType<typeof setInterval> | null = null;
 let lastTickAt = 0;
+/** Ticks since the last crash-recovery write. See the note in `tick`. */
+let sincePersist = 0;
 /** Notifier for "the timer stopped playback", supplied once at boot. */
 let notifyDone: (() => void) | null = null;
 
@@ -89,13 +93,20 @@ function tick(): void {
     return;
   }
   sleepState.set({ ...s, remainingMs, held: false });
-  // Coarse: this is crash recovery, not a hot path.
-  if (Math.round(remainingMs / 1000) % 15 === 0) persist();
+  // Coarse: this is crash recovery, not a hot path. Counted rather than
+  // derived from the remaining time — `Math.round(remainingMs / 1000) % 15`
+  // skipped the write entirely whenever a tick drifted past the multiple,
+  // which is exactly what a throttled tab does.
+  if (++sincePersist >= PERSIST_EVERY_TICKS) {
+    sincePersist = 0;
+    persist();
+  }
 }
 
 function startTicker(): void {
   stopTicker();
   lastTickAt = Date.now();
+  sincePersist = 0;
   ticker = setInterval(tick, TICK_MS);
 }
 

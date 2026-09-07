@@ -341,11 +341,43 @@ describe('isSyncPayload', () => {
     ['progress as an array', { ...emptyPayload(), progress: [] }],
     ['a string position', { ...emptyPayload(), progress: { a: { t: '90', at: T0 } } }],
     ['a missing queue', { v: 1, progress: {}, lastPlayed: {}, subs: {} }],
+    // `meta` lands in the subscription list, which keys the feed cache and the
+    // per-feed last-played pointers.
+    ['a null sub meta', { ...emptyPayload(), subs: { f1: { at: T0, meta: null } } }],
+    ['a string sub meta', { ...emptyPayload(), subs: { f1: { at: T0, meta: 'f1' } } }],
+    ['a sub meta with no id', { ...emptyPayload(), subs: { f1: { at: T0, meta: { name: 'A' } } } }],
+    [
+      'a sub meta with an empty id',
+      { ...emptyPayload(), subs: { f1: { at: T0, meta: { id: '' } } } },
+    ],
+    ['a null queue row', { ...emptyPayload(), queue: { list: [null], at: T0 } }],
+    [
+      'a queue row with no trackId',
+      { ...emptyPayload(), queue: { list: [{ feedId: 'f1' }], at: T0 } },
+    ],
   ])('rejects %s', (_label, value) => {
     expect(isSyncPayload(value)).toBe(false);
   });
 
+  it('accepts a tombstone, which carries no meta at all', () => {
+    expect(isSyncPayload({ ...emptyPayload(), subs: { f1: { at: T0, removed: true } } })).toBe(
+      true,
+    );
+  });
+
   it('accepts a payload carrying unknown extra keys, so a newer version still merges', () => {
     expect(isSyncPayload({ ...emptyPayload(), somethingNew: { x: 1 } })).toBe(true);
+  });
+
+  it('accepts extra keys on a sub meta and a queue row', () => {
+    const p = {
+      ...emptyPayload(),
+      subs: { f1: { at: T0, meta: { id: 'f1', name: 'A', artist: '', art: '', extra: 1 } } },
+      queue: {
+        list: [{ feedId: 'f1', trackId: 't1', title: 'T', feedName: 'A', extra: 1 }],
+        at: T0,
+      },
+    };
+    expect(isSyncPayload(p)).toBe(true);
   });
 });

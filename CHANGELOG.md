@@ -4,6 +4,79 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.4 — 2026-09-07
+
+### A blank app, an open proxy, and a screen that stopped staying awake
+
+Housekeeping release: no new features, six real defects.
+
+**The app could refuse to start.** A single malformed entry in the stored
+subscription list threw while it was being read — inside boot, before anything
+rendered — and the value causing it lives in `localStorage`, so it did it again
+on every reload. The app came up blank and stayed blank until site data was
+cleared. Two ways in: restoring a hand-edited backup file (`pp_favs` was copied
+in without validation, though `restoreBackup`'s own note claimed every loader
+checked its shape), and a sync payload from another build. `loadSubscriptions`
+now drops what does not fit and keeps the rest, the way the queue and settings
+loaders already did, and leaves the stored value alone so nothing is destroyed.
+The sync payload check now also rejects a subscription without a usable id and a
+queue row without a feed or track id.
+
+**The Worker's open-proxy guard could be walked past.** The feed and iTunes
+proxies are restricted to the app's own `Origin`, with any localhost origin
+allowed so `wrangler dev` works. But a header is not proof of anything —
+`curl -H 'Origin: http://localhost'` was enough to use the deployed proxy as a
+general-purpose one and to seed its shared edge cache. A localhost origin is now
+accepted only by a Worker that is itself running on localhost, which the request
+URL settles and a caller cannot forge. Proxy responses also carry
+`X-Content-Type-Options: nosniff`, and the feed proxy now refuses SVG, XHTML and
+script content types rather than only HTML.
+
+**The screen wake lock never came back.** It was released by the OS under
+battery saver and the code meant to notice — but it did so by assigning to
+`released`, which is a read-only property, so the assignment threw and was
+swallowed. The stale handle then made every later attempt short-circuit: one
+drop and the screen was free to sleep for the rest of the session. It now
+listens for the sentinel's own `release` event and re-acquires while playback
+still wants it.
+
+**The desktop shell blocked its own downloads.** 4.2.2 fixed the web
+`connect-src`, which had been an allow-list that silently blocked episode
+downloads and background caching for every third-party host. The Windows shell
+carries its own policy in `tauri.conf.json` and was not part of that fix, so it
+still enumerated a handful of CDNs. It now matches the shipped web policy, and a
+test fails if the two drift apart again.
+
+**Dragging the volume slider re-rendered the episode list.** `input` fires at
+pointer rate, and every one of those wrote the whole settings object to
+`localStorage` synchronously *and* re-emitted the browse session — which makes
+the podcast view rebuild a row signature for every episode in the archive. On a
+long feed that was thousands of signature builds a second for a control no row
+renders. The settings write is now coalesced (and flushed on the way out, so
+nothing is lost), and the list only re-renders for the two settings its rows
+actually read.
+
+**The sleep timer stopped saving its place in a background tab.** The
+crash-recovery write fired only when the countdown landed exactly on a
+fifteen-second multiple. With one-second ticks it always does; a throttled tab
+delivers coarse ticks that step straight over them, and the stored value froze.
+It is counted now instead of derived.
+
+**A smoke script that could not pass.** `smoke-p4-worker.cjs` drove a *built*
+bundle against the local Worker — but every build has the loopback origin
+stripped from its CSP, so the page refused its own request and nothing rendered.
+It has been silently unrunnable since that strip was added, which is also why
+the Worker path had no end-to-end coverage. It runs against the dev server now,
+cross-origin, so the open-proxy guard is exercised rather than bypassed, and it
+refuses to start when a leftover server holds its port — a stale bundle serving
+the SPA fallback in place of a feed reads as "invalid rss" and looks like a
+parser bug.
+
+Also: the pairing code's stored revision is no longer overwritten before it is
+read back at startup, the Worker's copy of the private-feed detector is
+byte-identical to the client's again (with a test to keep it that way), and dead
+code left behind by earlier refactors is gone.
+
 ## 4.2.3 — 2026-09-07
 
 ### Listen on one device, carry on from another

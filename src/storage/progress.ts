@@ -52,10 +52,6 @@ export function getProgress(id: string): number {
   return prog[id] ?? 0;
 }
 
-export function getProgressAt(id: string): number {
-  return progAt[id] ?? 0;
-}
-
 export function setProgress(id: string, seconds: number): void {
   prog[id] = seconds;
   progAt[id] = Date.now();
@@ -126,10 +122,6 @@ export function saveProgressNow(): void {
 /** Last-played episode per feed. Legacy keys `pp_last_<feedId>`. */
 export function getLastPlayed(feedId: string): string | null {
   return local.rawGet(LAST_PREFIX + feedId);
-}
-
-export function getLastPlayedAt(feedId: string): number {
-  return lastAt[feedId] ?? 0;
 }
 
 export function setLastPlayed(feedId: string, episodeId: string): void {

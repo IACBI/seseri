@@ -40,7 +40,6 @@ export function initWaveform(
   let scrubbing = false;
 
   function build(id: string): void {
-    const rand = waveSeed(String(id || 'seseri'));
     base.replaceChildren();
     fill.replaceChildren();
     const mk = () => {
@@ -58,7 +57,6 @@ export function initWaveform(
     };
     base.appendChild(mk());
     fill.appendChild(mk());
-    void rand;
   }
 
   function setProgress(pctIn: number): void {

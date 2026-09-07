@@ -83,6 +83,18 @@ Referans davranış: `v1-legacy` git etiketi (`git checkout v1-legacy` + `npx se
 - [ ] Ağ yokken arama → görünür hata, sonsuz spinner yok.
 - [ ] CORS proxy'lerinin biri ölüyken RSS yine yüklenir (fallback yarışı).
 - [ ] localStorage dolu senaryosunda uygulama çökmez (quota pruning).
+- [ ] **Bozuk abonelik kaydı:** DevTools konsolunda
+      `localStorage.setItem('pp_favs', JSON.stringify([null, {id:'123', name:'X'}]))`
+      → yenile. Uygulama açılır, Kütüphane sağlam kaydı gösterir, bozuk olan
+      sessizce atlanır. *(4.2.4'e kadar bu, açılışta boş bir ekran demekti ve
+      site verisi silinene kadar öyle kalıyordu.)*
+- [ ] **Elle düzenlenmiş yedek:** dışa aktarılan JSON'da `pp_favs` içine bir
+      `null` ekle → içe aktar → yenile. Aynı şekilde açılır.
+- [ ] **Ekran kilidi:** uzun bir bölümü çalarken pil tasarrufunu aç (Windows:
+      *Ayarlar → Sistem → Güç → Pil tasarrufu*), ekranın uyumaya çalışmasını
+      bekle. Kilit OS tarafından bırakıldıktan sonra da yeniden alınıyor —
+      ekran çalma boyunca uyanık kalıyor. *(Yalnızca gerçek cihazda görülür;
+      headless test OS'un kilidi bırakmasını tetikleyemez.)*
 
 ## 12. Offline & indirmeler (v3)
 
@@ -92,6 +104,10 @@ Referans davranış: `v1-legacy` git etiketi (`git checkout v1-legacy` + `npx se
 - [ ] Ayarlar → Depolama satırı kullanım gösterir; "İndirilenleri Sil" çalışır.
 - [ ] CORS engelli bir feed'de indirme → dosya indirme fallback bildirimi.
 - [ ] OPML dışa aktar → içe aktar → abonelikler aynı (round-trip).
+- [ ] **Windows kurulumunda (Tauri kabuğu, tarayıcıda değil):** üçüncü taraf bir
+      CDN'de barınan bir bölümü indir → "kaydedildi" gelir, DevTools konsolunda
+      CSP ihlali yok. *(Masaüstü kabuğu kendi CSP'sini taşır; smoke betiklerinin
+      hiçbiri onu çalıştırmaz, bu yüzden yalnızca burada görülür.)*
 
 ## 13. Mini oynatıcı, Şimdi Çalıyor paneli & kuyruk
 

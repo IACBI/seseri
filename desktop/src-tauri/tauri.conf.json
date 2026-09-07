@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Seseri",
-  "version": "4.2.3",
+  "version": "4.2.4",
   "identifier": "io.github.iacbi.seseri",
   "build": {
     "frontendDist": "https://iacbi.github.io/seseri/",
@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' https://iacbi.github.io; base-uri 'none'; form-action 'none'; script-src 'self' https://iacbi.github.io; style-src 'self' 'unsafe-inline' https://iacbi.github.io https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src https: blob:; connect-src 'self' https://iacbi.github.io https://seseri-api.bozdogancanahmet.workers.dev https://itunes.apple.com https://ax.itunes.apple.com https://api.allorigins.win https://api.codetabs.com https://corsproxy.io https://noembed.com"
+      "csp": "default-src 'self' https://iacbi.github.io; base-uri 'none'; form-action 'none'; script-src 'self' https://iacbi.github.io; style-src 'self' 'unsafe-inline' https://iacbi.github.io https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src https: blob:; connect-src 'self' https:"
     }
   },
   "bundle": {
