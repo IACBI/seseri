@@ -50,6 +50,13 @@ import { PRIVATE_FEED_ERROR } from '../feeds/credential-url';
 import { API_BASE, PROXIES_DISABLED_ERROR } from '../feeds/proxy-chain';
 import { toast } from './toast';
 
+/**
+ * Below this, a position is noise rather than progress: it is not saved, not
+ * resumed to, and a listener who has passed it is under way rather than
+ * resuming.
+ */
+const RESUME_FLOOR_SEC = 5;
+
 export interface PlaybackStatus {
   kind: 'idle' | 'loading' | 'ok' | 'error';
   /** Human-readable, already translated. */
@@ -409,13 +416,51 @@ export function createPlaybackController(): PlaybackController {
     }
     audio.src = safe;
     audio.load();
+    /**
+     * `canplay` can fire before the element will accept a seek: until the first
+     * range request lands, `seekable` is still empty and `currentTime = saved`
+     * is silently dropped. Playback then starts from the top, and the next
+     * `timeupdate` writes that position over the saved one — the resume is not
+     * just skipped, it is destroyed. So keep trying until the seek takes.
+     *
+     * It stops as soon as the listener is genuinely under way (past the same
+     * floor the position is saved at), because past that point a jump is an
+     * interruption rather than a restore.
+     */
+    const resumeTo = (target: number): void => {
+      const forSrc = audio.src;
+
+      function attempt(): boolean {
+        const ranges = audio.seekable;
+        if (!ranges.length || ranges.end(ranges.length - 1) < target) return false;
+        audio.currentTime = target;
+        return true;
+      }
+
+      function stop(): void {
+        audio.removeEventListener('progress', retry);
+        audio.removeEventListener('canplaythrough', retry);
+        audio.removeEventListener('timeupdate', retry);
+      }
+
+      function retry(): void {
+        // A new episode reuses the element; its listeners must not seek it.
+        if (audio.src !== forSrc || audio.currentTime > RESUME_FLOOR_SEC || attempt()) stop();
+      }
+
+      if (attempt()) return;
+      audio.addEventListener('progress', retry);
+      audio.addEventListener('canplaythrough', retry);
+      audio.addEventListener('timeupdate', retry);
+    };
+
     const applyPrefs = (): void => {
       const S = settings();
       audio.playbackRate = S.defaultSpeed;
       if (S.resumePos) {
         const saved = getProgress(id);
-        if (saved > 5 && isFinite(audio.duration) && saved < audio.duration - 2) {
-          audio.currentTime = saved;
+        if (saved > RESUME_FLOOR_SEC && isFinite(audio.duration) && saved < audio.duration - 2) {
+          resumeTo(saved);
         }
       }
     };
@@ -700,7 +745,7 @@ export function createPlaybackController(): PlaybackController {
       }
       case 'timeupdate': {
         const p = playing();
-        if (p && e.current > 5) setProgress(p.trackId, e.current);
+        if (p && e.current > RESUME_FLOOR_SEC) setProgress(p.trackId, e.current);
         // The real rate, not the stored preference: a speed change applied to
         // the element must move the lock-screen bar with it.
         setMediaPosition(e.current, e.duration, audio.playbackRate);
