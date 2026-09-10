@@ -20,9 +20,17 @@
       "migrations_dir": "migrations"
     }
   ],
-  // Every budget lives on the platform limiter. The KV counter these replaced
-  // spent a write per request out of 1000/day for the whole account and then
-  // failed open for everyone, on every route, until the quota reset.
+  // Where the budgets are actually counted: one Durable Object per key, so the
+  // count is correct rather than per-machine. SQLite-backed because that is the
+  // class type the free plan allows — the counter itself is in memory and never
+  // writes.
+  "durable_objects": {
+    "bindings": [{ "name": "LIMITERS", "class_name": "RateLimiterDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimiterDO"] }],
+  // Fallback only, for when the object cannot be reached. These are permissive
+  // by design (per location AND per machine), which is why they are not the
+  // limiter any more — but a loose brake beats the KV counter's fail-open.
   "ratelimits": [
     { "name": "SYNC_IP", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } },
     { "name": "SYNC_ID", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },

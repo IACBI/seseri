@@ -225,3 +225,64 @@ describe('CORS', () => {
     expect(res.headers.get('access-control-allow-origin')).toBeNull();
   });
 });
+
+describe('rate limiting', () => {
+  /** `/` skips the origin gate but not the budget, so it is the cheapest probe. */
+  async function hit(ip: string): Promise<number> {
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(
+      new Request(DEPLOYED + '/', { headers: { 'cf-connecting-ip': ip } }),
+      env,
+      ctx,
+    );
+    await waitOnExecutionContext(ctx);
+    return res.status;
+  }
+
+  it('allows exactly the budget and then refuses', async () => {
+    // Counted in one Durable Object per client rather than per machine, which
+    // is what the platform limiter does — against the deployed worker that let
+    // a 200-request burst through without a single refusal.
+    //
+    // The first 60 are allowed no matter when the loop runs: the estimate never
+    // exceeds what was actually sent. The refusal usually lands on the 61st,
+    // but a loop that straddles a window boundary sees the previous window's
+    // weight decaying as it goes, which buys a caller a few more — hence the
+    // range rather than an exact index.
+    const ip = '203.0.113.60';
+    const codes: number[] = [];
+    for (let i = 0; i < 70; i++) codes.push(await hit(ip));
+
+    expect(codes.slice(0, 60)).toEqual(Array<number>(60).fill(200));
+    expect(codes.indexOf(429)).toBeGreaterThanOrEqual(60);
+    expect(codes).toContain(429);
+  });
+
+  it('gives one IPv6 /64 a single budget however it renumbers itself', async () => {
+    // The interface id is the client's to choose, so counting per address let
+    // one machine mint 2^64 budgets by counting up.
+    for (let i = 0; i < 60; i++) expect(await hit(`2001:db8:1:2::${i.toString(16)}`)).toBe(200);
+
+    const after: number[] = [];
+    for (let i = 0; i < 10; i++) after.push(await hit(`2001:db8:1:2:ffff::${i.toString(16)}`));
+    expect(after).toContain(429);
+    // A different /64 is a different client.
+    expect(await hit('2001:db8:1:3::1')).toBe(200);
+  });
+
+  it('carries a retry-after the client can act on', async () => {
+    const ip = '203.0.113.61';
+    for (let i = 0; i < 70; i++) await hit(ip);
+    const ctx = createExecutionContext();
+    const res = await worker.fetch(
+      new Request(DEPLOYED + '/', { headers: { 'cf-connecting-ip': ip } }),
+      env,
+      ctx,
+    );
+    await waitOnExecutionContext(ctx);
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('retry-after')).toBe('60');
+    expect(await res.json()).toMatchObject({ error: 'rate limited' });
+  });
+});

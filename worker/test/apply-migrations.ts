@@ -1,6 +1,7 @@
 import { applyD1Migrations, env } from 'cloudflare:test';
 import type { D1Migration } from 'cloudflare:test';
 import type { RateLimiter } from '../src/env';
+import type { RateLimiterDO } from '../src/ratelimit';
 
 /**
  * The sync tests run against a real local D1, not a fake, so the schema has to
@@ -10,6 +11,7 @@ import type { RateLimiter } from '../src/env';
 declare module 'cloudflare:test' {
   interface ProvidedEnv {
     DB: D1Database;
+    LIMITERS: DurableObjectNamespace<RateLimiterDO>;
     PROXY_IP: RateLimiter;
     SYNC_IP: RateLimiter;
     SYNC_ID: RateLimiter;

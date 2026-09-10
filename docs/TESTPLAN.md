@@ -175,9 +175,13 @@ Ekran görüntüsü altyapısı: `scripts/shot.cjs` (headless Edge + vite previe
 
 - [ ] `npm run worker:dev` açıkken RSS worker üzerinden gelir (Network'te `/v1/feed`).
 - [ ] Worker kapalıyken aynı feed halka açık proxy'lerle yine yüklenir.
-- [ ] Dağıtılmış Worker'a `KV` bağlaması olmadan da deploy edilir; `/v1/feed`
-      art arda 60'tan fazla istekte 429 döner (hız sınırı platform
-      sınırlayıcısında, KV yazma kotasına bağlı değil).
+- [ ] Dağıtılmış Worker `KV` bağlaması olmadan deploy edilir ve Durable Object
+      geçişini uygular (`wrangler deploy` çıktısında `LIMITERS` görünür).
+- [ ] **Dağıtılmış Worker'da** tek adresten 70 paralel istek: ilk 60'ı geçer,
+      sonrası `429` + `retry-after: 60`. (4.2.5'te bu ölçüm 200 istekte sıfır
+      red vermişti — sayaç makine başınaydı.)
+- [ ] Aynı IPv6 /64 içinde adres değiştirmek yeni bütçe açmaz; farklı bir /64
+      açar.
 - [ ] Yanıt vermeyi yarıda kesen bir upstream'de `/v1/feed` 30 sn içinde 504
       döner ve istemci halka açık proxy'lere düşer — süresiz beklemez.
 - [ ] `?resume=1` → son açılan feed otomatik açılır (mağaza kısayolu).

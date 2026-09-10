@@ -244,22 +244,36 @@ describe('sync id validation', () => {
 });
 
 describe('sync and the shared budgets', () => {
+  /**
+   * A stand-in for the limiter namespace that records the instance names it is
+   * asked for and answers with a fixed verdict. The name is the only place the
+   * budget's identity lives, so this is how "never the raw code" is checked.
+   */
+  function spyLimiters(retryAfterMs = 0): {
+    ns: Env['LIMITERS'];
+    seen: string[];
+  } {
+    const seen: string[] = [];
+    const ns = {
+      idFromName: (name: string) => {
+        seen.push(name);
+        return name as unknown as DurableObjectId;
+      },
+      get: () => ({ take: () => retryAfterMs }),
+    } as unknown as Env['LIMITERS'];
+    return { ns, seen };
+  }
+
   it('does not spend the budget the proxies depend on', async () => {
     // Sync is chatty by design — every device pushes on every change — and the
-    // proxies are what a listener notices when it is gone. They meter through
-    // separate namespaces, so a busy sync cannot refuse a feed refresh.
-    const seen: string[] = [];
-    const spy: RateLimiter = {
-      limit: async (o) => {
-        seen.push(o.key);
-        return { success: true };
-      },
-    };
+    // proxies are what a listener notices when they are gone. Separate budgets,
+    // so a busy sync cannot refuse a feed refresh.
+    const { ns, seen } = spyLimiters();
 
     for (let i = 0; i < 5; i++) {
-      await syncCall('GET', { ip: '203.0.113.9', env: { PROXY_IP: spy } });
+      await syncCall('GET', { ip: '203.0.113.9', env: { LIMITERS: ns } });
     }
-    expect(seen).toEqual([]);
+    expect(seen.filter((k) => k.startsWith('proxy:'))).toEqual([]);
 
     fetchMock
       .get('https://feeds.example.com')
@@ -270,54 +284,80 @@ describe('sync and the shared budgets', () => {
       new Request('https://api.test/v1/feed?url=https%3A%2F%2Ffeeds.example.com%2Fpod.xml', {
         headers: { origin: APP_ORIGIN, 'cf-connecting-ip': '203.0.113.9' },
       }),
-      { ...env, PROXY_IP: spy },
+      { ...env, LIMITERS: ns },
       ctx,
     );
     await waitOnExecutionContext(ctx);
 
-    expect(seen).toEqual(['203.0.113.9']);
+    expect(seen.filter((k) => k.startsWith('proxy:'))).toEqual(['proxy:203.0.113.9']);
   });
 
-  it('rate-limits on a hash of the sync id, never on the id itself', async () => {
+  it('counts against a hash of the sync id, never the id itself', async () => {
     const id = freshId();
-    const seen: string[] = [];
-    const spy: RateLimiter = {
-      limit: async (o) => {
-        seen.push(o.key);
-        return { success: true };
-      },
-    };
+    const { ns, seen } = spyLimiters();
 
-    await syncCall('GET', { id, env: { SYNC_ID: spy } });
+    await syncCall('GET', { id, ip: '203.0.113.10', env: { LIMITERS: ns } });
 
-    expect(seen).toHaveLength(1);
-    expect(seen[0]).not.toBe(id);
-    expect(seen[0]).toMatch(/^[0-9a-f]{64}$/);
+    expect(seen).toEqual(['sync-ip:203.0.113.10', expect.stringMatching(/^sync-id:[0-9a-f]{64}$/)]);
+    expect(seen.join()).not.toContain(id);
   });
 
-  it('turns a refusal from the limiter into a 429 the client can back off on', async () => {
-    const full: RateLimiter = { limit: async () => ({ success: false }) };
+  it('turns a refusal into a 429 the client can back off on', async () => {
+    const { ns } = spyLimiters(5000);
 
-    const res = await syncCall('GET', { ip: '198.51.100.7', env: { SYNC_IP: full } });
+    const res = await syncCall('GET', { ip: '198.51.100.7', env: { LIMITERS: ns } });
 
     expect(res.status).toBe(429);
     expect(res.headers.get('retry-after')).toBe('60');
   });
 
-  it('actually enforces the per-IP budget through the platform limiter', async () => {
-    // The limiter's window is fixed, not sliding: a boundary landing mid-loop
-    // splits the requests across two windows, so send well over twice the
-    // budget rather than a hair over it.
+  it('falls back to the platform limiter when the object cannot be reached', async () => {
+    // Unreachable must not mean unlimited: that is exactly how the KV counter
+    // failed, and it failed silently for every caller on every route.
+    const broken = {
+      idFromName: () => {
+        throw new Error('no limiters here');
+      },
+    } as unknown as Env['LIMITERS'];
+    const full: RateLimiter = { limit: async () => ({ success: false }) };
+
+    const res = await syncCall('GET', {
+      ip: '198.51.100.9',
+      env: { LIMITERS: broken, SYNC_IP: full },
+    });
+
+    expect(res.status).toBe(429);
+  });
+
+  it('enforces the per-IP budget against the real object', async () => {
+    // 60 a minute, counted in one place rather than per machine — so the
+    // refusal lands right after the budget, not at the 130th and not never.
+    // The exact index floats by a few when the loop straddles a window
+    // boundary; the first 60 are always allowed.
     const ip = '198.51.100.8';
     const id = freshId();
-    let refused: Response | null = null;
+    const codes: number[] = [];
 
-    for (let i = 0; i < 130 && !refused; i++) {
-      const res = await syncCall('GET', { id, ip });
-      if (res.status === 429) refused = res;
-    }
+    for (let i = 0; i < 70; i++) codes.push((await syncCall('GET', { id, ip })).status);
 
-    expect(refused).not.toBeNull();
+    expect(codes.slice(0, 60)).toEqual(Array<number>(60).fill(404));
+    expect(codes).toContain(429);
+  });
+
+  it('refuses without asking the object again once a client is over budget', async () => {
+    // The flood is the cheap path: a refusal is remembered in the isolate, so
+    // it costs nothing to keep saying no until the window rolls over.
+    const ip = '198.51.100.11';
+    const id = freshId();
+    for (let i = 0; i < 70; i++) await syncCall('GET', { id, ip });
+
+    const broken = {
+      idFromName: () => {
+        throw new Error('must not be consulted');
+      },
+    } as unknown as Env['LIMITERS'];
+
+    expect((await syncCall('GET', { id, ip, env: { LIMITERS: broken } })).status).toBe(429);
   });
 });
 

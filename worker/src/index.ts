@@ -14,7 +14,7 @@ import { cors } from 'hono/cors';
 import type { AppContext, Env } from './env';
 import { carriesCredential } from './credential-url';
 import { edgeCached, fetchWithTimeout, readCapped, safeTarget } from './safe-fetch';
-import { rateLimited } from './ratelimit';
+import { clientKey, rateLimited } from './ratelimit';
 import { sweepSync, syncRoutes } from './sync';
 
 // Popular feeds keep their full archive in the feed — The Daily's RSS alone
@@ -67,6 +67,9 @@ app.use(
 );
 
 const RATE_LIMITED = { error: 'rate limited' } as const;
+
+/** Per client prefix. Generous: a listener refreshing a library stays far under. */
+const PROXY_PER_MIN = 60;
 
 /**
  * Both proxies buffer their upstream body before answering, and every guard
@@ -125,7 +128,13 @@ app.use('*', async (c, next) => {
   // Sync meters itself, per address and per hashed code both.
   if (c.req.path.startsWith(SYNC_PREFIX)) return next();
 
-  if (await rateLimited(c.env.PROXY_IP, ip)) {
+  // The edge sets `cf-connecting-ip` on everything it routes and overwrites
+  // whatever the client sent, so an empty one means `wrangler dev` or a test —
+  // not a caller who found a way to hide.
+  if (
+    ip &&
+    (await rateLimited(c.env.LIMITERS, c.env.PROXY_IP, 'proxy', clientKey(ip), PROXY_PER_MIN))
+  ) {
     return c.json(RATE_LIMITED, 429, { 'retry-after': '60' });
   }
   await next();
@@ -208,6 +217,8 @@ app.get('/v1/itunes', async (c) => {
 app.route(SYNC_PREFIX, syncRoutes);
 
 app.notFound((c) => c.json({ error: 'not found' }, 404));
+
+export { RateLimiterDO } from './ratelimit';
 
 export default {
   fetch: app.fetch,

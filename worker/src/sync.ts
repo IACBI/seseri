@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from './env';
-import { clientKey } from './ratelimit';
+import { clientKey, rateLimited } from './ratelimit';
 
 /**
  * Cross-device sync storage.
@@ -28,6 +28,10 @@ const SYNC_ID = /^[A-Za-z0-9_-]{43}$/;
 export const RETENTION_MS = 180 * 24 * 60 * 60 * 1000;
 
 const RATE_LIMITED = { error: 'rate limited' } as const;
+
+/** Per client prefix, and per code so one leaked code cannot be hammered. */
+const SYNC_IP_PER_MIN = 60;
+const SYNC_ID_PER_MIN = 120;
 
 type SyncApp = { Bindings: Env; Variables: { syncId: string } };
 
@@ -66,14 +70,16 @@ syncRoutes.use('*', async (c, next) => {
   if (!SYNC_ID.test(id)) return c.json({ error: 'bad sync id' }, 400, headers());
 
   const ip = c.req.header('cf-connecting-ip') ?? '';
-  // The prefix, not the address: one IPv6 host owns its whole /64 and would
-  // otherwise draw a fresh budget per request just by counting up.
-  if (ip && !(await c.env.SYNC_IP.limit({ key: clientKey(ip) })).success) {
+  if (
+    ip &&
+    (await rateLimited(c.env.LIMITERS, c.env.SYNC_IP, 'sync-ip', clientKey(ip), SYNC_IP_PER_MIN))
+  ) {
     return c.json(RATE_LIMITED, 429, headers({ 'retry-after': '60' }));
   }
   // Hashed, never raw: the limiter key is one more place the id would sit, and
   // the id is the bearer token for the whole row.
-  if (!(await c.env.SYNC_ID.limit({ key: await sha256Hex(id) })).success) {
+  const codeKey = await sha256Hex(id);
+  if (await rateLimited(c.env.LIMITERS, c.env.SYNC_ID, 'sync-id', codeKey, SYNC_ID_PER_MIN)) {
     return c.json(RATE_LIMITED, 429, headers({ 'retry-after': '60' }));
   }
 

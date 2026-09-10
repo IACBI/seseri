@@ -4,6 +4,40 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.6 — 2026-09-10
+
+### A rate limit that actually counts
+
+Backend only, and a direct follow-up to 4.2.5: that release moved the limiter
+off KV onto Cloudflare's rate limiting binding, and the release notes said
+plainly that the new one is documented as permissive — a counter per location
+*and* per machine. Measured against the deployed Worker, 200 requests from one
+address drew no refusal at all, because the colo spread them across machines
+that each stayed under 60. A limit nobody reaches is not a limit.
+
+Counting now happens in a Durable Object: one instance per key, globally,
+single-threaded, so the count is simply correct. The 61st request of a minute
+is refused, and the tests assert exactly that against a real object rather than
+a mock.
+
+Three things keep it cheap. The instance is addressed by the client's own key,
+so Cloudflare places it next to whoever created it and a caller's requests reach
+their own counter over a short hop. A refusal is remembered in the isolate that
+received it, so a flood stops touching the object at all until its window rolls
+over — the expensive path is the legitimate request, and there are sixty of
+those a minute. And the counter lives in memory, never in storage: an instance
+only goes idle once the traffic it was counting has stopped, which is exactly
+when forgetting is the right answer.
+
+The window slides instead of resetting on the minute, so the old trick of
+spending a full budget at 0:59 and another at 1:01 is gone. Sync's two budgets
+moved to the same limiter. The platform limiter stays wired up as the fallback
+for when the object cannot be reached — unreachable must not mean unlimited,
+which is precisely how the KV counter failed.
+
+**Needs a manual Worker deploy** (`npm --prefix worker run deploy`); the deploy
+also applies the Durable Object migration.
+
 ## 4.2.5 — 2026-09-10
 
 ### The Worker's limits bounded one request each, never the sum

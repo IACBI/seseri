@@ -1,3 +1,5 @@
+import type { RateLimiterDO } from './ratelimit';
+
 /**
  * Workers Rate Limiting binding.
  *
@@ -10,11 +12,13 @@ export interface RateLimiter {
 
 export interface Env {
   DB: D1Database;
-  /** Per-client-prefix budget for the feed and iTunes proxies. */
+  /** Where every budget is actually counted (see ratelimit.ts). */
+  LIMITERS: DurableObjectNamespace<RateLimiterDO>;
+  /** Fallback for the proxy budget, used only when the object is unreachable. */
   PROXY_IP: RateLimiter;
-  /** Per-client-prefix budget for the sync routes. */
+  /** Fallback for sync's per-client budget. */
   SYNC_IP: RateLimiter;
-  /** Per-code budget: one leaked code cannot be hammered from many addresses. */
+  /** Fallback for sync's per-code budget: one leaked code, one budget. */
   SYNC_ID: RateLimiter;
   /** "1" makes every sync route answer 503 without a client deploy. */
   SYNC_DISABLED?: string;
