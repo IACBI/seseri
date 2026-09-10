@@ -23,6 +23,14 @@ limiting binding; the proxies now use the same one, on their own namespace, so
 no request spends a KV write at all. The KV binding is gone — nothing else used
 it, and a fresh deployment no longer has to create one.
 
+The trade is precision for survivability, and it is worth being plain about it:
+Cloudflare documents this limiter as permissive and eventually consistent, with
+a counter per location *and* per machine. Measured against the deployed Worker,
+a 200-request burst from one address drew no refusal at all — a colo spreads it
+across machines that each stay under 60. It is a brake, not a wall. What bounds
+a caller who ignores it is everything below: the origin requirement, the size
+cap, the drain deadline and the aggregate budget.
+
 **One IPv6 host could mint its own budgets.** The counter was keyed on the
 literal client address, and a single machine picks whatever interface id it
 likes inside its own /64 — so counting up in the last four groups drew a fresh

@@ -13,6 +13,16 @@
  * the platform limiter; the proxies now use the same one, so nothing in the
  * request path spends a KV write at all.
  *
+ * What the platform limiter buys is that it cannot be starved; what it costs
+ * is precision. Cloudflare documents it as "permissive, eventually consistent,
+ * and intentionally designed to not be used as an accurate accounting system",
+ * with a separate counter per location and per machine — measured against the
+ * deployed worker, a 200-request burst from one address drew no 429 at all,
+ * because a colo spreads it across machines that each stay under the limit. So
+ * this is a nuisance brake, not a wall. What actually bounds the damage an
+ * unbrakeable caller can do is per-request and in-isolate: the origin gate, the
+ * size cap, the drain deadline and the aggregate drain budget in `safe-fetch`.
+ *
  * The key is the client's network prefix, not its literal address. A single
  * IPv6 host chooses its own interface id inside its /64, so per-address
  * counting handed a client that changed the last four groups a fresh budget on

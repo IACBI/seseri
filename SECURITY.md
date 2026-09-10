@@ -81,10 +81,16 @@ The threat model, stated plainly:
   *resolves* to a private address (DNS-rebinding style) is not fully
   preventable inside Workers. Cloudflare's own egress restrictions on
   RFC 1918 space mitigate this in practice.
-- Rate limiting keys IPv4 literally and IPv6 by /64. An attacker with a pool of
-  addresses across many prefixes still draws a budget per prefix; the platform
-  limiter's own counters and Cloudflare's account-level protections are what
-  bound that, not the Worker.
+- Rate limiting is a brake, not a wall. Cloudflare's rate limiting binding is
+  documented as permissive and eventually consistent, with a counter per
+  location and per machine: a 200-request burst from one address against the
+  deployed Worker drew no refusal at all, because the colo spread it across
+  machines. It is used because it cannot be starved — the KV counter it replaced
+  went fully open for everybody once its daily write quota was gone. What bounds
+  an unbraked caller is the rest of the stack: the app-origin requirement, the
+  size cap, the drain deadline and the isolate-wide drain budget. Keys are the
+  IPv4 address or the IPv6 /64, so a pool of prefixes draws a budget per
+  prefix.
 - The Windows installer is currently unsigned (SmartScreen warning expected)
   pending a code-signing certificate.
 - Credential detection for private feeds is tuned for precision: it inspects
