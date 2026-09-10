@@ -3,12 +3,6 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import worker from '../src/index';
 import { safeTarget } from '../src/safe-fetch';
 
-declare module 'cloudflare:test' {
-  interface ProvidedEnv {
-    KV: KVNamespace;
-  }
-}
-
 const APP_ORIGIN = 'https://iacbi.github.io';
 
 /** A deployed worker's own hostname. `wrangler dev` serves on 127.0.0.1. */

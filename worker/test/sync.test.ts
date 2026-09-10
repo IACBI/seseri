@@ -14,7 +14,7 @@ import type { Env, RateLimiter } from '../src/env';
  * the id is the credential". So the tests care about three things above
  * correctness of the happy path: that the worker cannot read what it stores,
  * that a stale write is refused rather than silently winning, and that sync
- * cannot exhaust the KV budget the feed and iTunes proxies depend on.
+ * cannot spend the budget the feed and iTunes proxies depend on.
  *
  * D1 here is a real local database, not a fake — the schema comes from
  * `migrations/`, applied by `test/apply-migrations.ts`.
@@ -244,15 +244,22 @@ describe('sync id validation', () => {
 });
 
 describe('sync and the shared budgets', () => {
-  it('does not spend the KV rate-limit budget the proxies depend on', async () => {
-    // If sync went through the KV limiter it would burn a write per request out
-    // of 1000/day shared with /v1/feed — and that limiter degrades open once
-    // the budget is gone, taking the whole worker with it.
-    const before = (await env.KV.list({ prefix: 'rl:' })).keys.length;
+  it('does not spend the budget the proxies depend on', async () => {
+    // Sync is chatty by design — every device pushes on every change — and the
+    // proxies are what a listener notices when it is gone. They meter through
+    // separate namespaces, so a busy sync cannot refuse a feed refresh.
+    const seen: string[] = [];
+    const spy: RateLimiter = {
+      limit: async (o) => {
+        seen.push(o.key);
+        return { success: true };
+      },
+    };
 
-    for (let i = 0; i < 5; i++) await syncCall('GET', { ip: '203.0.113.9' });
-
-    expect((await env.KV.list({ prefix: 'rl:' })).keys.length).toBe(before);
+    for (let i = 0; i < 5; i++) {
+      await syncCall('GET', { ip: '203.0.113.9', env: { PROXY_IP: spy } });
+    }
+    expect(seen).toEqual([]);
 
     fetchMock
       .get('https://feeds.example.com')
@@ -263,12 +270,12 @@ describe('sync and the shared budgets', () => {
       new Request('https://api.test/v1/feed?url=https%3A%2F%2Ffeeds.example.com%2Fpod.xml', {
         headers: { origin: APP_ORIGIN, 'cf-connecting-ip': '203.0.113.9' },
       }),
-      env,
+      { ...env, PROXY_IP: spy },
       ctx,
     );
     await waitOnExecutionContext(ctx);
 
-    expect((await env.KV.list({ prefix: 'rl:' })).keys.length).toBeGreaterThan(before);
+    expect(seen).toEqual(['203.0.113.9']);
   });
 
   it('rate-limits on a hash of the sync id, never on the id itself', async () => {

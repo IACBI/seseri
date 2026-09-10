@@ -9,9 +9,10 @@ export interface RateLimiter {
 }
 
 export interface Env {
-  KV: KVNamespace;
   DB: D1Database;
-  /** Per-IP budget for the sync routes. */
+  /** Per-client-prefix budget for the feed and iTunes proxies. */
+  PROXY_IP: RateLimiter;
+  /** Per-client-prefix budget for the sync routes. */
   SYNC_IP: RateLimiter;
   /** Per-code budget: one leaked code cannot be hammered from many addresses. */
   SYNC_ID: RateLimiter;

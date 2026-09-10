@@ -19,6 +19,7 @@ export default defineWorkersConfig(async () => ({
           ratelimits: {
             SYNC_IP: { simple: { limit: 60, period: 60 } },
             SYNC_ID: { simple: { limit: 120, period: 60 } },
+            PROXY_IP: { simple: { limit: 60, period: 60 } },
           },
         },
       },

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from './env';
+import { clientKey } from './ratelimit';
 
 /**
  * Cross-device sync storage.
@@ -65,7 +66,9 @@ syncRoutes.use('*', async (c, next) => {
   if (!SYNC_ID.test(id)) return c.json({ error: 'bad sync id' }, 400, headers());
 
   const ip = c.req.header('cf-connecting-ip') ?? '';
-  if (ip && !(await c.env.SYNC_IP.limit({ key: ip })).success) {
+  // The prefix, not the address: one IPv6 host owns its whole /64 and would
+  // otherwise draw a fresh budget per request just by counting up.
+  if (ip && !(await c.env.SYNC_IP.limit({ key: clientKey(ip) })).success) {
     return c.json(RATE_LIMITED, 429, headers({ 'retry-after': '60' }));
   }
   // Hashed, never raw: the limiter key is one more place the id would sit, and

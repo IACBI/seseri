@@ -5,10 +5,6 @@
   "compatibility_date": "2025-09-06",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
-  // KV: rate-limit counters for the feed/iTunes proxies only.
-  "kv_namespaces": [
-    { "binding": "KV", "id": "8a295a8885fb4ac6a70b21d9c81c64d9" }
-  ],
   // Sync blobs. D1 rather than KV for two reasons: KV's free-tier ceiling is
   // 1000 writes/day across the whole account, below a single heavy listening
   // day; and KV is eventually consistent, so a push on the PC followed by a
@@ -24,12 +20,13 @@
       "migrations_dir": "migrations"
     }
   ],
-  // The KV limiter fails OPEN once the write quota is gone (ratelimit.ts
-  // swallows the error, so the counter stops growing). Sync uses the platform
-  // limiter instead: it costs no KV writes and cannot be starved.
+  // Every budget lives on the platform limiter. The KV counter these replaced
+  // spent a write per request out of 1000/day for the whole account and then
+  // failed open for everyone, on every route, until the quota reset.
   "ratelimits": [
     { "name": "SYNC_IP", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } },
-    { "name": "SYNC_ID", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }
+    { "name": "SYNC_ID", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },
+    { "name": "PROXY_IP", "namespace_id": "1003", "simple": { "limit": 60, "period": 60 } }
   ],
   "triggers": { "crons": ["17 4 * * *"] }
 }

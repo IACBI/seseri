@@ -4,6 +4,56 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.5 — 2026-09-10
+
+### The Worker's limits bounded one request each, never the sum
+
+Backend-only release from an external vulnerability report. Nothing in the app
+changes; three of the six findings were against the YouTube audio proxy, which
+no longer exists.
+
+**The rate limiter could be switched off by anybody, for everybody.** It counted
+in KV, one write per request — spent before the count was compared, so even the
+requests it refused paid for the privilege — out of a free-tier budget of 1000
+writes a day for the whole account. Roughly a thousand requests exhausted it,
+every write after that failed into a swallowed `catch`, and the counter froze at
+zero: from then until 00:00 UTC the limiter allowed everything, on every route,
+with nothing logged. Sync already avoided this by metering on the platform rate
+limiting binding; the proxies now use the same one, on their own namespace, so
+no request spends a KV write at all. The KV binding is gone — nothing else used
+it, and a fresh deployment no longer has to create one.
+
+**One IPv6 host could mint its own budgets.** The counter was keyed on the
+literal client address, and a single machine picks whatever interface id it
+likes inside its own /64 — so counting up in the last four groups drew a fresh
+60-per-minute budget on every request. Keys are now the network prefix: IPv6
+collapses to its /64, IPv4 stays literal (a /24 would put unrelated CGNAT
+customers in one bucket). Sync's per-address budget uses the same key.
+
+**A stalled upstream could park a request forever.** The fetch timeout covers
+reaching a response, not reading it — the timer is cleared the moment the
+headers arrive. An upstream that answered instantly and then sent one byte a
+second held the request, its connection and its growing buffer for as long as it
+kept the socket open. The body read has its own 30-second deadline now (~5.5
+Mbps for a full 20 MB feed, far past what any real host needs); past it the
+upstream is cancelled and the caller gets a 504, which the client already treats
+as "Worker down" and answers from the public proxies.
+
+**Enough concurrent feeds could kill the isolate.** The 20 MB cap bounds one
+body. One Cloudflare isolate serves every request routed to it at that colo and
+they share its ~128 MB, so a handful of maximum-size feeds at once — the proxy
+fetches whatever URL it is handed — took it over the limit and killed every
+request in flight on it, other listeners' included. Bytes being read across all
+concurrent requests in an isolate are now capped in aggregate at 48 MB; past it
+a request gets 503 with `Retry-After` rather than everyone getting nothing. Real
+feeds are hundreds of kilobytes, so it takes ~90 concurrent ones to bind. Each
+body also peaks at about half what it used to: the chunk list is released as it
+is copied instead of being held alongside the finished buffer.
+
+**This release needs a manual Worker deploy** (`npm --prefix worker run
+deploy`). Pushing to `main` deploys only the Pages site, and every fix above is
+server-side.
+
 ## 4.2.4 — 2026-09-07
 
 ### A blank app, an open proxy, and a screen that stopped staying awake

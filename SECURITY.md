@@ -26,11 +26,18 @@ You can expect an initial response within a week.
   never written to the shared edge cache. It enforces an SSRF guard on user-supplied URLs (re-validated on every redirect hop —
   redirects are followed manually, max 3 hops, and each `Location` target must
   pass the same private-host checks), response size caps, an app-origin
-  requirement so the proxy endpoints cannot be used as an open proxy, and
-  per-IP rate limiting; it stores no user data. A localhost `Origin` is
-  accepted only by a Worker that is itself running on localhost — `wrangler
-  dev` needs it, and until 4.2.4 the deployed Worker honoured the header too,
-  which any client could simply send. Proxied bodies are returned with
+  requirement so the proxy endpoints cannot be used as an open proxy, and rate
+  limiting per client network prefix; it stores no user data. A proxied body is
+  also bounded in two ways a per-request cap cannot manage on its own: the drain
+  has its own deadline (the fetch timeout covers reaching a response, not
+  reading it, so a one-byte-a-second upstream used to pin a request and its
+  buffer indefinitely), and the bytes being drained across every concurrent
+  request in one isolate are capped in aggregate — a handful of maximum-size
+  feeds at once would otherwise take the isolate over its memory limit and kill
+  every request in flight on it. Both answer with a 5xx and a `Retry-After`.
+  A localhost `Origin` is accepted only by a Worker that is itself running on
+  localhost — `wrangler dev` needs it, and until 4.2.4 the deployed Worker
+  honoured the header too, which any client could simply send. Proxied bodies are returned with
   `X-Content-Type-Options: nosniff` and under a content type that cannot render
   as a document. The SSRF check parses
   addresses rather than pattern-matching them, so IPv4-mapped IPv6
@@ -62,8 +69,9 @@ The threat model, stated plainly:
 - **Revocation** is `DELETE /v1/sync` plus generating a fresh code.
 - **A clobbered row cannot destroy local state.** Anything that fails to
   authenticate is reported and ignored; local is authoritative on every device.
-- **Rate limiting** is per IP and per hashed sync id, using the platform rate
-  limiting binding rather than the KV counter the proxies use.
+- **Rate limiting** is per client network prefix and per hashed sync id, on its
+  own namespaces of the platform rate limiting binding, so sync traffic cannot
+  spend the proxies' budget.
 - Blobs are capped at 128 KiB, never cached (`cache-control: no-store`, and the
   service worker skips the route), and rows untouched for 180 days are swept.
 
@@ -73,6 +81,10 @@ The threat model, stated plainly:
   *resolves* to a private address (DNS-rebinding style) is not fully
   preventable inside Workers. Cloudflare's own egress restrictions on
   RFC 1918 space mitigate this in practice.
+- Rate limiting keys IPv4 literally and IPv6 by /64. An attacker with a pool of
+  addresses across many prefixes still draws a budget per prefix; the platform
+  limiter's own counters and Cloudflare's account-level protections are what
+  bound that, not the Worker.
 - The Windows installer is currently unsigned (SmartScreen warning expected)
   pending a code-signing certificate.
 - Credential detection for private feeds is tuned for precision: it inspects

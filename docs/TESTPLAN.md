@@ -175,6 +175,11 @@ Ekran görüntüsü altyapısı: `scripts/shot.cjs` (headless Edge + vite previe
 
 - [ ] `npm run worker:dev` açıkken RSS worker üzerinden gelir (Network'te `/v1/feed`).
 - [ ] Worker kapalıyken aynı feed halka açık proxy'lerle yine yüklenir.
+- [ ] Dağıtılmış Worker'a `KV` bağlaması olmadan da deploy edilir; `/v1/feed`
+      art arda 60'tan fazla istekte 429 döner (hız sınırı platform
+      sınırlayıcısında, KV yazma kotasına bağlı değil).
+- [ ] Yanıt vermeyi yarıda kesen bir upstream'de `/v1/feed` 30 sn içinde 504
+      döner ve istemci halka açık proxy'lere düşer — süresiz beklemez.
 - [ ] `?resume=1` → son açılan feed otomatik açılır (mağaza kısayolu).
 - [ ] `?view=search` / `?view=library` / `?view=queue` / `?view=settings` → ilgili görünüm doğrudan açılır (soğuk yükleme).
 - [ ] Legacy derin linkler (`?podcast=`, `?rss=`) hâlâ çalışır — 3.x'ten paylaşılan bir link bugün de aynı feed'i açar.

@@ -20,7 +20,7 @@ function privateIpv4(o: readonly number[]): boolean {
  * (`::ffff:1.2.3.4`) into two groups, so the mapped forms below catch it even
  * when the URL parser has not already rewritten them to hex.
  */
-function parseIpv6(addr: string): number[] | null {
+export function parseIpv6(addr: string): number[] | null {
   let s = addr.toLowerCase();
   const tail4 = /^(.*:)((?:\d{1,3}\.){3}\d{1,3})$/.exec(s);
   if (tail4) {
@@ -153,31 +153,91 @@ export async function fetchWithTimeout(
   }
 }
 
-/** Read a body up to `maxBytes`; throws when the upstream is larger. */
-export async function readCapped(res: Response, maxBytes: number): Promise<Uint8Array> {
+/**
+ * Isolate-wide ceiling on bytes held by concurrent `readCapped` drains.
+ *
+ * `maxBytes` bounds one request; nothing bounded the sum. A Cloudflare isolate
+ * serves every request routed to it at that colo and they all share its ~128 MB,
+ * so a handful of concurrent 20 MB feeds — the proxy fetches whatever URL it is
+ * handed, so arranging them is a static file and a loop — took the isolate over
+ * the limit and killed every request in flight on it, other listeners' included.
+ * Real feeds are hundreds of kilobytes, so this only binds under abuse: it takes
+ * ~90 concurrent average feeds, or three deliberate maximum-size ones, to reach.
+ *
+ * The gauge covers the drain, which is where bodies pile up. The finished buffer
+ * stays alive until its response is delivered, and that tail is not counted.
+ */
+export const DRAIN_BUDGET_BYTES = 48 * 1024 * 1024;
+
+let inflightBytes = 0;
+
+/** Bytes currently held by drains in this isolate. Exported for testing. */
+export function inflightDrainBytes(): number {
+  return inflightBytes;
+}
+
+const EMPTY = new Uint8Array(0);
+
+/**
+ * Read a body up to `maxBytes`; throws when the upstream is larger.
+ *
+ * `timeoutMs` bounds the whole drain. `fetchWithTimeout` covers reaching the
+ * response, not draining it — its timer is cleared the moment the headers
+ * arrive — so without a deadline here an upstream that answers instantly and
+ * then dribbles one byte a second pinned the request, its connection and its
+ * growing buffer for as long as it cared to keep the socket open. 30 s is
+ * ~5.5 Mbps for a full 20 MB body, far beyond what any real feed host needs.
+ *
+ * `budget` is the isolate-wide ceiling above; it is a parameter only so a test
+ * can drive the shared gauge without allocating 48 MB.
+ */
+export async function readCapped(
+  res: Response,
+  maxBytes: number,
+  { timeoutMs = 30_000, budget = DRAIN_BUDGET_BYTES }: { timeoutMs?: number; budget?: number } = {},
+): Promise<Uint8Array> {
   const len = Number(res.headers.get('content-length') || 0);
   if (len > maxBytes) throw new Error('too large');
   const reader = res.body?.getReader();
   if (!reader) return new Uint8Array(0);
   const chunks: Uint8Array[] = [];
   let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel();
-      throw new Error('too large');
+  let held = 0;
+  let expired = false;
+  // Cancelling resolves the pending read as done, so the loop below unwinds
+  // through the `expired` check rather than waiting for the upstream.
+  const timer = setTimeout(() => {
+    expired = true;
+    void reader.cancel().catch(() => {});
+  }, timeoutMs);
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      held += value.byteLength;
+      inflightBytes += value.byteLength;
+      if (total > maxBytes) throw new Error('too large');
+      if (inflightBytes > budget) throw new Error('busy');
+      chunks.push(value);
     }
-    chunks.push(value);
+    if (expired) throw new Error('read timeout');
+    const out = new Uint8Array(total);
+    let off = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      const c = chunks[i] ?? EMPTY;
+      out.set(c, off);
+      off += c.byteLength;
+      // Let each chunk go as it is copied. Holding the whole chunk list and the
+      // finished copy at the same time doubled the peak for every body.
+      chunks[i] = EMPTY;
+    }
+    return out;
+  } finally {
+    clearTimeout(timer);
+    inflightBytes -= held;
+    void reader.cancel().catch(() => {});
   }
-  const out = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) {
-    out.set(c, off);
-    off += c.byteLength;
-  }
-  return out;
 }
 
 /**

@@ -5,12 +5,13 @@
  *   GET /v1/itunes?url=    iTunes search/lookup proxy (JSON, edge-cached 1 h)
  *   /v1/sync               cross-device blob store (GET/PUT/DELETE, see sync.ts)
  *
- * Cross-cutting: CORS allowlist, per-IP KV rate limit — except /v1/sync, which
- * carries its own limiter so it cannot exhaust the shared KV write budget.
+ * Cross-cutting: CORS allowlist and a per-client-prefix rate limit; /v1/sync
+ * carries budgets of its own on top (see sync.ts).
  */
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { cors } from 'hono/cors';
-import type { Env } from './env';
+import type { AppContext, Env } from './env';
 import { carriesCredential } from './credential-url';
 import { edgeCached, fetchWithTimeout, readCapped, safeTarget } from './safe-fetch';
 import { rateLimited } from './ratelimit';
@@ -68,6 +69,26 @@ app.use(
 const RATE_LIMITED = { error: 'rate limited' } as const;
 
 /**
+ * Both proxies buffer their upstream body before answering, and every guard
+ * around that is per request. `readCapped` adds the one that is not — an
+ * isolate-wide ceiling on bytes being drained at once — and reports it as
+ * `busy`; a stalled upstream comes back as `read timeout`. Neither is the
+ * caller's fault, so neither is a 4xx.
+ */
+function proxyError(c: Context<AppContext>, e: unknown): Response {
+  switch ((e as Error).message) {
+    case 'too large':
+      return c.json({ error: 'feed too large' }, 413);
+    case 'busy':
+      return c.json({ error: 'busy' }, 503, { 'retry-after': '5' });
+    case 'read timeout':
+      return c.json({ error: 'upstream timeout' }, 504);
+    default:
+      return c.json({ error: 'fetch failed' }, 502);
+  }
+}
+
+/**
  * The proxy hands back bytes it did not write, under a content type it did not
  * choose. `nosniff` stops a browser upgrading a mislabelled body to something
  * that executes.
@@ -101,17 +122,10 @@ app.use('*', async (c, next) => {
     return c.json({ error: 'forbidden' }, 403);
   }
 
-  /**
-   * Sync runs its own limiter. Routing it through the KV one would spend a KV
-   * write per request out of a 1000/day free-tier budget shared with the feed
-   * and iTunes proxies — and that limiter degrades open once the budget is
-   * gone, because `ratelimit.ts` swallows the write error and the counter
-   * stops growing. Exhausting it would take the whole worker down, not just
-   * sync.
-   */
+  // Sync meters itself, per address and per hashed code both.
   if (c.req.path.startsWith(SYNC_PREFIX)) return next();
 
-  if (await rateLimited(c.env.KV, ip)) {
+  if (await rateLimited(c.env.PROXY_IP, ip)) {
     return c.json(RATE_LIMITED, 429, { 'retry-after': '60' });
   }
   await next();
@@ -140,8 +154,7 @@ app.get('/v1/feed', async (c) => {
         },
       });
     } catch (e) {
-      const msg = (e as Error).message;
-      return c.json({ error: msg === 'too large' ? 'feed too large' : 'fetch failed' }, msg === 'too large' ? 413 : 502);
+      return proxyError(c, e);
     }
   };
 
@@ -185,8 +198,8 @@ app.get('/v1/itunes', async (c) => {
         return new Response(body, {
           headers: { 'content-type': 'application/json; charset=utf-8', ...NOSNIFF },
         });
-      } catch {
-        return c.json({ error: 'fetch failed' }, 502);
+      } catch (e) {
+        return proxyError(c, e);
       }
     },
   );

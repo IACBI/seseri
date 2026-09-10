@@ -22,16 +22,13 @@ sonra web sitesi, sonra mağazalar.
 ```bash
 cd worker
 npx wrangler login                      # tarayıcıda onayla
-npx wrangler kv namespace create KV     # çıktıdaki id'yi kopyala
-```
-
-`worker/wrangler.jsonc` içindeki `"id"` alanına bu id'yi yaz (mevcut depoda
-canlı bir KV id'si zaten tanımlı — yalnızca **yeni bir hesaba** kurarken
-değiştirmen gerekir), sonra:
-
-```bash
 npx wrangler deploy
 ```
+
+Hız sınırlayıcı ve senkron dışında kalıcı bir bağlama yok: sınırlayıcılar
+platformun kendi `ratelimits` bağlamasında (elle bir şey oluşturman gerekmez),
+senkron ise D1'de. Yeni bir hesaba kuruyorsan yalnızca `worker/wrangler.jsonc`
+içindeki `database_id` alanını kendi veritabanınla değiştir.
 
 Çıktıdaki adresi not et: `https://seseri-api.<hesap>.workers.dev`
 
