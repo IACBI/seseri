@@ -310,6 +310,12 @@ bir yayının bölüm id'leri feed'in id'lerine taşınır.
 - [ ] Hücresel bağlantıda "Wi-Fi" seçiliyken otomatik indirme duruyor
       (tarayıcı bağlantı türünü bildirdiğinde; iOS bildirmez).
 - [ ] Depolama dolarken indirme "yer yok" diyor, sessizce bozulmuyor.
+- [ ] **CORS vermeyen bir CDN (takip yönlendirmesi):** örneğin The Daily'de
+      indirmeye bas → çevrimdışı kopya alınamaz, adres tarayıcıya devredilir
+      ve bildirim **"Çevrimdışı kaydedilemedi — yeni sekmede açıldı"** der.
+      *"İndirme linki bulunamadı"* derse bu 4.2.8'de düzeltilen hatanın geri
+      dönüşüdür. (Tarayıcı pop-up'ı engellerse sekme açılmaz; o zaman mesaj
+      doğru ama eksiktir — pop-up iznini kontrol et.)
 
 ## 23. Arka plan kopyası (prefetch) ne zaman başlar
 

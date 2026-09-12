@@ -7,7 +7,14 @@
  * needs a real layout engine and a real IntersectionObserver.
  */
 const puppeteer = require('puppeteer-core');
-const { launchOptions, makeWav, results, startServer, stopServer, waitServer } = require('./lib/harness.cjs');
+const {
+  launchOptions,
+  makeWav,
+  results,
+  startServer,
+  stopServer,
+  waitServer,
+} = require('./lib/harness.cjs');
 
 const PORT = 5217;
 const ORIGIN = `http://localhost:${PORT}`;
@@ -116,20 +123,64 @@ const CORS = { 'access-control-allow-origin': '*' };
 
     // ── growing ─────────────────────────────────────────────────────
     await page.click('.ep-more');
-    await page.waitForFunction((n) => document.querySelectorAll('.ep-item').length === n, {}, BATCH * 2);
+    await page.waitForFunction(
+      (n) => document.querySelectorAll('.ep-item').length === n,
+      {},
+      BATCH * 2,
+    );
     ok('the button grows the window', true, `${BATCH * 2} rows`);
 
     // Scrolling to the end should grow it again without a tap.
     await page.evaluate(() => {
       document.querySelector('.ep-more')?.scrollIntoView({ block: 'center' });
     });
-    await page.waitForFunction((n) => document.querySelectorAll('.ep-item').length > n, { timeout: 10000 }, BATCH * 2);
+    await page.waitForFunction(
+      (n) => document.querySelectorAll('.ep-item').length > n,
+      { timeout: 10000 },
+      BATCH * 2,
+    );
     ok('scrolling to the end grows it on its own', true);
 
     // ── the window resets on a new question ─────────────────────────
+    /**
+     * Watched from inside the page, because polling from here cannot prove it.
+     * The reset is one render, and the sentinel for the *next* batch can come
+     * back into view in the same frame — so `waitForFunction` on an exact count
+     * was sampling for an instant it was allowed to miss, and did, about one
+     * run in eight. A MutationObserver sees every rebuild, so the question
+     * becomes what it always meant: did the window go back to one batch when
+     * the new order rendered.
+     */
+    await page.evaluate(() => {
+      const list = document.getElementById('epList');
+      const trace = [];
+      window.__windowTrace = trace;
+      const sample = () =>
+        trace.push({
+          rows: list.querySelectorAll('.ep-item').length,
+          first: list.querySelector('.ep-name')?.textContent ?? '',
+          scrollTop: Math.round(document.querySelector('.view:not([hidden])').scrollTop),
+        });
+      sample();
+      new MutationObserver(sample).observe(list, { childList: true });
+    });
+    const orderBefore = await page.$eval('.ep-name', (n) => n.textContent);
     await page.click('#sortToggle');
-    await page.waitForFunction((n) => document.querySelectorAll('.ep-item').length === n, { timeout: 10000 }, BATCH);
-    ok('changing the order starts the window over', true);
+    await page.waitForFunction(
+      (was) => document.querySelector('.ep-name')?.textContent !== was,
+      { timeout: 10000 },
+      orderBefore,
+    );
+    const trace = await page.evaluate(() => window.__windowTrace);
+    const reset = trace.find((s) => s.first !== orderBefore && s.rows === BATCH);
+    ok(
+      'changing the order starts the window over',
+      !!reset,
+      reset
+        ? `${BATCH} rows, list back at the top (scrollTop ${reset.scrollTop})`
+        : `never one batch: ${trace.map((s) => s.rows).join(' → ')}`,
+    );
+    ok('and the list goes back to its top', reset?.scrollTop === 0, String(reset?.scrollTop));
 
     await page.type('#filterInput', 'Needle');
     await page.waitForFunction(() => document.querySelectorAll('.ep-item').length === 1, {
@@ -142,7 +193,9 @@ const CORS = { 'access-control-allow-origin': '*' };
     }));
     ok(
       'a filter searches the whole archive, not the window',
-      filtered.rows === 1 && filtered.title === 'A Needle In The Haystack' && filtered.more === null,
+      filtered.rows === 1 &&
+        filtered.title === 'A Needle In The Haystack' &&
+        filtered.more === null,
       `${filtered.rows} row: ${filtered.title}`,
     );
 
@@ -157,7 +210,11 @@ const CORS = { 'access-control-allow-origin': '*' };
       input.dispatchEvent(new Event('input'));
     });
     // The filter is debounced; wait for the archive to be back.
-    await page.waitForFunction((n) => document.querySelectorAll('.ep-item').length >= n, { timeout: 15000 }, BATCH);
+    await page.waitForFunction(
+      (n) => document.querySelectorAll('.ep-item').length >= n,
+      { timeout: 15000 },
+      BATCH,
+    );
     /**
      * Put the playing episode deep in the list. It is the fifth from the end of
      * the feed, so newest-first leaves it near the top and oldest-first leaves

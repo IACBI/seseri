@@ -4,6 +4,89 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.8 — 2026-09-13
+
+### "Download link not found" for a download that had already started
+
+Found by measuring a real download in production rather than by a report. A
+podcast whose audio sits behind a tracking redirect — podtrac fronts a great
+many large shows — cannot be fetched into the offline cache, because one hop of
+the redirect chain answers without CORS headers. The app has always handled
+that: it hands the URL to the browser instead, which downloads the file with its
+own controls. What it also did was tell the listener **"Download link not
+found."** at that exact moment, in an error toast, while the browser was
+already fetching the episode.
+
+The cause is one line and one specification detail:
+
+```js
+const w = window.open(src, '_blank', 'noopener,noreferrer');
+if (!w) return 'no-url'; // popup blocked — nothing reached the user
+```
+
+With `noopener` set, `window.open` returns `null` — per spec, on success as
+surely as on failure. So the check never detected a blocked popup; it turned
+every successful handoff into a failure. Dropping `noopener` would make the
+handle readable again at the price of giving a cross-origin page a reference to
+ours, which is not a trade worth making to word a toast. The outcome is now
+what can honestly be claimed — the URL was handed over — and the message still
+says "opened in a new tab" rather than "saved", because a popup blocker can
+still swallow it.
+
+The path had no test at all, which is how it survived since 4.2.0. It has six
+now, and they fail against the old line.
+
+### Version numbers that agreed by luck
+
+`desktop/src-tauri/Cargo.toml` had been left on `4.1.27` since the 4.1 line.
+Nothing was broken by it: Tauri reads the version from `tauri.conf.json` when
+that field is present. It falls back to `Cargo.toml` when it is not — so
+deleting one line would have shipped an installer claiming to be four minor
+versions old. The crate and its lockfile are now on the app's version, and a
+test asserts that all seven copies of the number agree, so the next drift fails
+a run instead of waiting for someone to notice.
+
+### A smoke assertion that was allowed to miss
+
+`smoke-longlist` checked that changing the sort order starts the render window
+over by polling from outside the page for an exact row count. The reset is a
+single render, and the sentinel for the next batch can come back into view in
+the same frame, so the count it was waiting for was an instant the poll was
+free to miss — and missed about one run in eight, reported as a failure of the
+app. Attempts to instrument the cause changed it: reading layout inside the
+observer callback forces layout, which produced the very extra growth being
+investigated.
+
+The check now watches from inside the page with a `MutationObserver`, which
+sees every rebuild, and asserts what it always meant: that the window went back
+to one batch when the new order rendered. It also asserts, for the first time,
+that the list returns to its top — the 4.2.7 behaviour that nothing covered.
+Both fail against a disabled reset, which is how they were verified.
+
+### CI would have stopped working on 23 September
+
+Every GitHub-published action the workflows pin declared `runs.using: node20`,
+and Node 20 is removed from the Actions runner on 23 September 2026 — eleven
+days after 4.2.7 shipped. That would have taken the Pages deployment, the whole
+of CI and the tag-built installer with it, on a date nobody was watching for.
+
+Seven pins moved to releases that run on Node 24: `checkout`, `setup-node` and
+`upload-artifact` to v7, `configure-pages` to v6, `deploy-pages` to v5,
+`upload-pages-artifact` to v5 and `action-gh-release` to v3. The last of those
+matters more than it looks: `upload-pages-artifact@v3` is a composite action
+that pins its *own* copy of `upload-artifact@v4` internally, so bumping ours
+would not have saved the deployment.
+
+Checked rather than assumed, because three of those majors carry real changes.
+`setup-node@v5` caches automatically when `package.json` declares a
+`packageManager` — none of the three here does, and every job that wants a cache
+already asks for one. `upload-pages-artifact@v4` stopped including dotfiles in
+the artifact — the site has none, and no `.nojekyll`. `checkout@v7` refuses to
+check out a fork's head for `pull_request_target` and `workflow_run` — neither
+trigger appears in any workflow. `setup-chrome` and `rust-cache`, the two
+third-party actions the smokes and the Rust build depend on, were already on
+Node 24.
+
 ## 4.2.7 — 2026-09-12
 
 ### The whole archive, and enough state to find your way through it

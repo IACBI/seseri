@@ -83,7 +83,7 @@ a Chromium themselves and honour `SESERI_BROWSER`; CI runs all six on every
 push.
 
 ```bash
-npm run smoke                       # all six, in order — 73 assertions
+npm run smoke                       # all six, in order — 74 assertions
 node scripts/smoke-shell.cjs        # boot, navigation, theme, language
 node scripts/smoke-p3-offline.cjs   # download → offline reload → playback
 node scripts/smoke-p5-mini.cjs      # mini dock, queue, back-navigation

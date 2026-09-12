@@ -1,6 +1,6 @@
 [package]
 name = "seseri"
-version = "4.1.27"
+version = "4.2.8"
 description = "Tauri desktop shell for Seseri — free, no-account podcast player."
 authors = ["A.C.B <bozdogancanahmet@gmail.com>"]
 license = "MIT"

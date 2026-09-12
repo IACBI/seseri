@@ -82,7 +82,7 @@ is also a Chromium but refuses to launch under CDP on this machine, reporting
 passes.
 
 ```bash
-npm run smoke                       # the six below, in order — 73 assertions
+npm run smoke                       # the six below, in order — 74 assertions
 node scripts/smoke-shell.cjs        # boot, navigation, theme, language
 node scripts/smoke-p3-offline.cjs   # download → offline reload → playback
 node scripts/smoke-p5-mini.cjs      # dock, queue, back-navigation
