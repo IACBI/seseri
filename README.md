@@ -121,13 +121,14 @@ three of them and parses whichever answers first.
 | `npm run lint` / `typecheck` / `format` | ESLint · `tsc --noEmit` · Prettier |
 | `npm run worker:dev` / `worker:test` | wrangler dev · Worker handler tests |
 | `npm run verify` | lint + typecheck + tests + build + worker typecheck/tests |
-| `npm run smoke` | the six headless browser smokes CI runs, in order |
+| `npm run smoke` | the seven headless browser smokes CI runs, in order |
 | `node scripts/smoke-shell.cjs` | smoke: boot, navigation, theme and language |
 | `node scripts/smoke-p3-offline.cjs` | smoke: download → offline reload → playback |
 | `node scripts/smoke-p4-worker.cjs` | smoke: real RSS through the local Worker (needs `worker:dev`) |
 | `node scripts/smoke-p5-mini.cjs` | smoke: mini player, queue, back-navigation |
 | `node scripts/smoke-chapters.cjs` | smoke: chapter list, scrubber markers, transcript cues |
 | `node scripts/smoke-longlist.cjs` | smoke: the render window over a 900-episode archive |
+| `node scripts/smoke-migrate.cjs` | smoke: Apple ids → feed ids, with a real download, queue entry and position |
 | `node scripts/smoke-p6-sync.cjs` | smoke: two devices pairing and converging |
 | `node scripts/smoke-live.cjs [url]` | smoke against the deployed site: search, feed, playback, download from the podcast's own CDN, CSP violations |
 | `node scripts/icons.cjs` | regenerate all PNG icons from `public/icons/seseri.svg` |

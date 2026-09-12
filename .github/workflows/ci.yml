@@ -80,6 +80,11 @@ jobs:
         env:
           SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
 
+      - name: The Apple to feed id migration
+        run: npm run smoke:migrate
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
       # Last: it rebuilds dist against its own VITE_API_BASE.
       - name: Cross-device sync
         run: npm run smoke:sync

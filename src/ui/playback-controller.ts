@@ -38,7 +38,12 @@ import { initRecovery, noteUserIntent, resetRecovery } from '../player/recovery'
 import { initPrefetch, prefetchEpisode } from '../player/prefetch';
 import { downloadEpisode } from '../player/downloads';
 import { isDownloaded, offlineAudioUrl, removeDownload } from '../player/offline';
-import { cancelDownload, downloadJobs, isDownloading, startDownload } from '../player/download-jobs';
+import {
+  cancelDownload,
+  downloadJobs,
+  isDownloading,
+  startDownload,
+} from '../player/download-jobs';
 import { getCachedFeed, putCachedFeed, putResume, listDownloads } from '../storage/db';
 import {
   isPlayed,
@@ -49,7 +54,13 @@ import {
 import { setMediaMetadata, setMediaPosition, setPlaybackState } from '../player/media-session';
 import { getLastPlayed, getProgress, setLastPlayed, setProgress } from '../storage/progress';
 import { playing, nowPlayingLabel, type PlayingSession } from '../player/session';
-import { dequeueNext, enqueue, queuePosition, removeFromQueue, type QueueItem } from '../state/queue';
+import {
+  dequeueNext,
+  enqueue,
+  queuePosition,
+  removeFromQueue,
+  type QueueItem,
+} from '../state/queue';
 import { settings, type Settings } from '../state/settings';
 import { feedSpeedRevision, speedFor } from '../state/feed-speed';
 import { refreshSubscription } from '../storage/subscriptions';
@@ -134,11 +145,7 @@ export interface PlaybackController {
    * neither can address an episode by index: the index depends on the sort
    * order and the filters, which are decided after the feed loads.
    */
-  openAndPlay(
-    req: FeedRequest,
-    trackId: string,
-    opts?: { autoplay?: boolean; at?: number },
-  ): void;
+  openAndPlay(req: FeedRequest, trackId: string, opts?: { autoplay?: boolean; at?: number }): void;
   /** Retry the last failed openFeed. */
   retry(): void;
   /** Load + (optionally) play an episode by its index in `filtered`. */
@@ -393,6 +400,21 @@ export function createPlaybackController(): PlaybackController {
         clearTimeout(timeout);
         if (sig.aborted) return;
         applyResolved(resolved);
+        /**
+         * Read again, because this resolve may have renamed them. The archive
+         * switch re-keys downloads onto the feed's ids while it runs
+         * (feeds/archive.ts), and the set above was read before it — so on the
+         * one load where a show migrates, every downloaded episode showed as
+         * not downloaded, the Downloaded filter as empty, and tapping the
+         * button would have fetched a file already on the device. It came back
+         * on the next visit, which is exactly the kind of bug nobody reports.
+         */
+        const migrated = new Set(
+          (await listDownloads()).filter((d) => !d.ephemeral).map((d) => d.id),
+        );
+        if (sig.aborted) return;
+        patch({ downloadedIds: migrated });
+        if (session().mode === 'downloaded') refilter();
         void putCachedFeed(resolved);
       } catch (e) {
         clearTimeout(timeout);
@@ -478,7 +500,11 @@ export function createPlaybackController(): PlaybackController {
   }
 
   /** Play the downloaded copy when one exists, otherwise the stream URL. */
-  async function startAudioPreferOffline(src: string, id: string, autoplay: boolean): Promise<void> {
+  async function startAudioPreferOffline(
+    src: string,
+    id: string,
+    autoplay: boolean,
+  ): Promise<void> {
     // Asks storage directly rather than the browsed feed's `downloadedIds`,
     // which is the wrong set for a queued episode from another feed.
     const local = await offlineAudioUrl(id);
@@ -820,7 +846,10 @@ export function createPlaybackController(): PlaybackController {
     }
     // CORS-blocked CDN etc. → hand the URL to the browser instead.
     const fb = downloadEpisode(ep);
-    toast(fb === 'opened' ? t('dl_opened_tab') : t('dl_not_found'), fb === 'opened' ? 'info' : 'error');
+    toast(
+      fb === 'opened' ? t('dl_opened_tab') : t('dl_not_found'),
+      fb === 'opened' ? 'info' : 'error',
+    );
     bump();
   }
 
@@ -988,7 +1017,8 @@ export function createPlaybackController(): PlaybackController {
     if (e.defaultPrevented) return; // scrubber/rows already handled this key
     const target = e.target as HTMLElement;
     const tag = (target.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'select' || tag === 'textarea' || target.isContentEditable) return;
+    if (tag === 'input' || tag === 'select' || tag === 'textarea' || target.isContentEditable)
+      return;
     // Space must activate a focused button (e.g. #npClose), not toggle playback.
     if (e.key === ' ' && target.closest('button, [role="button"], a')) return;
     // Transport keys follow what is PLAYING, so they keep working on Home,
@@ -1023,7 +1053,8 @@ export function createPlaybackController(): PlaybackController {
   currentLang.subscribe(() => {
     const s = session();
     if (s.status.kind === 'ok') patch({ status: okStatus(s.episodes.length, s.limited, s.total) });
-    else if (s.status.kind === 'loading') patch({ status: { kind: 'loading', message: t('status_loading') } });
+    else if (s.status.kind === 'loading')
+      patch({ status: { kind: 'loading', message: t('status_loading') } });
   });
 
   /**

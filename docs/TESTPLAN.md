@@ -254,6 +254,9 @@ bir yayının bölüm id'leri feed'in id'lerine taşınır.
 - [ ] **4.2.6'dan kalan veriyle:** eski sürümde bir bölümün ortasında bırak,
       güncelle, aynı yayını aç → konum aynı bölümde, aynı saniyede duruyor.
 - [ ] Aynı taşımada **indirilen** bölüm hâlâ indirilmiş görünüyor ve çalıyor.
+      *(4.2.9'a kadar bu rozet göçün olduğu **ilk** yüklemede kayboluyordu;
+      ikinci açılışta geri geliyordu. `smoke-migrate.cjs` artık bunu
+      otomatik kovalıyor, ama elle de bir kez doğrula.)*
 - [ ] Aynı taşımada **kuyruk** ve "en son dinlenen" işaretçisi doğru bölümü
       gösteriyor.
 - [ ] Feed'e ulaşılamadığında liste Apple'ın verdiğiyle açılıyor (arşiv

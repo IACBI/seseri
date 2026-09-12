@@ -220,7 +220,7 @@ Bu adımlar tamamlanana kadar iOS desteği "Safari PWA" olarak belgelenir.
 - [ ] `npm run verify` yeşil (lint, tsc, 818 istemci + 136 worker birim testi, build)
 - [ ] `v*` tag'i push edilince `.github/workflows/desktop.yml` NSIS
       kurulumunu taslak Release olarak üretir (imzasız — SmartScreen uyarısı)
-- [ ] `npm run smoke` yeşil (altı headless tarayıcı smoke'u, 74 doğrulama)
+- [ ] `npm run smoke` yeşil (yedi headless tarayıcı smoke'u, 89 doğrulama)
 - [ ] Worker deploy + `VITE_API_BASE` prod build'e gömülü
 - [ ] CSP `connect-src` Worker adresini içeriyor
 - [ ] Canlıda: arama, RSS, indirme→uçak modu, tema/dil değişimi

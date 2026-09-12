@@ -1,7 +1,7 @@
 {
   "name": "seseri",
   "private": true,
-  "version": "4.2.8",
+  "version": "4.2.9",
   "type": "module",
   "description": "Seseri — free, no-account podcast player. iTunes search, RSS feeds, offline episodes.",
   "license": "MIT",
@@ -23,8 +23,9 @@
     "smoke:mini": "node scripts/smoke-p5-mini.cjs",
     "smoke:chapters": "node scripts/smoke-chapters.cjs",
     "smoke:longlist": "node scripts/smoke-longlist.cjs",
+    "smoke:migrate": "node scripts/smoke-migrate.cjs",
     "smoke:sync": "node scripts/smoke-p6-sync.cjs",
-    "smoke": "vite build && npm run smoke:shell && npm run smoke:offline && npm run smoke:mini && npm run smoke:chapters && npm run smoke:longlist && npm run smoke:sync"
+    "smoke": "vite build && npm run smoke:shell && npm run smoke:offline && npm run smoke:mini && npm run smoke:chapters && npm run smoke:longlist && npm run smoke:migrate && npm run smoke:sync"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

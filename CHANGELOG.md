@@ -4,6 +4,50 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.9 — 2026-09-13
+
+### Downloads looked gone on the one load that mattered
+
+4.2.7 moves a show's episodes from Apple's ids to its feed's, and carries
+positions, queued items and downloaded files across with them. The carrying
+works. What did not was the screen: the browsed feed's set of downloaded
+episode ids is read at the start of a load, and the migration re-keys the
+download records later in the same load, while the feed is being resolved. So
+on the single load where a show migrated — the first time each Apple-sourced
+show was opened after upgrading — every downloaded episode showed as not
+downloaded, the **Downloaded** filter came up empty, and tapping the button
+would have fetched a file already sitting on the device. Opening the show again
+was enough to fix it, which is why nothing reported it.
+
+The set is now read again once the feed has resolved, and the Downloaded filter
+re-runs when it changes.
+
+### The migration has a test that runs it, not one that describes it
+
+The remap has had unit tests since 4.2.7, and they were not what was needed
+here: the failure was in the order two correct pieces ran, which no test of
+either piece can see. `smoke-migrate.cjs` drives the whole upgrade in a real
+browser, in two stages against one intercepted catalogue:
+
+- **Stage one** answers Apple's lookup with a `trackCount` equal to the
+  episodes it returns, so the app has no reason to look for an archive. The
+  episode that will be played, the one that will be queued and the one that
+  will be downloaded all get their state written *by the app*, keyed on Apple's
+  ids — nothing here hand-seeds storage, so the fixture cannot drift away from
+  the layout the app actually uses.
+- **Stage two** answers the same lookup with the real count and the feed's URL.
+  The archive loads, the ids move, and fifteen assertions check what a listener
+  would: the position keeps its value *and* its sync stamp, the queue chip and
+  the resume badge stay on the episodes they belong to, the download is still
+  there and still plays, nothing is left behind under an Apple id, and playing
+  the migrated episode resumes at 0:07 of 0:30 where 7.4 seconds were saved.
+
+The enclosure URLs differ between the two sources by a tracking query string,
+because real feeds do that and it is the case the join key exists for.
+
+It found the bug above on its first run. It runs in CI on every push, seventh in
+the chain of seven.
+
 ## 4.2.8 — 2026-09-13
 
 ### "Download link not found" for a download that had already started
