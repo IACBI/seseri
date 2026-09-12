@@ -6,6 +6,7 @@
  */
 
 import { settings } from '../state/settings';
+import type { Episode } from './types';
 import { carriesCredential, PRIVATE_FEED_ERROR } from './credential-url';
 
 export type ProxyFn = (url: string) => string;
@@ -55,6 +56,78 @@ export function fetchWithTimeout(
     clearTimeout(to);
     outerSignal?.removeEventListener('abort', onAbort);
   });
+}
+
+/** What `/v1/parse` answers with: the feed, already parsed, minus the bulk. */
+export interface ParsedFeedResponse {
+  meta: { name: string; artist: string; art: string };
+  /** Episodes the feed contains, whatever slice was returned. */
+  total: number;
+  offset: number;
+  episodes: Episode[];
+}
+
+/**
+ * Ask the Worker to parse the feed and hand back JSON.
+ *
+ * Returns null — rather than throwing — whenever this route cannot answer, so
+ * the caller falls through to the raw-XML path it has always had. That covers
+ * a build with no Worker configured, a Worker that is down, and an older
+ * Worker deployment that has no `/v1/parse` yet (it answers 404).
+ *
+ * Show notes are left out by default. They are most of a feed's bytes and none
+ * of a list's content: The Daily's archive is 1.31 MB of brotli as XML and
+ * 0.28 MB as a notes-free JSON list. `fetchEpisodeNotes` fills in the one
+ * episode that is about to be read.
+ */
+export async function fetchParsedFeed(
+  url: string,
+  signal?: AbortSignal,
+  { notes = false, perTimeout = 20000 }: { notes?: boolean; perTimeout?: number } = {},
+): Promise<ParsedFeedResponse | null> {
+  if (!API_BASE) return null;
+  if (signal?.aborted) throw abortError();
+  try {
+    const res = await fetchWithTimeout(
+      `${API_BASE}/v1/parse?url=${encodeURIComponent(url)}${notes ? '' : '&notes=0'}`,
+      signal,
+      perTimeout,
+    );
+    if (!res.ok) return null;
+    const body = (await res.json()) as ParsedFeedResponse;
+    // A 200 with nothing in it is not an answer; let the XML path try.
+    if (!body || !Array.isArray(body.episodes) || !body.episodes.length) return null;
+    return body;
+  } catch (e) {
+    if (signal?.aborted) throw e;
+    return null;
+  }
+}
+
+/**
+ * The show notes for a single episode, from the document the Worker has
+ * already parsed and cached. `''` when there are none, or when the notes
+ * cannot be reached — the caller cannot tell the difference and does not need
+ * to; both mean "nothing to render".
+ */
+export async function fetchEpisodeNotes(
+  url: string,
+  trackId: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  if (!API_BASE || !trackId) return '';
+  try {
+    const res = await fetchWithTimeout(
+      `${API_BASE}/v1/parse?url=${encodeURIComponent(url)}&notesFor=${encodeURIComponent(trackId)}`,
+      signal,
+      10000,
+    );
+    if (!res.ok) return '';
+    const body = (await res.json()) as ParsedFeedResponse;
+    return body?.episodes?.[0]?.description ?? '';
+  } catch {
+    return '';
+  }
 }
 
 /**

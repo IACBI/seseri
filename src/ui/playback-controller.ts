@@ -37,13 +37,21 @@ import {
 import { initRecovery, noteUserIntent, resetRecovery } from '../player/recovery';
 import { initPrefetch, prefetchEpisode } from '../player/prefetch';
 import { downloadEpisode } from '../player/downloads';
-import { downloadOffline, offlineAudioUrl, removeDownload } from '../player/offline';
+import { isDownloaded, offlineAudioUrl, removeDownload } from '../player/offline';
+import { cancelDownload, downloadJobs, isDownloading, startDownload } from '../player/download-jobs';
 import { getCachedFeed, putCachedFeed, putResume, listDownloads } from '../storage/db';
+import {
+  isPlayed,
+  notePlaybackEnded,
+  playedRevision,
+  togglePlayed as togglePlayedMark,
+} from '../storage/played';
 import { setMediaMetadata, setMediaPosition, setPlaybackState } from '../player/media-session';
 import { getLastPlayed, getProgress, setLastPlayed, setProgress } from '../storage/progress';
 import { playing, nowPlayingLabel, type PlayingSession } from '../player/session';
 import { dequeueNext, enqueue, queuePosition, removeFromQueue, type QueueItem } from '../state/queue';
 import { settings, type Settings } from '../state/settings';
+import { feedSpeedRevision, speedFor } from '../state/feed-speed';
 import { refreshSubscription } from '../storage/subscriptions';
 import { consumeSleepAtEpisodeEnd } from '../player/sleep-timer';
 import { PRIVATE_FEED_ERROR } from '../feeds/credential-url';
@@ -63,13 +71,30 @@ export interface PlaybackStatus {
   message: string;
 }
 
+/**
+ * What the episode list is narrowed to.
+ *
+ * The archive switch turned a 41-row list into a 2676-row one, and a text box
+ * is not a way to navigate that. These are the three questions a listener
+ * actually has about a long archive: what have I not heard, what did I start,
+ * and what do I already have on the device.
+ */
+export type EpisodeFilter = 'all' | 'unplayed' | 'inprogress' | 'downloaded';
+
+export const EPISODE_FILTERS: readonly EpisodeFilter[] = [
+  'all',
+  'unplayed',
+  'inprogress',
+  'downloaded',
+];
+
 export interface PlaybackSession {
   meta: FeedMeta | null;
   /** The request that produced this session (null before the first feed). */
   req: FeedRequest | null;
   /** All episodes, in the current sort order. */
   episodes: Episode[];
-  /** Episodes after sort + text filter — indexes below point into this. */
+  /** Episodes after sort + text + state filter — indexes below point into this. */
   filtered: Episode[];
   /** Index of the PLAYING episode in `filtered`, -1 when it is another feed's. */
   currentIndex: number;
@@ -80,6 +105,10 @@ export interface PlaybackSession {
   total?: number;
   sortAsc: boolean;
   filter: string;
+  /** Which state filter the list is narrowed to. */
+  mode: EpisodeFilter;
+  /** How many episodes the state filter is hiding (0 when showing all). */
+  hiddenByMode: number;
   downloadedIds: ReadonlySet<string>;
   status: PlaybackStatus;
 }
@@ -98,6 +127,18 @@ export interface PlaybackController {
    * shortcut, the two places the user actually asked to resume.
    */
   resumeLastPlayed(): void;
+  /**
+   * Open a feed and start one particular episode as soon as its list paints.
+   *
+   * The "new episodes" rail and an `?ep=` deep link both mean "this one", and
+   * neither can address an episode by index: the index depends on the sort
+   * order and the filters, which are decided after the feed loads.
+   */
+  openAndPlay(
+    req: FeedRequest,
+    trackId: string,
+    opts?: { autoplay?: boolean; at?: number },
+  ): void;
   /** Retry the last failed openFeed. */
   retry(): void;
   /** Load + (optionally) play an episode by its index in `filtered`. */
@@ -108,6 +149,10 @@ export interface PlaybackController {
   seekRel(seconds: number): void;
   toggleSort(): void;
   setFilter(q: string): void;
+  /** Narrow the list to unheard / started / downloaded episodes, or to all. */
+  setFilterMode(mode: EpisodeFilter): void;
+  /** Flip "heard" for an episode by its index in `filtered`. */
+  togglePlayed(idx: number): void;
   /** Add/remove an episode (by `filtered` index) from the up-next queue. */
   toggleQueued(idx: number): void;
   /** Download an episode offline, or remove the downloaded copy on 2nd tap. */
@@ -138,6 +183,8 @@ export function emptySession(): PlaybackSession {
     total: 0,
     sortAsc: true,
     filter: '',
+    mode: 'all',
+    hiddenByMode: 0,
     downloadedIds: new Set(),
     status: { kind: 'idle', message: '' },
   };
@@ -162,6 +209,39 @@ function sortEpisodes(eps: readonly Episode[], sortAsc: boolean): Episode[] {
   return sorted;
 }
 
+/**
+ * Apply the text box and the state filter together.
+ *
+ * One function, because the two used to be applied in three different places
+ * (feed load, text input, sort toggle) and a fourth would have been one more
+ * chance for them to disagree about what the list currently shows.
+ */
+function applyFilters(
+  sorted: readonly Episode[],
+  text: string,
+  mode: EpisodeFilter,
+  downloadedIds: ReadonlySet<string>,
+): { filtered: Episode[]; hiddenByMode: number } {
+  const q = text.trim().toLowerCase();
+  const byText = q
+    ? sorted.filter((e) => (e.trackName || '').toLowerCase().includes(q))
+    : sorted.slice();
+  if (mode === 'all') return { filtered: byText, hiddenByMode: 0 };
+
+  const keep = byText.filter((e) => {
+    const id = String(e.trackId);
+    switch (mode) {
+      case 'unplayed':
+        return !isPlayed(id, e.trackTimeMillis);
+      case 'inprogress':
+        return getProgress(id) > RESUME_FLOOR_SEC && !isPlayed(id, e.trackTimeMillis);
+      case 'downloaded':
+        return downloadedIds.has(id);
+    }
+  });
+  return { filtered: keep, hiddenByMode: byText.length - keep.length };
+}
+
 export function createPlaybackController(): PlaybackController {
   const session = signal<PlaybackSession>(emptySession());
 
@@ -171,6 +251,13 @@ export function createPlaybackController(): PlaybackController {
   let currentBlobUrl: string | null = null;
   /** One-shot: consumed by the next feed that paints. See resumeLastPlayed. */
   let resumeOnPaint = false;
+  /** One-shot: the episode to start once the feed paints. See openAndPlay. */
+  let playOnPaint: { trackId: string; autoplay: boolean; at?: number } | null = null;
+  /**
+   * A position a shared link asked for. It beats the saved one for that one
+   * load and is then forgotten — a link is a pointer, not a new bookmark.
+   */
+  let seekOnLoad: { id: string; at: number } | null = null;
 
   // ── session helpers ──────────────────────────────────────────────
   const patch = (p: Partial<PlaybackSession>): void => session.update((s) => ({ ...s, ...p }));
@@ -221,6 +308,7 @@ export function createPlaybackController(): PlaybackController {
       req,
       sortAsc: cur.sortAsc,
       filter: cur.filter,
+      mode: cur.mode,
       status: { kind: 'loading', message: t('status_loading') },
     });
 
@@ -234,10 +322,13 @@ export function createPlaybackController(): PlaybackController {
       const sortAsc = S.defaultSort === 'asc';
       const sorted = sortEpisodes(eps, sortAsc);
 
-      const q = session().filter.trim().toLowerCase();
-      const filtered = q
-        ? sorted.filter((e) => (e.trackName || '').toLowerCase().includes(q))
-        : sorted.slice();
+      const live = session();
+      const { filtered, hiddenByMode } = applyFilters(
+        sorted,
+        live.filter,
+        live.mode,
+        live.downloadedIds,
+      );
 
       patch({
         meta: resolved.meta,
@@ -245,6 +336,7 @@ export function createPlaybackController(): PlaybackController {
         total: resolved.total ?? 0,
         episodes: sorted,
         filtered,
+        hiddenByMode,
         sortAsc,
         status: okStatus(sorted.length, resolved.limited, resolved.total),
       });
@@ -263,6 +355,18 @@ export function createPlaybackController(): PlaybackController {
         const lastId = getLastPlayed(resolved.meta.id);
         const idx = lastId ? filtered.findIndex((e) => String(e.trackId) === lastId) : -1;
         if (idx >= 0) playEpisode(idx, false);
+      }
+
+      /**
+       * Asked for by id, so this one DOES take the transport: the listener
+       * tapped a specific episode. It survives a state filter that would hide
+       * the row — `episodes` rather than `filtered` — because refusing to play
+       * what was asked for would be the wrong answer to the wrong question.
+       */
+      if (playOnPaint) {
+        const wanted = playOnPaint;
+        playOnPaint = null;
+        startById(wanted.trackId, wanted.autoplay, wanted.at);
       }
 
       painted = true;
@@ -462,7 +566,20 @@ export function createPlaybackController(): PlaybackController {
 
     const applyPrefs = (): void => {
       const S = settings();
-      audio.playbackRate = S.defaultSpeed;
+      // The show's own speed when it has one; the global default otherwise.
+      audio.playbackRate = speedFor(playing()?.feedId);
+      /**
+       * A shared link's position wins over the saved one, and only once: it
+       * says "start here", which is exactly what the saved position would
+       * otherwise override. Consumed whether or not the seek lands, so it can
+       * never leak into the next episode.
+       */
+      if (seekOnLoad && seekOnLoad.id === id) {
+        const target = seekOnLoad.at;
+        seekOnLoad = null;
+        resumeTo(target);
+        return;
+      }
       if (S.resumePos) {
         const saved = getProgress(id);
         if (saved > RESUME_FLOOR_SEC && isFinite(audio.duration) && saved < audio.duration - 2) {
@@ -552,12 +669,45 @@ export function createPlaybackController(): PlaybackController {
 
   function setFilter(q: string): void {
     const s = session();
-    const query = q.trim().toLowerCase();
-    const filtered = query
-      ? s.episodes.filter((e) => (e.trackName || '').toLowerCase().includes(query))
-      : s.episodes.slice();
-    patch({ filter: q, filtered });
+    const { filtered, hiddenByMode } = applyFilters(s.episodes, q, s.mode, s.downloadedIds);
+    patch({ filter: q, filtered, hiddenByMode });
     markPlayingRow();
+  }
+
+  function setFilterMode(mode: EpisodeFilter): void {
+    const s = session();
+    if (s.mode === mode) return;
+    const { filtered, hiddenByMode } = applyFilters(s.episodes, s.filter, mode, s.downloadedIds);
+    patch({ mode, filtered, hiddenByMode });
+    markPlayingRow();
+  }
+
+  /** Recompute the visible list from whatever the filters currently are. */
+  function refilter(): void {
+    const s = session();
+    const { filtered, hiddenByMode } = applyFilters(s.episodes, s.filter, s.mode, s.downloadedIds);
+    patch({ filtered, hiddenByMode });
+    markPlayingRow();
+  }
+
+  /** `playedRevision` drives the re-render, so there is nothing else to do. */
+  function togglePlayed(idx: number): void {
+    const ep = session().filtered[idx];
+    if (!ep) return;
+    const nowPlayed = togglePlayedMark(String(ep.trackId), ep.trackTimeMillis);
+    if (nowPlayed) void cleanUpAfterPlayed(String(ep.trackId));
+  }
+
+  /**
+   * Reclaim the space a finished episode was using, when the listener asked
+   * for that. Only ever a finished episode, so nothing useful disappears.
+   */
+  async function cleanUpAfterPlayed(trackId: string): Promise<void> {
+    if (!settings().deleteAfterPlayed || !trackId) return;
+    if (!session().downloadedIds.has(trackId) && !(await isDownloaded(trackId))) return;
+    await removeDownload(trackId);
+    const dl = new Set(session().downloadedIds);
+    if (dl.delete(trackId)) patch({ downloadedIds: dl });
   }
 
   // ── queue ────────────────────────────────────────────────────────
@@ -624,21 +774,36 @@ export function createPlaybackController(): PlaybackController {
     if (!ep) return;
     const id = String(ep.trackId);
 
+    // A tap while it is downloading means stop. The outcome is reported by the
+    // call that started it, so there is nothing to await here.
+    if (isDownloading(id)) {
+      cancelDownload(id);
+      return;
+    }
+
     // Second tap on a downloaded episode removes the offline copy.
     if (s.downloadedIds.has(id)) {
       await removeDownload(id);
       const dl = new Set(session().downloadedIds);
       dl.delete(id);
       patch({ downloadedIds: dl });
+      if (session().mode === 'downloaded') refilter();
       toast(t('dl_removed'));
       return;
     }
 
-    const outcome = await downloadOffline(ep, s.meta?.id ?? '');
+    const outcome = await startDownload(ep, s.meta?.id ?? '');
+    if (outcome === 'aborted') {
+      toast(t('dl_cancelled'));
+      bump();
+      return;
+    }
+    if (outcome === 'already') return;
     if (outcome === 'ok') {
       const dl = new Set(session().downloadedIds);
       dl.add(id);
       patch({ downloadedIds: dl });
+      if (session().mode === 'downloaded') refilter();
       toast(t('dl_saved'));
       return;
     }
@@ -657,6 +822,48 @@ export function createPlaybackController(): PlaybackController {
     const fb = downloadEpisode(ep);
     toast(fb === 'opened' ? t('dl_opened_tab') : t('dl_not_found'), fb === 'opened' ? 'info' : 'error');
     bump();
+  }
+
+  /**
+   * Play an episode of the browsed feed by id, whatever the filters are doing.
+   * Falls back to the unfiltered list so a hidden row is still playable.
+   */
+  function startById(trackId: string, autoplay: boolean, at?: number): boolean {
+    const s = session();
+    if (!s.meta) return false;
+    const index = s.episodes.findIndex((e) => String(e.trackId) === trackId);
+    if (index < 0) return false;
+    // Armed before the load, because `startAudio` reads it while attaching.
+    seekOnLoad = at && at > 0 ? { id: trackId, at } : null;
+
+    const inView = s.filtered.findIndex((e) => String(e.trackId) === trackId);
+    if (inView >= 0) {
+      playEpisode(inView, autoplay);
+      return true;
+    }
+    // Hidden by a state filter, and still playable: refusing to play what was
+    // asked for would be the wrong answer to the wrong question.
+    start(
+      { feedId: s.meta.id, meta: s.meta, episodes: s.episodes.slice(), index, trackId },
+      autoplay,
+    );
+    return true;
+  }
+
+  function openAndPlay(
+    req: FeedRequest,
+    trackId: string,
+    { autoplay = true, at }: { autoplay?: boolean; at?: number } = {},
+  ): void {
+    playOnPaint = { trackId, autoplay, ...(at ? { at } : {}) };
+    openFeed(req);
+    // `openFeed` short-circuits for the feed already on screen, so its paint
+    // hook will not run and this has to act on what is already listed.
+    const s = session();
+    if (s.meta?.id === feedIdOf(req) && s.episodes.length) {
+      playOnPaint = null;
+      if (!startById(trackId, autoplay, at)) toast(t('ep_not_found'), 'error');
+    }
   }
 
   function resumeLastPlayed(): void {
@@ -733,6 +940,17 @@ export function createPlaybackController(): PlaybackController {
         setPlaybackState('paused');
         break;
       case 'ended': {
+        const ended = playing();
+        /**
+         * Mark it heard before anything else decides what happens next. A feed
+         * that publishes no duration has no percentage to derive this from, so
+         * running out of audio is the only signal it will ever get — and the
+         * sleep timer below can end the turn early.
+         */
+        if (ended) {
+          notePlaybackEnded(ended.trackId);
+          void cleanUpAfterPlayed(ended.trackId);
+        }
         // "Sleep at end of episode" must win over both the queue and auto-next.
         if (consumeSleepAtEpisodeEnd()) break;
         const p = playing();
@@ -818,6 +1036,27 @@ export function createPlaybackController(): PlaybackController {
    * for a control the list does not render. Font size and row height are CSS
    * custom properties on the root element, so they need no re-render at all.
    */
+  /**
+   * A mark changes what a row looks like and, under a state filter, whether it
+   * belongs in the list at all — so marking an episode heard in the unplayed
+   * view removes the row, which is what the filter means.
+   */
+  playedRevision.subscribe(() => {
+    const s = session();
+    if (!s.episodes.length) return;
+    if (s.mode === 'all') bump();
+    else refilter();
+  });
+
+  downloadJobs.subscribe(() => {
+    if (session().episodes.length) bump();
+  });
+
+  feedSpeedRevision.subscribe(() => {
+    const p = playing();
+    if (p && audio.src) audio.playbackRate = speedFor(p.feedId);
+  });
+
   let listPrefs = settingsRowKey(settings());
   settings.subscribe((S) => {
     const next = settingsRowKey(S);
@@ -831,6 +1070,7 @@ export function createPlaybackController(): PlaybackController {
     playing,
     openFeed,
     resumeLastPlayed,
+    openAndPlay,
     retry,
     playEpisode,
     next,
@@ -839,6 +1079,8 @@ export function createPlaybackController(): PlaybackController {
     seekRel,
     toggleSort,
     setFilter,
+    setFilterMode,
+    togglePlayed,
     toggleQueued,
     downloadToggle,
     reset,

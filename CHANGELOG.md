@@ -4,6 +4,128 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.7 — 2026-09-12
+
+### The whole archive, and enough state to find your way through it
+
+The biggest release so far, and most of it follows from one change. Episode
+lists came from Apple, and Apple returns at most the 200 most recent episodes.
+They now come from the show's own RSS feed, which is the entire back catalogue:
+Radiolab went from 200 episodes to 670, Today Explained from 200 to 2 259, The
+Journal from 200 to 1 844. A show found through Apple search keeps its Apple
+identity — subscriptions, saved positions, queue entries and downloads made
+before this release are migrated onto the feed's ids as the feed loads, so
+nothing that was already on the device is lost or duplicated.
+
+Parsing moved to the Worker, because the archive is large. The Daily's feed is
+19.95 MB of XML; the Worker turns it into 2.28 MB of lean JSON, and 0.28 MB over
+the wire once brotli has had it — the phone no longer downloads twenty megabytes
+and no longer builds a DOM out of it. Show notes are the bulk of that, so they
+are left out of the list response and fetched for one episode at a time when the
+episode is opened. The Worker's parser and the browser's are the same file, kept
+byte-identical in two places with a test that fails if they drift: a build with
+no Worker configured still gets the full archive, just on the device.
+
+Two thousand episodes need more than a list. Every episode now carries a played
+state — set by finishing it, or by hand from the row — and the list can be
+filtered to **All**, **Unplayed**, **In progress** or **Downloaded**, with a
+count of what the filter is hiding. Marking an episode unplayed clears its
+saved position too, which is what the words mean. Played state syncs between
+paired devices, and an unplayed mark wins over a played one inside the
+simultaneity window, because undoing is the deliberate act.
+
+**New episodes** collects what has appeared since you last looked, across every
+show you follow, on the home screen — with an app badge where the platform
+supports one. The list is computed from the subscriptions and the played state
+rather than stored, so a second device shows the same inbox without anything
+extra being synced.
+
+### Chapters, transcripts, and the rest of the playing surface
+
+Feeds that publish Podcasting 2.0 chapters get a chapter list in Now Playing,
+markers on the scrubber where the chapters fall, and a highlight that follows
+the audio. Feeds that publish a transcript get the transcript, cue by cue, with
+the current line highlighted and every line seekable — VTT and SRT both. Neither
+is fetched until you open it. Episodes that publish neither show neither panel.
+
+Alongside them: an episode link you can share that opens on that episode and, if
+you share it from Now Playing, at that moment; per-show playback speed that
+overrides the default and is listed (and resettable) in Settings; downloads that
+show a real percentage and can be cancelled, where before they were a spinner
+you could not stop; and optional auto-download of new episodes from the shows
+you follow, with an equally optional cleanup that deletes a download once the
+episode is finished — only finished, so nothing you are part-way through
+disappears. Search opens on eight topics instead of an empty box.
+
+### A first play used to download episodes nobody had heard
+
+While an episode streams, the app pulls its own copy into the offline cache, so
+playback survives a locked screen or an expiring URL. Measured: a 4.80 MB
+episode cost 9 600 088 bytes off the host — exactly 2.00× — and the copy started
+the instant you pressed play. Browse a show, sample five episodes for ten seconds
+each, and five complete episodes had been downloaded.
+
+The duplication itself cannot be removed here, and it is worth saying why rather
+than leaving it as a to-do. Feeding both the element and the cache from one
+transfer means the service worker answering the element's own range request and
+teeing the body into the cache — and a tee buffers for whichever side reads
+slower. The element reads at playback rate and the cache at line rate, so the
+worker would hold the rest of the episode in memory: tens to hundreds of
+megabytes on a phone. Answering `bytes=0-` with a plain 200 instead would avoid
+the tee and break seeking for the whole of the first play.
+
+What could go is the copies nobody listens to. The copy now waits until you have
+actually stayed with the episode — sixty seconds of credited playback, where a
+pause stops the clock and dragging the scrubber earns nothing — and is skipped
+outright for an episode with less than two minutes left, which used to mean
+downloading ninety minutes to hear the last two. Measured after: twenty-five and
+fifty-five seconds of listening leave the cache empty and cost one transfer; the
+copy begins at 69.7 s.
+
+### Two thousand rows, and what they cost
+
+The Daily's full archive rebuilt the episode list in 511 ms across 44 595 DOM
+nodes. It now renders a window of 200 rows at a time, grown by a button or by
+scrolling — 26 ms and 3 001 nodes, about twenty times faster — while sorting and
+filtering still run over the whole archive rather than the visible window.
+Changing the order or the filter starts the list at the top again, which is both
+what a new list should do and the end of a loop where the browser clamped you
+onto the grow sentinel and it immediately asked for another batch.
+
+The list also became keyboard-operable: one tab stop instead of 2 973, with the
+arrow keys moving between rows and across each row's buttons. The cached feeds
+that back all of this are now bounded: anything older than 30 days goes, then
+the oldest until the cache is under 80 MB, never dropping below five feeds.
+Settings reports what it is holding.
+
+### Failing visibly, and asking nobody for fonts
+
+If start-up throws, the app now says so on a screen with a reload button and a
+two-tap data wipe, instead of leaving a blank page. Settings has a **Copy
+Diagnostics** button that puts version, platform, storage and feature-support
+details on the clipboard and sends them nowhere.
+
+The three typefaces are served from the app's own origin instead of Google
+Fonts. No third-party request is made to render the interface, and the page's
+own policy is tighter for it: `style-src` no longer needs a remote host and
+`font-src` is `'self'` alone.
+
+### Verification
+
+Six headless browser smokes now run in CI on every push, not just on the
+machine they were written on: the app shell, offline download and playback, the
+mini transport, chapters and transcripts, the long-archive window, and
+cross-device sync — 73 assertions between them. The unit suites stand at 818
+frontend and 136 Worker tests.
+
+**Needs a manual Worker deploy** (`npm --prefix worker run deploy`): `/v1/parse`
+is new, and without it a client falls back to parsing raw XML on the device.
+
+**Not in this release: code signing.** The Windows installer is still unsigned,
+so SmartScreen still warns on first run. It needs a code-signing certificate —
+an identity-verified purchase, not a code change; `docs/STORE.md` records the
+options and their cost.
+
 ## 4.2.6 — 2026-09-10
 
 ### A rate limit that actually counts

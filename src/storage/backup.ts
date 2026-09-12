@@ -26,6 +26,9 @@ export const BACKUP_KEYS = [
   'pp_subs_at',
   'pp_subs_rm',
   'pp_queue_at',
+  'pp_played',
+  'pp_played_rm',
+  'pp_feed_speed',
 ] as const;
 
 /**
@@ -39,6 +42,10 @@ const SIDECARS: ReadonlyArray<readonly [value: string, stamp: string]> = [
   ['pp_favs', 'pp_subs_at'],
   ['pp_favs', 'pp_subs_rm'],
   ['pp_queue', 'pp_queue_at'],
+  // `pp_played` IS its own stamp map (id → when), so the pair here exists only
+  // to tie the tombstones to it: a file with the marks but not the tombstones
+  // would resurrect episodes the listener had reset.
+  ['pp_played', 'pp_played_rm'],
 ];
 
 export function exportBackup(): string {

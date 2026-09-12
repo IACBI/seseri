@@ -22,6 +22,7 @@ import {
   downloadOffline,
   isDownloaded,
   offlineAudioUrl,
+  remapDownload,
   removeDownload,
 } from './offline';
 
@@ -165,5 +166,70 @@ describe('removeDownload', () => {
 
     expect(await isDownloaded('77')).toBe(false);
     expect(await offlineAudioUrl('77')).toBeNull();
+  });
+});
+
+describe('remapDownload', () => {
+  /**
+   * The Apple→RSS archive switch changes an episode's id, and a download is
+   * keyed on it twice: the Cache API entry with the audio, and the IndexedDB
+   * record that puts it in the Downloads list. Miss either and the listener's
+   * saved episode is invisible — and unreclaimable, since eviction only ever
+   * touches copies the app made for itself.
+   */
+  it('moves the record and the audio together', async () => {
+    await downloadOffline(makeEpisode(1001), 'feed-1');
+    expect(await isDownloaded('1001')).toBe(true);
+
+    expect(await remapDownload('1001', 'guid-a')).toBe(true);
+
+    expect(await isDownloaded('guid-a')).toBe(true);
+    expect(await isDownloaded('1001')).toBe(false);
+    // The bytes came with it.
+    expect(await offlineAudioUrl('guid-a')).toBe('blob:mock-url');
+    expect(await offlineAudioUrl('1001')).toBeNull();
+  });
+
+  it('keeps everything else about the record', async () => {
+    await downloadOffline(makeEpisode(1001), 'feed-1');
+    const before = [...store.values()][0] as Record<string, unknown>;
+    await remapDownload('1001', 'guid-a');
+    const after = [...store.values()][0] as Record<string, unknown>;
+
+    expect(after).toEqual({ ...before, id: 'guid-a' });
+  });
+
+  it('does nothing for an episode that was never downloaded', async () => {
+    expect(await remapDownload('nope', 'guid-a')).toBe(false);
+    expect(await isDownloaded('guid-a')).toBe(false);
+  });
+
+  it('is a no-op when the destination already exists', async () => {
+    await downloadOffline(makeEpisode(1001), 'feed-1');
+    await downloadOffline(makeEpisode('guid-a'), 'feed-1');
+
+    expect(await remapDownload('1001', 'guid-a')).toBe(false);
+    // Neither copy was destroyed.
+    expect(await isDownloaded('1001')).toBe(true);
+    expect(await isDownloaded('guid-a')).toBe(true);
+  });
+
+  it('refuses an empty or unchanged id rather than corrupting the store', async () => {
+    await downloadOffline(makeEpisode(1001), 'feed-1');
+    expect(await remapDownload('1001', '1001')).toBe(false);
+    expect(await remapDownload('1001', '')).toBe(false);
+    expect(await remapDownload('', 'guid-a')).toBe(false);
+    expect(await isDownloaded('1001')).toBe(true);
+  });
+
+  it('still moves the record when the audio is already gone', async () => {
+    // An evicted body must not leave the record stranded under the old id,
+    // where nothing would ever clean it up.
+    await downloadOffline(makeEpisode(1001), 'feed-1');
+    cachesStore.clear();
+
+    expect(await remapDownload('1001', 'guid-a')).toBe(true);
+    expect(await isDownloaded('guid-a')).toBe(true);
+    expect(await isDownloaded('1001')).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import type { Episode, FeedMeta, SearchResult } from './types';
+import { httpsOnly } from '../lib/safe';
 import { itunesFetch } from './proxy-chain';
 import { settings } from '../state/settings';
 import type { LangCode } from '../i18n/types';
@@ -21,7 +22,8 @@ const LANG_STOREFRONT: Record<LangCode, string> = {
   ru: 'ru',
 };
 
-function storefront(): string {
+/** Exported: the chart endpoint is per-storefront too (see feeds/charts.ts). */
+export function storefront(): string {
   return LANG_STOREFRONT[settings().lang] ?? 'us';
 }
 
@@ -44,6 +46,8 @@ interface ItunesLookupRow {
   /** Episode show notes. Present on podcastEpisode rows; HTML, untrusted. */
   description?: string;
   shortDescription?: string;
+  /** The show's own RSS feed — where the episodes Apple withheld live. */
+  feedUrl?: string;
 }
 
 interface ItunesResponse {
@@ -72,6 +76,11 @@ export interface ItunesFeed {
   limited: boolean;
   /** Apple's own episode count for the show (0 when absent). */
   total: number;
+  /**
+   * The show's own RSS feed, from the collection row. `resolve.ts` goes here
+   * for the rest of the archive when `limited` is true — see feeds/archive.ts.
+   */
+  feedUrl: string;
 }
 
 /**
@@ -81,10 +90,12 @@ export interface ItunesFeed {
  * returns 200. So truncation is detected by comparing against `trackCount`
  * rather than against this number.
  *
- * The full archive lives at the collection row's `feedUrl`. Switching to it
- * would re-key every episode (Apple `trackId` → RSS `guid`) and orphan every
- * saved resume position, and would pull a multi-megabyte feed on open, so it
- * is a deliberate open question rather than a silent change.
+ * The rest of the archive is fetched from the collection row's `feedUrl`, and
+ * the episode ids that changes are migrated across every store that keys on
+ * them — see feeds/archive.ts. That used to be an open question here; the two
+ * things that made it one (re-keying saved positions, and pulling a
+ * multi-megabyte feed onto the device) are answered by the migration and by
+ * the Worker's `/v1/parse` respectively.
  */
 const LOOKUP_LIMIT = 300;
 
@@ -126,5 +137,11 @@ export async function lookupPodcast(id: string, signal?: AbortSignal): Promise<I
   // `trackCount` is the show's real episode count, and it is routinely far
   // larger than the list Apple returns with it.
   const total = metaRow?.trackCount ?? 0;
-  return { meta, episodes, limited: total > episodes.length, total };
+  return {
+    meta,
+    episodes,
+    limited: total > episodes.length,
+    total,
+    feedUrl: httpsOnly(metaRow?.feedUrl ?? ''),
+  };
 }

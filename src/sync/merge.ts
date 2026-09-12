@@ -1,5 +1,6 @@
 import type {
   LastPlayedEntry,
+  PlayedEntry,
   ProgressEntry,
   QueueSnapshot,
   SubEntry,
@@ -24,7 +25,12 @@ import type {
  * are broken on the content instead.
  */
 
-export const PAYLOAD_VERSION = 1;
+/**
+ * 2 added `played`. Nothing branches on this number — a v1 payload from an
+ * older device is applied as-is, with an empty `played` — but a shape that
+ * changed without the version moving is a lie waiting to matter.
+ */
+export const PAYLOAD_VERSION = 2;
 
 /**
  * Two writes this close together are treated as concurrent rather than ordered.
@@ -48,7 +54,14 @@ export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 export const FUTURE_SKEW_CAP_MS = 48 * 60 * 60 * 1000;
 
 export function emptyPayload(): SyncPayload {
-  return { v: PAYLOAD_VERSION, progress: {}, lastPlayed: {}, subs: {}, queue: { list: [], at: 0 } };
+  return {
+    v: PAYLOAD_VERSION,
+    progress: {},
+    lastPlayed: {},
+    subs: {},
+    queue: { list: [], at: 0 },
+    played: {},
+  };
 }
 
 /** A stamp that cannot order anything: absent, malformed, or absurdly ahead. */
@@ -111,6 +124,35 @@ function mergeSubEntry(a: SubEntry, b: SubEntry): SubEntry {
   if (b.removed) return subWithAt(a, at);
   if (a.at !== b.at) return subWithAt(a.at > b.at ? a : b, at);
   return subWithAt(metaKey(a) <= metaKey(b) ? a : b, at);
+}
+
+/** `exactOptionalPropertyTypes` forbids writing `unplayed: undefined`. */
+function playedWithAt(e: PlayedEntry, at: number): PlayedEntry {
+  return e.unplayed ? { at, unplayed: true } : { at };
+}
+
+/**
+ * Inside the simultaneity window, "not heard" wins.
+ *
+ * Least destructive, the same way a subscribe beats a concurrent unsubscribe:
+ * an episode wrongly marked heard vanishes from the unplayed filter and the
+ * listener has no way to notice it is missing, while one wrongly marked unheard
+ * simply shows up again and costs a tap.
+ */
+function mergePlayedEntry(a: PlayedEntry, b: PlayedEntry): PlayedEntry {
+  if (!concurrent(a.at, b.at)) return a.at > b.at ? a : b;
+  const at = Math.max(a.at, b.at);
+  if (!!a.unplayed === !!b.unplayed) return playedWithAt(a, at);
+  return { at, unplayed: true };
+}
+
+function normPlayed(
+  src: Record<string, PlayedEntry> | undefined,
+  now: number,
+): Record<string, PlayedEntry> {
+  const out: Record<string, PlayedEntry> = {};
+  for (const [k, v] of Object.entries(src ?? {})) out[k] = playedWithAt(v, clampAt(v.at, now));
+  return out;
 }
 
 function queueKey(list: QueueSnapshot['list']): string {
@@ -202,7 +244,12 @@ export function mergePayload(local: SyncPayload, remote: SyncPayload, now: numbe
     { list: local.queue.list, at: clampAt(local.queue.at, now) },
     { list: remote.queue.list, at: clampAt(remote.queue.at, now) },
   );
-  return { v: PAYLOAD_VERSION, progress, lastPlayed, subs, queue };
+  const played = unionMerge(
+    normPlayed(local.played, now),
+    normPlayed(remote.played, now),
+    mergePlayedEntry,
+  );
+  return { v: PAYLOAD_VERSION, progress, lastPlayed, subs, queue, played };
 }
 
 /**
@@ -226,7 +273,23 @@ export function capPayload(p: SyncPayload, maxProgressEntries: number): SyncPayl
     const v = p.progress[k];
     if (v) progress[k] = v;
   }
-  return { ...p, progress };
+  // `played` grows at the same rate — one entry per episode finished — so
+  // trimming only the positions would leave the payload just as oversized.
+  const playedKeys = Object.keys(p.played ?? {});
+  if (playedKeys.length <= maxProgressEntries) return { ...p, progress };
+  const playedKeep = playedKeys
+    .sort((x, y) => {
+      const ax = p.played?.[x]?.at ?? 0;
+      const ay = p.played?.[y]?.at ?? 0;
+      return ay - ax || (x < y ? -1 : x > y ? 1 : 0);
+    })
+    .slice(0, maxProgressEntries);
+  const played: Record<string, PlayedEntry> = {};
+  for (const k of playedKeep) {
+    const v = p.played?.[k];
+    if (v) played[k] = v;
+  }
+  return { ...p, progress, played };
 }
 
 function isRecord(x: unknown): x is Record<string, unknown> {
@@ -258,6 +321,14 @@ export function isSyncPayload(x: unknown): x is SyncPayload {
     const meta = v['meta'];
     if (meta !== undefined && (!isRecord(meta) || typeof meta['id'] !== 'string' || !meta['id'])) {
       return false;
+    }
+  }
+  // Absent on a v1 payload, which is a real thing to receive.
+  const pl = x['played'];
+  if (pl !== undefined) {
+    if (!isRecord(pl)) return false;
+    for (const v of Object.values(pl)) {
+      if (!isRecord(v) || typeof v['at'] !== 'number') return false;
     }
   }
   const q = x['queue'];

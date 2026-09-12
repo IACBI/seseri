@@ -1,10 +1,10 @@
 /* Renders public/icons/seseri.svg into every PNG the stores need.
- * Uses headless Edge (already a devDependency path) — no sharp/imagemagick. */
+ * Uses the headless browser the smokes already need — no sharp/imagemagick. */
 const path = require('path');
 const fs = require('fs');
 const puppeteer = require('puppeteer-core');
+const { launchOptions } = require('./lib/harness.cjs');
 
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'public', 'icons');
 
@@ -54,7 +54,7 @@ const VARIANTS = {
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
-  const browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new' });
+  const browser = await puppeteer.launch(launchOptions());
   const page = await browser.newPage();
   for (const [name, v] of Object.entries(VARIANTS)) {
     await page.setViewport({ width: v.size, height: v.size, deviceScaleFactor: 1 });

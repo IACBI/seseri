@@ -286,7 +286,75 @@ const PAIRS: ReadonlyArray<readonly [string, SyncPayload, SyncPayload]> = [
     payload({ queue: { list: [qi('f', 'A'), qi('f', 'B')], at: T0 } }),
     payload({ queue: { list: [qi('f', 'C'), qi('f', 'D')], at: T0 + 10_000 } }),
   ],
+  [
+    'played vs unplayed, ordered',
+    payload({ played: { a: { at: T0 } } }),
+    payload({ played: { a: { at: T0 + 240_000, unplayed: true } } }),
+  ],
+  [
+    'played vs unplayed in the same window',
+    payload({ played: { a: { at: T0 } } }),
+    payload({ played: { a: { at: T0 + 30_000, unplayed: true } } }),
+  ],
+  [
+    'a v1 payload with no played field at all',
+    payload({ played: { a: { at: T0 } } }),
+    { v: 1, progress: {}, lastPlayed: {}, subs: {}, queue: { list: [], at: 0 } },
+  ],
 ];
+
+describe('mergePayload — played marks', () => {
+  it('takes the later answer when the two are clearly ordered', () => {
+    const out = mergePayload(
+      payload({ played: { a: { at: T0 } } }),
+      payload({ played: { a: { at: T0 + 600_000, unplayed: true } } }),
+      NOW,
+    );
+    expect(out.played?.['a']).toEqual({ at: T0 + 600_000, unplayed: true });
+  });
+
+  it('prefers unplayed inside the simultaneity window', () => {
+    // Least destructive: an episode wrongly marked heard disappears from the
+    // unplayed filter with nothing to notice, while one wrongly marked unheard
+    // just shows up again.
+    const out = mergePayload(
+      payload({ played: { a: { at: T0 + 30_000 } } }),
+      payload({ played: { a: { at: T0, unplayed: true } } }),
+      NOW,
+    );
+    expect(out.played?.['a']).toEqual({ at: T0 + 30_000, unplayed: true });
+  });
+
+  it('unions disjoint marks', () => {
+    const out = mergePayload(
+      payload({ played: { a: { at: T0 } } }),
+      payload({ played: { b: { at: T0, unplayed: true } } }),
+      NOW,
+    );
+    expect(out.played).toEqual({ a: { at: T0 }, b: { at: T0, unplayed: true } });
+  });
+
+  it('keeps this device s marks when the other side is still on v1', () => {
+    const v1 = { v: 1, progress: {}, lastPlayed: {}, subs: {}, queue: { list: [], at: 0 } };
+    const out = mergePayload(payload({ played: { a: { at: T0 } } }), v1, NOW);
+    expect(out.played).toEqual({ a: { at: T0 } });
+  });
+
+  it('trims the marks alongside the positions when the payload is too big', () => {
+    const p = payload({
+      progress: Object.fromEntries(
+        Array.from({ length: 5 }, (_, i) => [`p${i}`, prog(10, T0 + i)]),
+      ),
+      played: Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`h${i}`, { at: T0 + i }])),
+    });
+    const capped = capPayload(p, 2);
+    expect(Object.keys(capped.progress)).toHaveLength(2);
+    expect(Object.keys(capped.played ?? {})).toHaveLength(2);
+    // Newest kept.
+    expect(capped.played?.['h4']).toBeDefined();
+    expect(capped.played?.['h0']).toBeUndefined();
+  });
+});
 
 describe('mergePayload — properties', () => {
   it.each(PAIRS)('is commutative for %s', (_label, a, b) => {

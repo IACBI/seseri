@@ -1,5 +1,7 @@
-/* Style barrel — cascade order matters: tokens → themes → base → frame →
-   shared kit → overlays → signature → views. main.ts imports only this file. */
+/* Style barrel — cascade order matters: fonts → tokens → themes → base →
+   frame → shared kit → overlays → signature → views. main.ts imports only this
+   file. */
+@import './fonts.css';
 @import './tokens.css';
 @import './themes.css';
 @import './base.css';

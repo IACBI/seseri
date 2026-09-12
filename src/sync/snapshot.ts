@@ -1,9 +1,16 @@
 import type { Subscription } from '../feeds/types';
 import { queueSnapshot, setQueueStamped } from '../state/queue';
+import { playedSnapshot, setPlayedStamped } from '../storage/played';
 import { getLastPlayed, mergeProgress, progressSnapshot } from '../storage/progress';
 import { setSubscriptionsStamped, subscriptionsSnapshot } from '../storage/subscriptions';
 import { emptyPayload } from './merge';
-import type { LastPlayedEntry, ProgressEntry, SubEntry, SyncPayload } from './types';
+import type {
+  LastPlayedEntry,
+  PlayedEntry,
+  ProgressEntry,
+  SubEntry,
+  SyncPayload,
+} from './types';
 
 /**
  * The bridge between local storage and the sync payload — the only module in
@@ -49,12 +56,22 @@ export function readLocalPayload(skewMs: number): SyncPayload {
     subEntries[id] = { at: toServer(at, skewMs), removed: true };
   }
 
+  const heard = playedSnapshot();
+  const played: Record<string, PlayedEntry> = {};
+  for (const [id, at] of Object.entries(heard.played)) {
+    played[id] = { at: toServer(at, skewMs) };
+  }
+  for (const [id, at] of Object.entries(heard.unplayed)) {
+    played[id] = { at: toServer(at, skewMs), unplayed: true };
+  }
+
   return {
     ...emptyPayload(),
     progress,
     lastPlayed,
     subs: subEntries,
     queue: { list: q.list, at: toServer(q.at, skewMs) },
+    played,
   };
 }
 
@@ -118,4 +135,19 @@ export function applyPayload(payload: SyncPayload, skewMs: number, exclude: Set<
   setSubscriptionsStamped(orderSubs(payload.subs), at, removed);
 
   setQueueStamped(payload.queue.list, toLocal(payload.queue.at, skewMs));
+
+  /**
+   * Absent on a v1 payload, and "absent" must not be read as "nothing is
+   * played" — that would wipe this device's own marks on a sync with an older
+   * build. Only a payload that actually carries the field replaces them.
+   */
+  if (payload.played) {
+    const heardAt: Record<string, number> = {};
+    const notHeardAt: Record<string, number> = {};
+    for (const [id, entry] of Object.entries(payload.played)) {
+      if (entry.unplayed) notHeardAt[id] = toLocal(entry.at, skewMs);
+      else heardAt[id] = toLocal(entry.at, skewMs);
+    }
+    setPlayedStamped(heardAt, notHeardAt);
+  }
 }

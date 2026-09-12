@@ -58,6 +58,17 @@ export function setProgress(id: string, seconds: number): void {
   scheduleSave();
 }
 
+/**
+ * Forget one episode's position. Used by "mark as unplayed", which means start
+ * it again from the beginning rather than from where it was abandoned.
+ */
+export function clearProgressFor(episodeId: string): void {
+  if (prog[episodeId] === undefined && progAt[episodeId] === undefined) return;
+  delete prog[episodeId];
+  delete progAt[episodeId];
+  saveProgressNow();
+}
+
 export function clearProgress(): void {
   prog = {};
   progAt = {};
@@ -128,6 +139,47 @@ export function setLastPlayed(feedId: string, episodeId: string): void {
   local.rawSet(LAST_PREFIX + feedId, episodeId);
   lastAt[feedId] = Date.now();
   local.set('pp_last_at', lastAt);
+}
+
+/**
+ * Move saved positions (and their stamps) from one episode id to another.
+ *
+ * The one caller is the Apple→RSS archive switch: the same episode is `trackId`
+ * 1000123 to Apple and `<guid>abc` in the show's own feed, and without this
+ * every position a listener had saved would be orphaned the moment the full
+ * archive replaced the truncated listing. Returns how many moved.
+ *
+ * A destination that already has a position is left alone: it was written
+ * against the new id, so it is the newer of the two by construction.
+ */
+export function remapProgressIds(pairs: ReadonlyArray<readonly [string, string]>): number {
+  let moved = 0;
+  for (const [from, to] of pairs) {
+    if (from === to) continue;
+    const value = prog[from];
+    if (value === undefined) continue;
+    if (prog[to] === undefined) {
+      prog[to] = value;
+      const at = progAt[from];
+      if (at !== undefined) progAt[to] = at;
+      moved++;
+    }
+    delete prog[from];
+    delete progAt[from];
+  }
+  if (moved) saveProgressNow();
+  return moved;
+}
+
+/** Point a feed's last-played marker at a new episode id. */
+export function remapLastPlayed(feedId: string, pairs: ReadonlyArray<readonly [string, string]>): boolean {
+  const current = getLastPlayed(feedId);
+  if (!current) return false;
+  const hit = pairs.find(([from]) => from === current);
+  if (!hit || hit[0] === hit[1]) return false;
+  // Keeps the existing stamp: nothing about when it was played has changed.
+  local.rawSet(LAST_PREFIX + feedId, hit[1]);
+  return true;
 }
 
 /** Everything sync needs to read, copied so callers cannot mutate the live maps. */

@@ -7,6 +7,7 @@
 import type { Episode, FeedMeta, FeedRequest, Subscription } from '../../feeds/types';
 import { feedIdOf, requestFromFeedId } from '../../feeds/feed-id';
 import { subscriptions } from '../../storage/subscriptions';
+import { isPlayed } from '../../storage/played';
 import { getLastPlayed, getProgress } from '../../storage/progress';
 import { getCachedFeed, getResume } from '../../storage/db';
 import { local } from '../../storage/local';
@@ -105,7 +106,9 @@ async function buildItem(
     episode.trackTimeMillis > 0
       ? Math.min(100, ((positionSec * 1000) / episode.trackTimeMillis) * 100)
       : 0;
-  if (percent >= 96) return null;
+  // `isPlayed` rather than the percentage alone: an episode marked heard by
+  // hand has to leave the rail, and one marked unheard has to come back to it.
+  if (isPlayed(String(episode.trackId), episode.trackTimeMillis)) return null;
 
   const feed = meta ?? fallbackMeta;
   if (!feed) return null;

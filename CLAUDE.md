@@ -47,6 +47,27 @@ Run it before claiming anything works. `npm run dev` serves on **5199**.
   `invalid rss`, which looks like a parser bug and is not one. Sweep them
   before a clean install:
   `Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" | ? { $_.CommandLine -match 'vite' } | % { Stop-Process -Id $_.ProcessId -Force }`
+- **Seeding `localStorage` from a page that runs the app is thrown away.**
+  The app writes its own state back on `pagehide` (`persistAndPush()` →
+  `saveSettings` / `saveProgressNow`), so anything a script set before
+  navigating away is overwritten by the defaults. It looks exactly like lost
+  progress. Seed from an inert same-origin document instead —
+  `/manifest.webmanifest` is the one the smokes use.
+- **A request interceptor that matches on a substring intercepts the app
+  itself.** The app's own navigation URL carries the feed in `?rss=<encoded>`,
+  so `url.includes(FEED)` is true for the page load as well and the page is
+  served the feed XML. Bail out on same-origin first:
+  `if (u.startsWith(ORIGIN)) return req.continue()`.
+- **A dev server left running for a long session serves a stale CSS bundle.**
+  New rules appear to have no effect and geometry drifts for no reason.
+  Restart it before believing a measurement — this is the same stale-bundle
+  trap as the vite orphans, from the other direction.
+- **A background tab throttles `setTimeout`.** Anything on a timer — the
+  prefetch commitment gate, throttled progress writes — stalls in a tab that
+  is not fronted, and the smoke times out with a correct assertion. Call
+  `page.bringToFront()` before waiting on time-based behaviour.
+- **`#miniScrub`'s `aria-valuenow` is a percentage, not seconds.** Reading it
+  as a position makes real-time playback look ten times too slow.
 - **A built bundle cannot reach the local Worker.** `stripDevCsp` removes
   `http://127.0.0.1:8787` from `connect-src` in *every* build, so anything
   driving `vite preview` against `wrangler dev` is refused by the page's own
@@ -54,15 +75,25 @@ Run it before claiming anything works. `npm run dev` serves on **5199**.
 
 ## Verifying at the UI
 
-Unit tests cover no layout and no playback wiring. The headless smokes do, and
-they need Edge at
-`C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`:
+Unit tests cover no layout and no playback wiring. The headless smokes do.
+They find a Chromium themselves (`scripts/lib/harness.cjs`: Chrome first — Edge
+is also a Chromium but refuses to launch under CDP on this machine, reporting
+"Code: 0" and nothing on stderr); `SESERI_BROWSER` overrides, which is what CI
+passes.
 
 ```bash
-node scripts/smoke-p5-mini.cjs      # dock, queue, back-navigation
+npm run smoke                       # the six below, in order — 73 assertions
+node scripts/smoke-shell.cjs        # boot, navigation, theme, language
 node scripts/smoke-p3-offline.cjs   # download → offline reload → playback
+node scripts/smoke-p5-mini.cjs      # dock, queue, back-navigation
+node scripts/smoke-chapters.cjs     # chapter list, scrubber markers, transcript
+node scripts/smoke-longlist.cjs     # the render window over a 900-episode feed
+node scripts/smoke-p6-sync.cjs      # two devices pairing and converging
 node scripts/smoke-live.cjs         # the deployed site against real CDNs
 ```
+
+`smoke:sync` runs last in the chain because it rebuilds `dist` with its own
+`VITE_API_BASE` and `VITE_SYNC=1`.
 
 `smoke-live.cjs` is the only one that touches a third-party audio host, which is
 where CSP mistakes surface — every local run is same-origin and will pass a CSP

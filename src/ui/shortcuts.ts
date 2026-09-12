@@ -18,6 +18,9 @@ const ROWS: ReadonlyArray<readonly [string, LangKey]> = [
   ['↑', 'sc_prev'],
   ['↓', 'sc_next'],
   ['Home / End', 'sc_seek_edges'],
+  // The list has its own meaning for the arrows while it has focus; without a
+  // line here the sheet claims they always seek.
+  ['↑ ↓ ← →', 'sc_list'],
   ['[', 'sc_sidebar'],
   ['Esc', 'sc_close'],
   ['?', 'sc_help'],

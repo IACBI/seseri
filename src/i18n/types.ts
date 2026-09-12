@@ -198,6 +198,78 @@ export interface Lang {
   toast_sync_copy_failed: string;
   toast_sync_forgotten: string;
   confirm_sync_forget: string;
+  /* crash recovery (ui/fatal.ts) */
+  fatal_title: string;
+  fatal_body: string;
+  fatal_reload: string;
+  fatal_wipe: string;
+  fatal_wipe_confirm: string;
+  fatal_details: string;
+  /* episode state filters + played marks */
+  filter_all: string;
+  filter_unplayed: string;
+  filter_inprogress: string;
+  filter_downloaded: string;
+  filter_hidden: LangFn;
+  filter_no_match: string;
+  mark_played: string;
+  mark_unplayed: string;
+  toast_marked_played: string;
+  toast_marked_unplayed: string;
+  /* new episodes (feeds/inbox.ts) */
+  home_new: string;
+  home_new_clear: string;
+  home_new_dismiss: string;
+  home_checking: string;
+  home_check_now: string;
+  toast_new_found: LangFn;
+  toast_no_new: string;
+  /* episode sharing (A4) */
+  share_episode: string;
+  share_episode_at: LangFn;
+  link_copied_at: LangFn;
+  /* per-show speed (A5) + download progress (A8) */
+  s_feed_speeds: string;
+  s_feed_speeds_sub: LangFn;
+  btn_reset_feed_speeds: string;
+  toast_feed_speeds_reset: string;
+  dl_cancel: string;
+  dl_cancelled: string;
+  dl_progress: LangFn;
+  dl_working: string;
+  /* chapters and transcripts (A6) */
+  np_chapters: LangFn;
+  np_transcript: string;
+  np_transcript_loading: string;
+  np_transcript_failed: string;
+  chapter_jump: LangFn;
+  chapter_untitled: string;
+  /* incremental episode rendering (B2) */
+  ep_show_more: LangFn;
+  /* episode row label (C4) */
+  ep_open: LangFn;
+  /* list keyboard model (C4) */
+  sc_list: string;
+  /* diagnostics (C5) */
+  btn_diagnostics: string;
+  toast_diagnostics: string;
+  storage_feeds: LangFn;
+  /* auto-download (A7) */
+  s_auto_download: string;
+  s_auto_download_sub: string;
+  s_delete_played: string;
+  s_delete_played_sub: string;
+  /* discovery by topic (A9) */
+  /* discovery by topic (A9) — each value is BOTH the chip label and the search term */
+  sec_browse: string;
+  topic_news: string;
+  topic_history: string;
+  topic_science: string;
+  topic_tech: string;
+  topic_culture: string;
+  topic_comedy: string;
+  topic_sport: string;
+  topic_health: string;
 }
 
 export type LangKey = keyof Lang;

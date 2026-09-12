@@ -242,3 +242,129 @@ Otomatik testler (`src/sync/*.test.ts`, `worker/test/sync.test.ts`,
       **yerel verisini silmiyor**.
 - [ ] **Senkron öncesi bir JSON yedeğini** geri yükle, sonra eşitle: eski
       konumlar taze damga takıp diğer cihazı geri almıyor.
+
+## 19. Tam arşiv ve id taşıma
+
+Bölüm listeleri artık Apple'ın son 200 bölümü değil, yayının kendi feed'inden
+gelen arşivin tamamı. Bunun en riskli tarafı **id değişimi**: Apple'dan açılmış
+bir yayının bölüm id'leri feed'in id'lerine taşınır.
+
+- [ ] Apple aramasından açılan bir yayında bölüm sayısı 200'ü geçiyor (örn.
+      Radiolab, Today Explained).
+- [ ] **4.2.6'dan kalan veriyle:** eski sürümde bir bölümün ortasında bırak,
+      güncelle, aynı yayını aç → konum aynı bölümde, aynı saniyede duruyor.
+- [ ] Aynı taşımada **indirilen** bölüm hâlâ indirilmiş görünüyor ve çalıyor.
+- [ ] Aynı taşımada **kuyruk** ve "en son dinlenen" işaretçisi doğru bölümü
+      gösteriyor.
+- [ ] Feed'e ulaşılamadığında liste Apple'ın verdiğiyle açılıyor (arşiv
+      isteğe bağlı bir iyileştirme, zorunlu değil).
+- [ ] Worker yapılandırılmamış bir derlemede (`VITE_API_BASE` boş) arşiv yine
+      geliyor — ayrıştırma cihazda yapılıyor, sadece daha yavaş.
+- [ ] **Kimlik bilgisi taşıyan özel feed** (Patreon/Memberful): adres Worker'a
+      gitmiyor, cihazda ayrıştırılıyor.
+
+## 20. Dinlendi durumu, süzgeçler ve yeni bölümler
+
+- [ ] Bir bölümü sonuna kadar dinle → dinlendi işaretlenir.
+- [ ] Satırdan elle "Dinlendi olarak işaretle" → işaretlenir; "Dinlenmedi olarak
+      işaretle" →
+      **kayıtlı konum da sıfırlanır**.
+- [ ] **Tümü / Dinlenmemiş / Devam eden / İndirilenler** süzgeçleri doğru satırları
+      bırakıyor; gizlenen sayısı yazıyor.
+- [ ] Süzgeç hiçbir şeyle eşleşmezse boş durum mesajı çıkıyor (hata değil).
+- [ ] Süzgeç ve sıralama **tüm arşivde** arıyor, ekrandaki 200 satırda değil.
+- [ ] İki eşleşmiş cihaz: bir cihazda dinlendi işaretle → diğeri aynı durumu
+      gösteriyor. Aynı anda biri dinlendi, diğeri dinlenmedi işaretlerse
+      **dinlenmedi kazanıyor**.
+- [ ] Ana sayfada **Yeni bölümler**: takip edilen yayınlarda çıkan bölümler
+      listelenir; "tümünü temizle" ve tek tek kaldırma çalışıyor.
+- [ ] Nişan (badge) destekleyen platformda sayı uygulama ikonunda görünüyor;
+      desteklemeyen platformda hiçbir hata çıkmıyor.
+- [ ] Bir bölümü dinleyince Yeni bölümler listesinden düşüyor.
+
+## 21. Bölüm işaretleri ve konuşma metni
+
+- [ ] `podcast:chapters` yayınlayan bir feed: Şimdi Çalıyor'da işaret listesi
+      sırayla çıkıyor, başlık sayısı başlıkta yazıyor.
+- [ ] Sarma çizgisinde işaretler **doğru oranlarda** duruyor.
+- [ ] Bir işarete dokununca ses o saniyeye gidiyor ve o işaret vurgulanıyor.
+- [ ] Ses akarken vurgu kendiliğinden bir sonraki işarete geçiyor.
+- [ ] Yalnızca görsel taşıyan (başlıksız) işaretler listede yer almıyor.
+- [ ] `podcast:transcript` yayınlayan feed: **Konuşma metni** paneli açılınca **o an**
+      indiriliyor (açmadan istek gitmiyor), satırlar çıkıyor.
+- [ ] VTT ve SRT'nin ikisi de okunuyor; zaman etiketleri doğru.
+- [ ] Bir satıra dokununca ses oraya gidiyor ve **o satır** vurgulanıyor.
+- [ ] İkisini de yayınlamayan bir bölümde iki panel de hiç görünmüyor.
+- [ ] Metin indirilemezse panel hata diyor, uygulama çalmaya devam ediyor.
+
+## 22. İndirme, otomatik indirme ve temizlik
+
+- [ ] İndirme başlatınca **gerçek yüzde** ilerliyor (dönen çark değil).
+- [ ] İptal düğmesi indirmeyi gerçekten durduruyor; yarım kopya kalmıyor ve
+      satır "indirildi" görünmüyor.
+- [ ] Aynı bölüme tekrar bas → baştan iniyor.
+- [ ] Ayarlar → **Yeni bölümleri indir** açık: takip edilen yayının yeni
+      bölümleri arka planda iniyor, kontrol başına en çok beş tane.
+- [ ] Ayarlar → **Dinlenince indirmeyi sil** açık: bitirilen bölümün kopyası
+      siliniyor; **yarısında bırakılan silinmiyor.**
+- [ ] Hücresel bağlantıda "Wi-Fi" seçiliyken otomatik indirme duruyor
+      (tarayıcı bağlantı türünü bildirdiğinde; iOS bildirmez).
+- [ ] Depolama dolarken indirme "yer yok" diyor, sessizce bozulmuyor.
+
+## 23. Arka plan kopyası (prefetch) ne zaman başlar
+
+Çalarken uygulama bölümün kendi kopyasını da çeker; bu **ikinci bir transfer**
+demek ve bilinçli bir maliyet (bkz. `src/player/prefetch.ts` başlığı).
+
+- [ ] Bir bölüm çal, **20 saniye içinde** başka bölüme geç → hiçbir kopya
+      inmedi (Ayarlar → indirilenlerde yeni bir şey yok).
+- [ ] Aynı bölümü **70 saniyeden uzun** dinle → kopya iniyor ve bittiğinde
+      oynatma yerel kopyaya geçiyor (ağı kesince çalma sürüyor).
+- [ ] Duraklat ve 5 dakika bekle → kopya başlamıyor (bekleme dinleme değil).
+- [ ] Sarma çubuğunu sonuna sürükle → kopya başlamıyor.
+- [ ] Bölümün **son 2 dakikasından** devam et → kopya hiç başlamıyor.
+- [ ] Ayarlar → "Çalarken önbelleğe al" = **Asla** → hiç kopya inmiyor.
+
+## 24. Uzun liste davranışı
+
+- [ ] 900+ bölümlü bir arşivde liste açılırken takılmıyor; başlıkta **arşivin
+      tamamı** yazıyor, ekranda 200 satır var.
+- [ ] "… bölüm daha göster" düğmesi pencereyi büyütüyor.
+- [ ] Listenin sonuna kaydırmak düğmeye basmadan da büyütüyor.
+- [ ] Sıralamayı veya süzgeci değiştirmek listeyi **başa** alıyor ve pencereyi
+      sıfırlıyor.
+- [ ] Çalan bölüm pencerenin ötesinde kalsa bile listede görünüyor ve ona
+      kaydırılabiliyor.
+- [ ] `Tab` bir kez basınca listeye bir kez giriyor; `↑`/`↓` satırlar arasında,
+      `←`/`→` satırın düğmeleri arasında geziyor.
+- [ ] Ekran okuyucu satırı "başlık — n / toplam, çal" diye okuyor.
+
+## 25. Açılış hatası, tanılama ve yazı tipleri
+
+- [ ] Açılış hata ekranı: tarayıcı konsolunda `localStorage.setItem('pp_settings','{')`
+      gibi bozuk bir değerle uygulamayı aç → boş sayfa değil, hata ekranı;
+      **Yeniden yükle** çalışıyor.
+- [ ] **Verileri temizle** iki dokunuş istiyor; ikinci dokunuştan sonra uygulama
+      sıfırdan açılıyor (abonelik/indirme/konum yok).
+- [ ] "Teknik ayrıntı" açılıyor ve sürüm/hata metnini gösteriyor.
+- [ ] Ayarlar → **Teşhis Bilgisini Kopyala**: pano dolu, hiçbir ağ isteği çıkmıyor
+      (DevTools → Network boş).
+- [ ] Ayarlar → "n feed önbellekte · boyut" yazıyor; 30 günden eski kopyalar
+      ve 80 MB'ı aşan en eskiler atılıyor, beş feed'in altına inmiyor.
+- [ ] **Ağ sekmesinde `fonts.googleapis.com` / `fonts.gstatic.com`'a hiçbir
+      istek yok**; yazı tipleri yine doğru görünüyor (uçak modunda da).
+- [ ] CSP ihlali konsolda yok.
+
+## 26. Bölüm linkleri ve konu başlıkları
+
+- [ ] Bölüm satırından paylaş → link o bölümü açıyor.
+- [ ] Şimdi Çalıyor'dan paylaş → link **o andan** açılıyor; kopyalandı bildirimi
+      saniyeyi söylüyor.
+- [ ] Linki temiz bir tarayıcıda (veya gizli pencerede) aç → yayın yükleniyor,
+      doğru bölüm seçili, konum doğru.
+- [ ] Ara ekranı boşken sekiz **konu başlığı** çıkıyor; birine dokununca o
+      storefront'tan gerçek sonuçlar geliyor.
+- [ ] Aynı başlığa tekrar dokunmak listeyi kapatıyor.
+- [ ] Dili değiştir → başlıklar da sonuçlar da o dilin storefront'una geçiyor.
+- [ ] Arama kutusuna yazmaya başlayınca başlıklar yerini sonuçlara bırakıyor;
+      kutuyu boşaltınca başlıklar geri geliyor.

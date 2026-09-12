@@ -14,22 +14,14 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
+const { launchOptions, makeWav, waitServer } = require('./lib/harness.cjs');
+
+const VITE_BIN = path.join(__dirname, '..', 'node_modules', 'vite', 'bin', 'vite.js');
 
 const PORT = 5205;
 const ORIGIN = `http://localhost:${PORT}`;
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const ROOT = path.join(__dirname, '..');
 
-function makeWav(seconds = 120) {
-  const rate = 8000;
-  const data = Buffer.alloc(rate * seconds, 128);
-  const h = Buffer.alloc(44);
-  h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8);
-  h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
-  h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate, 28); h.writeUInt16LE(1, 32); h.writeUInt16LE(8, 34);
-  h.write('data', 36); h.writeUInt32LE(data.length, 40);
-  return Buffer.concat([h, data]);
-}
 const WAV = makeWav();
 const CLIP_SECONDS = 120;
 
@@ -41,14 +33,6 @@ const LOOKUP = {
     { wrapperType: 'podcastEpisode', trackId: 222, trackName: 'Typography as interface', releaseDate: '2026-02-11T00:00:00Z', episodeUrl: 'https://api.allorigins.win/fake/ep2.wav', trackTimeMillis: 120000 },
   ],
 };
-
-function waitServer(url, tries = 60) {
-  return new Promise((resolve, reject) => {
-    const ping = (n) => http.get(url, (r) => { r.resume(); resolve(); }).on('error', () =>
-      n <= 0 ? reject(new Error('no server')) : setTimeout(() => ping(n - 1), 500));
-    ping(tries);
-  });
-}
 
 // ── the fake sync backend, shared by both contexts ───────────────────
 const rows = new Map(); // syncId -> { rev, blob: Buffer }
@@ -197,8 +181,8 @@ async function scrubSeconds(page, minSeconds = 0) {
   const ok = (name, pass, extra = '') => { results.push(pass); console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${extra ? '  (' + extra + ')' : ''}`); };
 
   console.log(`build: VITE_API_BASE=${ORIGIN}/api VITE_SYNC=1`);
-  const built = spawnSync('npx.cmd', ['vite', 'build'], {
-    cwd: ROOT, shell: true, stdio: 'ignore',
+  const built = spawnSync(process.execPath, [VITE_BIN, 'build'], {
+    cwd: ROOT, shell: false, stdio: 'ignore',
     env: { ...process.env, VITE_API_BASE: ORIGIN + '/api', VITE_SYNC: '1' },
   });
   if (built.status !== 0) {
@@ -218,7 +202,7 @@ async function scrubSeconds(page, minSeconds = 0) {
   let browser;
   try {
     await waitServer(ORIGIN + '/');
-    browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio', '--autoplay-policy=no-user-gesture-required'] });
+    browser = await puppeteer.launch(launchOptions());
 
     // Two contexts = two devices: isolated localStorage, one browser process.
     const ctxA = await browser.createBrowserContext();
@@ -247,6 +231,14 @@ async function scrubSeconds(page, minSeconds = 0) {
     const subscribedAt = Date.now();
     await a.click('.ep-item');
     await a.waitForFunction(() => document.body.classList.contains('is-playing'), { timeout: 15000 });
+    /**
+     * Frontmost first. Two pages exist, so whichever was created last is the
+     * visible one — and `storage/progress.ts` writes through a 5 s
+     * `setTimeout`, which Chrome throttles to roughly once a minute in a
+     * background tab. The position then never lands inside the budget below,
+     * which reads exactly like a broken sync and is not one.
+     */
+    await a.bringToFront();
     await a.waitForFunction(() => {
       const raw = localStorage.getItem('pp_prog');
       return !!raw && (JSON.parse(raw)['111'] ?? 0) > 20;
@@ -302,6 +294,7 @@ async function scrubSeconds(page, minSeconds = 0) {
 
     // ── reverse direction ────────────────────────────────────────────
     await b.evaluate(() => { const el = document.getElementById('npSheet'); if (el) el.dispatchEvent(new Event('x')); });
+    await b.bringToFront(); // same background-timer throttle as device A above
     await b.waitForFunction(() => {
       const raw = localStorage.getItem('pp_prog');
       return !!raw && (JSON.parse(raw)['111'] ?? 0) > 45;

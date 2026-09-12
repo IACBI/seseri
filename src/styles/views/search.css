@@ -55,3 +55,17 @@
     margin-block-end: var(--s-6);
   }
 }
+
+/* ─ Topic chips (A9) ─
+   Same pill as the episode filters (`.p-mode`), wrapped rather than scrolled:
+   eight topics on a narrow screen are a block, not a strip, and there is
+   nothing below them competing for the vertical space. */
+.topic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-block-end: var(--s-4);
+}
+.topic-chip {
+  flex: 0 0 auto;
+}

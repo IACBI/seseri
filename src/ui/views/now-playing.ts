@@ -8,10 +8,22 @@
  */
 
 import { currentLang, t } from '../../i18n';
+import type { Episode } from '../../feeds/types';
+import { requestFromFeedId } from '../../feeds/feed-id';
+import { fetchChapters, chapterAt, type Chapter } from '../../player/chapters';
+import {
+  cueAt,
+  fetchTranscript,
+  pickTranscript,
+  type Cue,
+} from '../../player/transcript';
 import { artAt, artSrcset } from '../../lib/art';
 import { fmtTime } from '../../lib/format';
+import { shareUrlFor } from '../router';
+import { toast } from '../toast';
 import { httpsOnly } from '../../lib/safe';
-import { onEngine, pbCurrent, pbDuration, pbSetRate } from '../../player/engine';
+import { onEngine, pbCurrent, pbDuration, pbSeekTo, pbSetRate } from '../../player/engine';
+import { loadEpisodeNotes } from '../../feeds/episode-notes';
 import { hasShowNotes, parseShowNotes } from '../../feeds/show-notes';
 import { updateAmbient } from '../ambient';
 import { h } from '../h';
@@ -26,6 +38,7 @@ import {
 } from '../../player/session';
 import { queue } from '../../state/queue';
 import { setSetting, settings, type Settings } from '../../state/settings';
+import { feedSpeedRevision, hasOwnSpeed, setFeedSpeed, speedFor } from '../../state/feed-speed';
 import type { PlaybackController } from '../playback-controller';
 import { must } from '../shell';
 import { initWaveform, type WaveformController } from '../waveform';
@@ -54,6 +67,7 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
       <header class="np-top">
         <button class="icon-btn np-close" id="npClose" data-i18n-aria="np_close" aria-label="Oynatıcıyı kapat"><svg class="icon" aria-hidden="true"><use href="#ic-chevron-down"/></svg></button>
         <span class="np-feed" id="npFeed"></span>
+        <button class="icon-btn np-share" id="npShare" data-i18n-aria="share_episode" aria-label="Bölümü paylaş"><svg class="icon" aria-hidden="true"><use href="#ic-share"/></svg></button>
       </header>
 
       <div class="np-player" id="npPlayer">
@@ -74,6 +88,7 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
             <div class="signal-baseline" aria-hidden="true"></div>
             <div class="signal-head" id="waveHead" aria-hidden="true"></div>
             <div class="signal-tip" id="waveTip" aria-hidden="true"></div>
+            <div class="signal-chapters" id="waveChapters" aria-hidden="true"></div>
           </div>
         </div>
 
@@ -109,6 +124,16 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
           <button class="icon-btn np-queue" id="queueToggle" data-i18n-aria="queue_title" aria-label="Çalma kuyruğu"><svg class="icon" aria-hidden="true"><use href="#ic-queue"/></svg><span class="np-queue-badge" id="queueCount" aria-hidden="true">0</span></button>
         </div>
 
+        <details class="np-notes np-chapters" id="npChapters" hidden>
+          <summary class="np-notes-toggle" id="npChaptersToggle">Bölüm işaretleri</summary>
+          <div class="np-chapter-list" id="npChapterList" role="list"></div>
+        </details>
+
+        <details class="np-notes np-transcript" id="npTranscript" hidden>
+          <summary class="np-notes-toggle" data-i18n="np_transcript">Konuşma metni</summary>
+          <div class="np-transcript-body" id="npTranscriptBody" role="list"></div>
+        </details>
+
         <details class="np-notes" id="npNotes" hidden>
           <summary class="np-notes-toggle" data-i18n="np_notes">Bölüm notları</summary>
           <div class="np-notes-body" id="npNotesBody"></div>
@@ -137,6 +162,13 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   const queueCount = must('queueCount');
   const notesEl = must<HTMLDetailsElement>('npNotes');
   const notesBody = must('npNotesBody');
+  const shareBtn = must<HTMLButtonElement>('npShare');
+  const chaptersEl = must<HTMLDetailsElement>('npChapters');
+  const chaptersToggle = must('npChaptersToggle');
+  const chapterListEl = must('npChapterList');
+  const waveChapters = must('waveChapters');
+  const transcriptEl = must<HTMLDetailsElement>('npTranscript');
+  const transcriptBody = must('npTranscriptBody');
 
   // ── waveform / frequency line ────────────────────────────────────
   const wave: WaveformController = initWaveform(
@@ -199,6 +231,260 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
     queueBtn.classList.toggle('has-queue', n > 0);
   }
 
+  /**
+   * Share the episode, and the moment when there is one.
+   *
+   * Past 30 seconds the listener is somewhere in the middle of something, and
+   * "listen to this bit" is what they mean; before that they mean "listen to
+   * this". The label says which, so the link is never a surprise.
+   */
+  const SHARE_POSITION_FLOOR_SEC = 30;
+
+  function sharePayload(): { url: string; at: number } | null {
+    const s = playing();
+    if (!s) return null;
+    const req = requestFromFeedId(s.feedId);
+    if (!req) return null;
+    const current = pbCurrent();
+    const at = Number.isFinite(current) && current > SHARE_POSITION_FLOOR_SEC ? Math.floor(current) : 0;
+    return { url: shareUrlFor(req, { episodeId: s.trackId, ...(at ? { at } : {}) }), at };
+  }
+
+  function refreshShareLabel(): void {
+    const payload = sharePayload();
+    shareBtn.hidden = !payload;
+    if (!payload) return;
+    const label = payload.at ? t('share_episode_at', fmtTime(payload.at)) : t('share_episode');
+    shareBtn.setAttribute('aria-label', label);
+    shareBtn.title = label;
+  }
+
+  shareBtn.addEventListener('click', () => {
+    const payload = sharePayload();
+    if (!payload) return;
+    const label = nowPlayingLabel(playing());
+    const title = label?.title || 'Seseri';
+    if (navigator.share) {
+      navigator.share({ title, url: payload.url }).catch(() => {
+        /* user cancelled */
+      });
+      return;
+    }
+    void navigator.clipboard
+      ?.writeText(payload.url)
+      .then(() => toast(payload.at ? t('link_copied_at', fmtTime(payload.at)) : t('link_copied')))
+      .catch(() => {
+        /* clipboard unavailable */
+      });
+  });
+
+  /**
+   * Chapters and the transcript.
+   *
+   * Both are per-episode files hosted wherever the publisher put them, so both
+   * are fetched rather than parsed out of the feed — and both are optional in
+   * the strongest sense: an episode with neither shows neither panel, and a
+   * host that refuses the request is the same as an episode with neither.
+   *
+   * Chapters load as soon as the episode does, because they also draw the
+   * markers on the scrubber. The transcript waits until somebody opens the
+   * panel: it can be half a megabyte, and fetching one per episode for a
+   * listener who never reads them would be pure waste.
+   */
+  let chapters: Chapter[] = [];
+  let activeChapter = -1;
+  /** The duration the markers were laid out for; 0 until one is known. */
+  let markedFor = 0;
+  const chapterRows: HTMLElement[] = [];
+  let chapterLoad: AbortController | null = null;
+
+  let cues: Cue[] = [];
+  let activeCue = -1;
+  const cueRows: HTMLElement[] = [];
+  let transcriptLoad: AbortController | null = null;
+  let transcriptState: 'none' | 'idle' | 'loading' | 'ready' | 'failed' = 'none';
+  /** The episode the transcript belongs to, so a late answer can be dropped. */
+  let transcriptFor: string | null = null;
+
+  function clearChapters(): void {
+    chapterLoad?.abort();
+    chapterLoad = null;
+    chapters = [];
+    activeChapter = -1;
+    markedFor = 0;
+    chapterRows.length = 0;
+    chapterListEl.replaceChildren();
+    waveChapters.replaceChildren();
+    chaptersEl.hidden = true;
+    chaptersEl.open = false;
+  }
+
+  function clearTranscript(): void {
+    transcriptLoad?.abort();
+    transcriptLoad = null;
+    cues = [];
+    activeCue = -1;
+    cueRows.length = 0;
+    transcriptBody.replaceChildren();
+    transcriptEl.hidden = true;
+    transcriptEl.open = false;
+    transcriptState = 'none';
+    transcriptFor = null;
+  }
+
+  function renderChapters(): void {
+    chapterRows.length = 0;
+    const rows = chapters.map((chapter, i) => {
+      const title = chapter.title || t('chapter_untitled');
+      const time = fmtTime(chapter.startTime);
+      const row = h(
+        'button',
+        {
+          className: 'np-chapter',
+          type: 'button',
+          attrs: { role: 'listitem', 'aria-label': t('chapter_jump', title, time) },
+          on: {
+            click: () => {
+              pbSeekTo(chapter.startTime);
+              // The highlight follows `timeupdate`, which a paused element does
+              // not fire — so move it now rather than a second later.
+              markChapter(i);
+            },
+          },
+        },
+        h('span', { className: 'np-chapter-time mono' }, time),
+        h('span', { className: 'np-chapter-title' }, title),
+      );
+      chapterRows.push(row);
+      return row;
+    });
+    chapterListEl.replaceChildren(...rows);
+    chaptersToggle.textContent = t('np_chapters', chapters.length);
+    chaptersEl.hidden = chapters.length === 0;
+  }
+
+  /**
+   * Ticks on the scrubber, so the chapters are visible without opening a list.
+   *
+   * The element's duration arrives with the metadata, which is often after the
+   * chapters do — so the feed's own `<itunes:duration>` stands in until then.
+   * Without that the markers waited for the first `timeupdate`, which on a
+   * paused episode never comes.
+   */
+  function renderChapterMarks(): void {
+    const fromElement = pbDuration();
+    const p = playing();
+    const declared = (p?.episodes[p.index]?.trackTimeMillis ?? 0) / 1000;
+    const total = Number.isFinite(fromElement) && fromElement > 0 ? fromElement : declared;
+    if (!chapters.length || !Number.isFinite(total) || total <= 0) {
+      waveChapters.replaceChildren();
+      return;
+    }
+    waveChapters.replaceChildren(
+      ...chapters
+        // A marker at zero sits under the left edge and reads as a rendering
+        // artefact rather than as a chapter.
+        .filter((c) => c.startTime > 0 && c.startTime < total)
+        .map((c) =>
+          h('i', { style: `inset-inline-start:${((c.startTime / total) * 100).toFixed(3)}%` }),
+        ),
+    );
+  }
+
+  function markChapter(index: number): void {
+    if (index === activeChapter) return;
+    chapterRows[activeChapter]?.classList.remove('active');
+    chapterRows[index]?.classList.add('active');
+    activeChapter = index;
+  }
+
+  function renderCues(): void {
+    cueRows.length = 0;
+    const rows = cues.map((cue, i) =>
+      h(
+        'button',
+        {
+          className: 'np-cue',
+          type: 'button',
+          attrs: { role: 'listitem' },
+          on: {
+            click: () => {
+              pbSeekTo(cue.start);
+              // Same reason as the chapter rows: a paused element fires no
+              // `timeupdate`, so the highlight would stay where it was.
+              markCue(i);
+            },
+          },
+        },
+        h('span', { className: 'np-cue-time mono' }, fmtTime(cue.start)),
+        h('span', { className: 'np-cue-text' }, cue.text),
+      ),
+    );
+    for (const row of rows) cueRows.push(row);
+    transcriptBody.replaceChildren(...rows);
+  }
+
+  function markCue(index: number): void {
+    if (index === activeCue) return;
+    cueRows[activeCue]?.classList.remove('active');
+    const row = cueRows[index];
+    if (row) {
+      row.classList.add('active');
+      // Only while the panel is open: scrolling a collapsed container is
+      // wasted work, and `scrollIntoView` on a hidden element can move the
+      // page instead.
+      if (transcriptEl.open) row.scrollIntoView({ block: 'nearest' });
+    }
+    activeCue = index;
+  }
+
+  function loadChaptersFor(ep: Episode | undefined): void {
+    clearChapters();
+    if (!ep?.chaptersUrl) return;
+    const wanted = String(ep.trackId);
+    chapterLoad = new AbortController();
+    void fetchChapters(ep.chaptersUrl, chapterLoad.signal).then((list) => {
+      if (!list.length || playing()?.trackId !== wanted) return;
+      chapters = list;
+      renderChapters();
+      renderChapterMarks();
+    });
+  }
+
+  function prepareTranscript(ep: Episode | undefined): void {
+    clearTranscript();
+    const pick = pickTranscript(ep?.transcripts, currentLang());
+    if (!pick || !ep) return;
+    transcriptFor = String(ep.trackId);
+    transcriptState = 'idle';
+    transcriptEl.hidden = false;
+
+    /** Fetched on first open — see the note above about half-megabyte files. */
+    const load = (): void => {
+      if (transcriptState !== 'idle') return;
+      transcriptState = 'loading';
+      transcriptBody.replaceChildren(h('p', { className: 'np-note-p' }, t('np_transcript_loading')));
+      transcriptLoad = new AbortController();
+      void fetchTranscript(pick.url, transcriptLoad.signal).then((list) => {
+        if (transcriptFor !== String(ep.trackId)) return;
+        if (!list.length) {
+          transcriptState = 'failed';
+          transcriptBody.replaceChildren(
+            h('p', { className: 'np-note-p' }, t('np_transcript_failed')),
+          );
+          return;
+        }
+        cues = list;
+        transcriptState = 'ready';
+        renderCues();
+        markCue(cueAt(cues, pbCurrent()));
+      });
+    };
+    transcriptEl.addEventListener('toggle', () => {
+      if (transcriptEl.open) load();
+    });
+  }
+
   // ── playing session → title, waveform, nav buttons, notes ───────
   let lastTrackId: string | null | undefined;
   function applyPlaying(s: PlayingSession | null): void {
@@ -219,7 +505,26 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
 
     btnPrev.disabled = !s || s.index <= 0;
     btnNext.disabled = !s || s.index >= s.episodes.length - 1;
+    refreshShareLabel();
     applyNotes(ep?.description);
+    if (trackId !== lastTrackId || !chapters.length) {
+      loadChaptersFor(ep);
+      prepareTranscript(ep);
+    }
+    // A different show may play at a different speed.
+    refreshSpeed();
+    /**
+     * A list that came from the Worker arrives without notes (they are most of
+     * a feed's bytes and none of a list's content), so the one episode on
+     * screen asks for its own. Resolves instantly when they are already there.
+     */
+    if (s && ep && !ep.description) {
+      const wanted = s.trackId;
+      void loadEpisodeNotes(s.feedId, ep).then((notes) => {
+        // The listener may be two episodes further on by the time this lands.
+        if (notes && playing()?.trackId === wanted) applyNotes(notes);
+      });
+    }
     applyArt(label);
   }
 
@@ -363,14 +668,27 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
         setPlayIcon(false);
         player.classList.remove('playing');
         break;
-      case 'timeupdate':
+      case 'timeupdate': {
         // The sheet is only ever visibility:hidden when dismissed, never
         // display:none, so guard explicitly rather than relying on layout.
         if (document.hidden || !isOpen()) break;
         if (!wave.isScrubbing()) wave.setProgress(e.duration ? (e.current / e.duration) * 100 : 0);
         elTCur.textContent = fmtTime(e.current);
         elTTot.textContent = fmtTime(e.duration);
+        /**
+         * The markers need a duration to be placed against, and that only
+         * arrives with the metadata — after the chapters usually have. Drawing
+         * them here costs one DOM write per episode, because `markedFor` stops
+         * it repeating four times a second.
+         */
+        if (chapters.length && Number.isFinite(e.duration) && e.duration > 0 && markedFor !== e.duration) {
+          markedFor = e.duration;
+          renderChapterMarks();
+        }
+        if (chapters.length) markChapter(chapterAt(chapters, e.current));
+        if (cues.length) markCue(cueAt(cues, e.current));
         break;
+      }
     }
   });
 
@@ -382,9 +700,17 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   btnSkipFwd.addEventListener('click', () => playback.seekRel(settings().skipForward));
   queueBtn.addEventListener('click', () => deps.openQueue());
 
+  /**
+   * Sets the speed for THIS show when one is playing, and the global default
+   * otherwise. A speed chosen while listening is a statement about the show in
+   * front of you, not about every show you follow — which is what this control
+   * used to mean.
+   */
   speedSel.addEventListener('change', () => {
     const speed = parseFloat(speedSel.value) || 1;
-    setSetting('defaultSpeed', speed);
+    const feedId = playing()?.feedId;
+    if (feedId) setFeedSpeed(feedId, speed);
+    else setSetting('defaultSpeed', speed);
     pbSetRate(speed);
   });
 
@@ -392,11 +718,18 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   function applySettings(s: Settings): void {
     lblSkipBack.textContent = String(s.skipBack);
     lblSkipFwd.textContent = String(s.skipForward);
-    speedSel.value = String(s.defaultSpeed);
+    refreshSpeed();
     // Toggling the preference takes effect without waiting for a track change.
     updateAmbient(s.ambientArt ? httpsOnly(nowPlayingLabel(playing())?.art) : '');
   }
+  /** Whatever the show in front of the listener actually plays at. */
+  function refreshSpeed(): void {
+    const feedId = playing()?.feedId;
+    speedSel.value = String(speedFor(feedId));
+    speedSel.classList.toggle('has-own', hasOwnSpeed(feedId));
+  }
   settings.subscribe(applySettings);
+  feedSpeedRevision.subscribe(refreshSpeed);
   applySettings(settings());
 
   // ── language → dynamic labels ────────────────────────────────────

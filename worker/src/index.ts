@@ -1,7 +1,9 @@
 /**
  * Seseri API — Cloudflare Worker backend.
  *
- *   GET /v1/feed?url=      RSS/Atom proxy (text, ≤5 MB, edge-cached 15 min)
+ *   GET /v1/feed?url=      RSS/Atom proxy (raw text, ≤20 MB, edge-cached 15 min)
+ *   GET /v1/parse?url=     the same feed, parsed here and returned as compact
+ *                          JSON (edge-cached 15 min, sliceable)
  *   GET /v1/itunes?url=    iTunes search/lookup proxy (JSON, edge-cached 1 h)
  *   /v1/sync               cross-device blob store (GET/PUT/DELETE, see sync.ts)
  *
@@ -14,6 +16,7 @@ import { cors } from 'hono/cors';
 import type { AppContext, Env } from './env';
 import { carriesCredential } from './credential-url';
 import { edgeCached, fetchWithTimeout, readCapped, safeTarget } from './safe-fetch';
+import { scanRss } from './rss-scan';
 import { clientKey, rateLimited } from './ratelimit';
 import { sweepSync, syncRoutes } from './sync';
 
@@ -189,6 +192,18 @@ app.get('/v1/feed', async (c) => {
   );
 });
 
+/**
+ * One host, deliberately.
+ *
+ * Apple's top-shows chart (`rss.marketingtools.apple.com`) was going to be
+ * added here for a discovery screen, and was measured first: it answers 200 to
+ * an ordinary client and 403 to this Worker, whatever headers it sends — Apple
+ * refuses that endpoint from datacentre egress. It is also the only Apple
+ * endpoint that sends no CORS headers, so the browser cannot read it either.
+ * Discovery is built on the search endpoint below instead (feeds/topics.ts),
+ * and this stays a one-host allow-list rather than carrying a host nothing
+ * can call.
+ */
 // ── iTunes API proxy (fixes their Origin-blind CDN caching) ─────────
 app.get('/v1/itunes', async (c) => {
   const target = safeTarget(c.req.query('url'));
@@ -212,6 +227,155 @@ app.get('/v1/itunes', async (c) => {
       }
     },
   );
+});
+
+// ── parsed feed (the same bytes, without shipping them) ─────────────
+/**
+ * Why this exists next to `/v1/feed`: a popular show's archive is tens of
+ * megabytes of XML, and the client was downloading all of it and building a DOM
+ * from it on the main thread to end up with a list of titles and URLs. Parsing
+ * here turns that into a JSON document an order of magnitude smaller, with no
+ * DOM anywhere — `rss-scan.ts` is the same file the client ships, duplicated
+ * verbatim, so both sides agree on every `trackId`.
+ *
+ * `/v1/feed` stays: the client falls back to it (and to the public proxies)
+ * whenever this endpoint is unreachable, and it parses the XML itself then.
+ */
+
+/** Hard ceiling on what one response will carry, whatever the feed claims. */
+const PARSE_MAX_EPISODES = 5000;
+
+/** Charset for a feed's bytes: the header first, then the XML declaration. */
+function feedCharset(contentType: string, head: Uint8Array): string {
+  const fromHeader = /charset=["']?([\w-]+)/i.exec(contentType)?.[1];
+  if (fromHeader) return fromHeader.toLowerCase();
+  // The declaration is ASCII-compatible in every encoding we might meet here,
+  // so sniffing the first bytes as latin1 is safe for reading it.
+  const prologue = new TextDecoder('latin1').decode(head.subarray(0, 200));
+  const fromXml = /encoding=["']([\w-]+)["']/i.exec(prologue)?.[1];
+  return (fromXml ?? 'utf-8').toLowerCase();
+}
+
+/**
+ * Decode with the feed's declared charset.
+ *
+ * The client used to call `res.text()`, which defaults to UTF-8 when the
+ * response carries no charset — so a windows-1252 feed arrived with mangled
+ * titles. Decoding here, where the content type is still in hand, fixes those
+ * feeds as a side effect. An unknown label falls back to UTF-8 rather than
+ * failing the request.
+ */
+function decodeFeed(bytes: Uint8Array, contentType: string): string {
+  const charset = feedCharset(contentType, bytes);
+  try {
+    return new TextDecoder(charset, { fatal: false, ignoreBOM: false }).decode(bytes);
+  } catch {
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+}
+
+/** Non-negative integer query parameter, or undefined. */
+function intParam(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : undefined;
+}
+
+interface ParsedDoc {
+  meta: { name: string; artist: string; art: string };
+  total: number;
+  episodes: Array<Record<string, unknown>>;
+}
+
+app.get('/v1/parse', async (c) => {
+  const target = safeTarget(c.req.query('url'));
+  if (!target) return c.json({ error: 'invalid url' }, 400);
+
+  const offset = intParam(c.req.query('offset')) ?? 0;
+  const limit = Math.min(intParam(c.req.query('limit')) ?? PARSE_MAX_EPISODES, PARSE_MAX_EPISODES);
+  /**
+   * Show notes are most of a feed's bytes and none of a list's content.
+   *
+   * Measured on three real archives, compressed, which is what actually
+   * travels: The Daily is 1.31 MB of brotli as XML and 1.06 MB as JSON with
+   * notes — a rounding error, because XML compresses well — but 0.28 MB
+   * without them. Vergecast goes from 0.80 MB to 0.08 MB. So the client asks
+   * for a list with no notes and fetches the one episode's notes it is about
+   * to render, which is what `notesFor` is for.
+   *
+   * Notes are included unless asked otherwise: a caller that does not know
+   * about this parameter must still get a complete answer.
+   */
+  const wantNotes = c.req.query('notes') !== '0';
+  const notesFor = c.req.query('notesFor');
+
+  const fetchAndParse = async (): Promise<Response> => {
+    try {
+      const res = await fetchWithTimeout(target.href, 15000, {
+        headers: { accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*' },
+      });
+      if (!res.ok) return c.json({ error: 'upstream ' + res.status }, 502);
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      if (!feedContentType(ct)) return c.json({ error: 'not a feed' }, 415);
+      const bytes = await readCapped(res, FEED_MAX_BYTES);
+      const parsed = scanRss(decodeFeed(bytes, ct));
+      return Response.json({
+        meta: { name: parsed.title, artist: parsed.author, art: parsed.art },
+        total: parsed.episodes.length,
+        episodes: parsed.episodes.slice(0, PARSE_MAX_EPISODES),
+      });
+    } catch (e) {
+      // `invalid rss` is the parser's verdict on something that is not a feed,
+      // which is the caller's URL being wrong rather than an upstream fault.
+      if ((e as Error).message === 'invalid rss') return c.json({ error: 'not a feed' }, 415);
+      return proxyError(c, e);
+    }
+  };
+
+  /**
+   * The whole parsed document is cached once and sliced per request, rather
+   * than caching a separate entry per (offset, limit): the expensive part is
+   * fetching and parsing 20 MB, and re-slicing a cached JSON is nothing.
+   */
+  const cacheable = !carriesCredential(target.href);
+  const full = cacheable
+    ? await edgeCached(
+        'https://cache.seseri/parse?u=' + encodeURIComponent(target.href),
+        15 * 60,
+        c.executionCtx,
+        fetchAndParse,
+      )
+    : await fetchAndParse();
+
+  if (full.status !== 200) return full;
+
+  const doc = (await full.json()) as ParsedDoc;
+
+  /**
+   * One episode by id, notes included. The document is already in the edge
+   * cache, so this is the cheap way to fill in the notes a list was served
+   * without — no second trip to the feed host, and no 20 MB re-parse.
+   */
+  let window: Array<Record<string, unknown>>;
+  if (notesFor !== undefined) {
+    window = doc.episodes.filter((e) => e['trackId'] === notesFor).slice(0, 1);
+  } else {
+    window = doc.episodes.slice(offset, offset + limit);
+    if (!wantNotes) {
+      window = window.map((e) => {
+        if (e['description'] === undefined) return e;
+        const { description: _drop, ...rest } = e;
+        return rest;
+      });
+    }
+  }
+
+  return c.json({ meta: doc.meta, total: doc.total, offset, episodes: window }, 200, {
+    ...NOSNIFF,
+    // Sliced per request, and a private feed must never be stored anywhere.
+    'cache-control': cacheable ? 'private, max-age=300' : 'no-store',
+    'x-seseri-cache': full.headers.get('x-seseri-cache') ?? 'bypass',
+  });
 });
 
 app.route(SYNC_PREFIX, syncRoutes);

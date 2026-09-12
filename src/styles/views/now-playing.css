@@ -361,3 +361,95 @@ body.has-ambient .np-inner::before { opacity: 1; }
   .np-secondary { justify-content: flex-start; }
   .np-volume { align-self: flex-start; }
 }
+
+/* The share action sits opposite the close button, so the feed name keeps the
+   middle of the header row (`.np-top` is already a flex line, further up). */
+.np-share {
+  margin-inline-start: auto;
+}
+.np-share[hidden] {
+  display: none;
+}
+
+/* ─ Chapters (A6) ─ */
+.np-chapter-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 40dvh;
+  overflow-y: auto;
+  margin-block-start: var(--s-2);
+}
+.np-chapter,
+.np-cue {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 40px;
+  padding: var(--s-2) var(--s-2);
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--text2);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--d-fast) var(--ease-smooth), color var(--d-fast) var(--ease-smooth);
+}
+.np-chapter:hover,
+.np-cue:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.np-chapter.active,
+.np-cue.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.np-chapter-time,
+.np-cue-time {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text3);
+}
+.np-chapter.active .np-chapter-time,
+.np-cue.active .np-cue-time {
+  color: inherit;
+}
+.np-chapter-title,
+.np-cue-text {
+  min-inline-size: 0;
+  line-height: 1.45;
+}
+
+/* Chapter ticks on the scrubber. Positioned by `inset-inline-start`, so they
+   follow the reading direction in RTL without a second rule. */
+.signal-chapters {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.signal-chapters i {
+  position: absolute;
+  inset-block: 12%;
+  inline-size: 1px;
+  background: var(--text3);
+  opacity: 0.55;
+}
+
+/* ─ Transcript (A6) ─ */
+.np-transcript-body {
+  display: flex;
+  flex-direction: column;
+  max-height: 45dvh;
+  overflow-y: auto;
+  margin-block-start: var(--s-2);
+  /* Following the audio scrolls this container; without the containment a
+     `scrollIntoView` inside it can move the sheet as well. */
+  overscroll-behavior: contain;
+}
+.np-cue {
+  align-items: flex-start;
+}

@@ -179,7 +179,10 @@
 .ep-item {
   position: relative;
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  /* The number and the title live inside `.ep-open` now, which spans what used
+     to be the first two columns — so the geometry is unchanged and the row's
+     primary action is a real button. */
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: var(--s-3);
   min-block-size: var(--list-row-height);
@@ -188,7 +191,48 @@
   border-radius: var(--r-sm);
   cursor: pointer;
   transition: background var(--d-fast) var(--ease-smooth);
+  /**
+   * Skip the layout and paint of rows that are off screen.
+   *
+   * The archive switch made this matter: a show that listed 41 episodes now
+   * lists 2900, which is ~45000 DOM nodes. Measured on The Daily's full
+   * archive, a rebuild of that list cost ~125 ms of DOM work and ~390 ms of
+   * layout on a desktop — the layout being four fifths of it, and all of it for
+   * rows nobody can see. There is no virtualization here and this needs none:
+   * the rows stay in the DOM, so find-in-page, screen readers, `Tab` and
+   * `scrollIntoView` all keep working.
+   *
+   * `contain-intrinsic-size` is the placeholder height a skipped row reports.
+   * It has to be the real row height or the scrollbar jumps as rows are
+   * rendered, and `--list-row-height` is exactly that (a Settings choice), so
+   * the two cannot drift.
+   */
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--list-row-height);
 }
+.ep-open {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--s-3);
+  align-items: center;
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+/* The ring belongs on the row, which is what the reader sees as the target. */
+.ep-open:focus-visible {
+  outline: none;
+}
+.ep-item:has(.ep-open:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .ep-item:hover,
 .ep-item:focus-visible {
   background: var(--surface);
@@ -362,4 +406,104 @@ body:not(.is-playing) .ep-eq i {
   .ep-eq i {
     animation: none;
   }
+}
+
+/* ─ Episode state filters (A2) ─
+   A separate row from `.p-listbar` on purpose: on a phone the sort button,
+   the text box and four chips do not fit on one line, and wrapping them into
+   the same flex row put the text input on a line of its own at unpredictable
+   widths. Horizontally scrollable rather than wrapped, so the row height stays
+   the same at every size. */
+.p-modes {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-block-end: var(--s-3);
+  min-inline-size: 0;
+}
+.p-modes-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  /* Shrinks and scrolls; the note beside it keeps its space. */
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow-x: auto;
+  /* Scrollbar hidden but scrolling kept — the chips are also reachable by
+     keyboard, so nothing depends on seeing the track. */
+  scrollbar-width: none;
+  /* The chips carry their own focus ring; without this it is clipped. */
+  padding-block: 2px;
+}
+.p-modes-strip::-webkit-scrollbar {
+  display: none;
+}
+.p-mode {
+  flex: 0 0 auto;
+  min-block-size: 32px;
+  padding-inline: var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg2);
+  color: var(--text3);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--d-fast) var(--ease-smooth),
+    border-color var(--d-fast) var(--ease-smooth),
+    color var(--d-fast) var(--ease-smooth);
+}
+.p-mode:hover {
+  color: var(--text2);
+  border-color: var(--border2);
+}
+.p-mode.active {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+}
+.p-mode-note {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text3);
+  white-space: nowrap;
+}
+.p-mode-note[hidden] {
+  display: none;
+}
+
+/* The played toggle sits beside queue and download; `done` is the same green
+   the download tick uses, so "I have this" and "I have heard this" read as the
+   same kind of statement. */
+.ep-played-btn.done {
+  color: var(--green);
+}
+.ep-item.listened .ep-played-btn {
+  color: var(--green);
+}
+
+/* The download button while a transfer is running: a percentage in the accent,
+   so "in progress" is visibly a third state rather than a variation of the
+   other two. */
+.ep-dl-btn.working {
+  color: var(--accent);
+}
+.ep-dl-pct {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* The end of the rendered window. A real button so the list still grows
+   without an IntersectionObserver and a keyboard user has somewhere to go. */
+.ep-more {
+  align-self: center;
+  margin: var(--s-3) auto;
+  color: var(--text3);
+  font-size: var(--fs-sm);
 }

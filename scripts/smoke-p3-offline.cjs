@@ -1,23 +1,17 @@
 /* P3 offline smoke test: download an episode → go offline → reload → feed
  * renders from idb cache and the downloaded episode plays from Cache API. */
-const { spawn } = require('child_process');
-const http = require('http');
 const puppeteer = require('puppeteer-core');
+const {
+  launchOptions,
+  makeWav,
+  startServer,
+  stopServer,
+  waitServer,
+} = require('./lib/harness.cjs');
 
 const PORT = 5200;
 const ORIGIN = `http://localhost:${PORT}`;
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 
-function makeWav(seconds = 120) {
-  const rate = 8000;
-  const data = Buffer.alloc(rate * seconds, 128); // 8-bit silence
-  const h = Buffer.alloc(44);
-  h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8);
-  h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
-  h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate, 28); h.writeUInt16LE(1, 32); h.writeUInt16LE(8, 34);
-  h.write('data', 36); h.writeUInt32LE(data.length, 40);
-  return Buffer.concat([h, data]);
-}
 const WAV = makeWav();
 
 const LOOKUP = {
@@ -29,23 +23,14 @@ const LOOKUP = {
   ],
 };
 
-function waitServer(url, tries = 60) {
-  return new Promise((resolve, reject) => {
-    const ping = (n) => http.get(url, (r) => { r.resume(); resolve(); }).on('error', () =>
-      n <= 0 ? reject(new Error('preview never came up')) : setTimeout(() => ping(n - 1), 500));
-    ping(tries);
-  });
-}
-
 (async () => {
-  const server = spawn('npx.cmd', ['vite', 'preview', '--port', String(PORT), '--strictPort'],
-    { cwd: require('path').join(__dirname, '..'), shell: true, stdio: 'ignore' });
+  const server = startServer({ port: PORT });
   const results = [];
   const ok = (name, pass, extra = '') => { results.push({ name, pass, extra }); console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${extra ? '  (' + extra + ')' : ''}`); };
   let browser;
   try {
     await waitServer(ORIGIN + '/');
-    browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio', '--autoplay-policy=no-user-gesture-required'] });
+    browser = await puppeteer.launch(launchOptions());
     const page = await browser.newPage();
     page.on('console', (m) => console.log('  [console]', m.type(), m.text().slice(0, 200)));
     page.on('pageerror', (e) => console.log('  [pageerror]', String(e).slice(0, 300)));
@@ -145,8 +130,7 @@ function waitServer(url, tries = 60) {
     } catch {}
   } finally {
     if (browser) await browser.close().catch(() => {});
-    server.kill('SIGTERM');
-    try { process.kill(server.pid); } catch {}
+    await stopServer(server);
     const fails = results.filter((r) => !r.pass).length;
     console.log(`\n${results.length - fails}/${results.length} passed`);
     process.exit(fails ? 1 : 0);

@@ -17,17 +17,16 @@
  *
  * Prereq: `npm run worker:dev` already listening on 127.0.0.1:8787.
  */
-const { spawn } = require('child_process');
 const http = require('http');
 const net = require('net');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
+const { launchOptions, startServer, stopServer, waitServer } = require('./lib/harness.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = 5201;
 const ORIGIN = `http://localhost:${PORT}`;
 const WORKER = 'http://127.0.0.1:8787';
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const FEED = 'https://feeds.simplecast.com/54nAGcIl'; // The Daily (~20 MB, ~3000 items)
 
 /**
@@ -36,21 +35,6 @@ const FEED = 'https://feeds.simplecast.com/54nAGcIl'; // The Daily (~20 MB, ~300
  * slower than the next. Budget for the cold case.
  */
 const LOAD_TIMEOUT_MS = 120_000;
-
-function waitServer(url, tries = 60) {
-  return new Promise((resolve, reject) => {
-    const ping = (n) =>
-      http
-        .get(url, (r) => {
-          r.resume();
-          resolve();
-        })
-        .on('error', () =>
-          n <= 0 ? reject(new Error(url + ' never came up')) : setTimeout(() => ping(n - 1), 500),
-        );
-    ping(tries);
-  });
-}
 
 /** True when something is already listening on `port`. */
 function portTaken(port) {
@@ -86,22 +70,14 @@ function portTaken(port) {
     process.exit(1);
   }
 
-  const server = spawn('npx.cmd', ['vite', '--port', String(PORT), '--strictPort'], {
-    cwd: ROOT,
-    shell: true,
-    stdio: 'ignore',
-  });
+  const server = startServer({ port: PORT, mode: 'dev' });
 
   let browser;
   let page;
   const workerHits = [];
   try {
     await waitServer(ORIGIN + '/');
-    browser = await puppeteer.launch({
-      executablePath: EDGE,
-      headless: 'new',
-      args: ['--mute-audio'],
-    });
+    browser = await puppeteer.launch(launchOptions());
     page = await browser.newPage();
 
     page.on('request', (r) => {
@@ -121,10 +97,78 @@ function portTaken(port) {
 
     const eps = await page.$$eval('.ep-item', (n) => n.length);
     ok('feed renders via worker', eps > 100, `${eps} eps in ${secs}s`);
-    ok('worker /v1/feed was called', workerHits.some((u) => u.includes('/v1/feed')), workerHits[0] || 'no hits');
+    /**
+     * The feed is parsed at the edge now, so the client asks `/v1/parse` for
+     * JSON and never downloads the ~20 MB of XML. `/v1/feed` remains as the
+     * fallback, so seeing it here would mean the parse route failed and the
+     * measurement this script exists for is not what it looks like.
+     */
+    ok(
+      'worker /v1/parse was called',
+      workerHits.some((u) => u.includes('/v1/parse')),
+      workerHits[0] || 'no hits',
+    );
+    ok(
+      'the raw XML was never downloaded',
+      !workerHits.some((u) => u.includes('/v1/feed')),
+      workerHits.filter((u) => u.includes('/v1/feed'))[0] || '',
+    );
+    /**
+     * Measured from here rather than from the page: `transferSize` is zeroed
+     * for a cross-origin response without `Timing-Allow-Origin`, so the page
+     * reports 0 and the assertion would pass or fail for the wrong reason.
+     *
+     * The feed itself is ~20 MB of XML (`curl` it if you doubt the number);
+     * what the client actually downloads now has to be nothing like that.
+     */
+    const parsedBytes = await new Promise((resolve) => {
+      http
+        .get(
+          `${WORKER}/v1/parse?url=${encodeURIComponent(FEED)}&notes=0`,
+          { headers: { origin: ORIGIN } },
+          (r) => {
+            let n = 0;
+            r.on('data', (c) => (n += c.length));
+            r.on('end', () => resolve(n));
+          },
+        )
+        .on('error', () => resolve(0));
+    });
+    ok(
+      'the list itself is a fraction of the feed',
+      parsedBytes > 100_000 && parsedBytes < 4 * 1024 * 1024,
+      `${(parsedBytes / 1024 / 1024).toFixed(2)} MB of JSON for a ~20 MB feed`,
+    );
     ok('nothing was refused by the CSP', blocked.length === 0, blocked[0] || '');
     const title = await page.$eval('#pTitle', (e) => e.textContent);
     ok('feed title parsed', !!title && title !== '—', title);
+
+    /**
+     * Show notes are not in the list payload. Opening the sheet has to fetch
+     * the one episode's notes and render them — the whole reason the list can
+     * be this small.
+     */
+    await page.click('.ep-item');
+    await page.waitForFunction(() => document.body.classList.contains('is-playing'), {
+      timeout: 20000,
+    });
+    await page.click('.ep-item.active').catch(() => {});
+    const notes = await page
+      .waitForFunction(
+        () => {
+          const el = document.getElementById('npNotes');
+          return el && !el.hidden ? document.getElementById('npNotesBody')?.textContent : null;
+        },
+        { timeout: 20000 },
+      )
+      .then((h) => h.jsonValue())
+      .catch(() => null);
+    ok('show notes are fetched on demand', !!notes && notes.length > 20, (notes || '').slice(0, 60));
+    ok(
+      'the notes came from /v1/parse',
+      workerHits.some((u) => u.includes('notesFor=')),
+      workerHits.filter((u) => u.includes('notesFor='))[0] || 'no notesFor call',
+    );
   } catch (e) {
     ok('smoke run', false, e.message);
     // Without this a failure is just a selector timeout and says nothing about
@@ -142,12 +186,7 @@ function portTaken(port) {
     }
   } finally {
     if (browser) await browser.close().catch(() => {});
-    server.kill('SIGTERM');
-    try {
-      process.kill(server.pid);
-    } catch {
-      /* already gone */
-    }
+    await stopServer(server);
     const fails = results.filter((p) => !p).length;
     console.log(`\n${results.length - fails}/${results.length} passed`);
     process.exit(fails ? 1 : 0);

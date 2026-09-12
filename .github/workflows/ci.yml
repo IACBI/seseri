@@ -19,6 +19,73 @@ jobs:
       - run: npm --prefix worker ci
       - run: npm run verify
 
+  # Browser-level behaviour. Until now the smokes ran on one machine, against a
+  # hardcoded path to Microsoft Edge, which meant the only checks covering
+  # downloads, offline playback, the mini dock, cross-device sync and the crash
+  # recovery screen were whatever the author happened to run by hand.
+  #
+  # `smoke-p4-worker.cjs` is deliberately not here: it drives a local
+  # `wrangler dev` against a real 18 MB feed from a third-party CDN, so it is
+  # neither fast nor self-contained. `smoke-live.cjs` targets the deployed site
+  # and belongs after a release, not before one.
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Install Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+        with:
+          chrome-version: stable
+          install-dependencies: true
+
+      # Fail here rather than inside a smoke, where "no browser" and "the app is
+      # broken" look the same in the output.
+      - name: Report the browser the smokes will use
+        run: node -e "console.log(require('./scripts/lib/harness.cjs').resolveBrowser())"
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
+      - run: npx vite build
+
+      - name: Shell, fonts and crash recovery
+        run: npm run smoke:shell
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
+      - name: Download, offline reload, offline playback
+        run: npm run smoke:offline
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
+      - name: Mini dock, queue, back-navigation
+        run: npm run smoke:mini
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
+      - name: Chapters and transcripts
+        run: npm run smoke:chapters
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
+      - name: A long archive, rendered a window at a time
+        run: npm run smoke:longlist
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
+      # Last: it rebuilds dist against its own VITE_API_BASE.
+      - name: Cross-device sync
+        run: npm run smoke:sync
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
   # Non-blocking dependency vulnerability signal (runtime deps only).
   audit:
     runs-on: ubuntu-latest

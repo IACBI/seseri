@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -25,7 +26,16 @@ function stripDevCsp(): Plugin {
   };
 }
 
+const pkgVersion: string = (
+  JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+    version: string;
+  }
+).version;
+
 export default defineConfig({
+  // Read from package.json rather than hand-maintained: the release checklist
+  // bumps that file, and a version the app reports wrongly is worse than none.
+  define: { __APP_VERSION__: JSON.stringify(pkgVersion) },
   // Live site is served from a sub-path (GitHub Pages); relative base keeps
   // the build path-independent like the legacy app.
   base: './',

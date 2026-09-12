@@ -23,6 +23,24 @@ export interface Episode {
    * https-only links. Optional so older cached feeds stay valid.
    */
   description?: string;
+  /** `<itunes:season>` / `<itunes:episode>` when the feed numbers its items. */
+  season?: number;
+  episode?: number;
+  /**
+   * `<podcast:chapters url>` — a JSON chapter list, https only. Fetched lazily
+   * (see player/chapters.ts); the feed only tells us where it is.
+   */
+  chaptersUrl?: string;
+  /** `<podcast:transcript>` alternatives in feed order, https only. */
+  transcripts?: EpisodeTranscript[];
+}
+
+/** One `<podcast:transcript>` alternative. */
+export interface EpisodeTranscript {
+  url: string;
+  /** MIME type as the feed declares it: `text/vtt`, `application/srt`, … */
+  type: string;
+  language?: string;
 }
 
 /**
@@ -54,6 +72,13 @@ export interface ResolvedFeed {
    * the UI can say "41 of 2676" instead of implying the show has 41.
    */
   total?: number;
+  /**
+   * True when the episodes arrived without their show notes, because the
+   * Worker was asked for a list rather than the whole archive. An episode's
+   * notes are then fetched when something actually renders them —
+   * `feeds/episode-notes.ts` — rather than for all 3000 of them up front.
+   */
+  notesDeferred?: boolean;
 }
 
 /** Result row from iTunes search. */

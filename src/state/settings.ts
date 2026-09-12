@@ -39,6 +39,24 @@ export interface Settings {
    */
   prefetchAudio: PrefetchMode;
   /**
+   * Download new episodes of subscribed shows as they are found.
+   *
+   * Off by default: it spends storage and data on something nobody asked for
+   * yet, and the sweep that finds them runs on every app open. `wifi` is the
+   * setting worth having — it backs off only when the browser positively
+   * reports a cellular connection, which iOS never does.
+   */
+  autoDownload: PrefetchMode;
+  /**
+   * Delete an episode's downloaded copy once it has been heard.
+   *
+   * Pairs with `autoDownload`: without it, a show that publishes daily fills
+   * the device and the listener has to prune it by hand. It only ever removes a
+   * copy of an episode that is finished, so nothing in the Downloads list
+   * disappears while it is still useful.
+   */
+  deleteAfterPlayed: boolean;
+  /**
    * Desktop sidebar collapsed to an icon rail. A layout preference rather than
    * a playback one, but it belongs with the rest of what a returning visitor
    * expects to find the way they left it.
@@ -69,6 +87,8 @@ export const DEFAULT_SETTINGS: Settings = {
   ambientArt: true,
   allowPublicProxies: false,
   prefetchAudio: 'wifi',
+  autoDownload: 'never',
+  deleteAfterPlayed: false,
   navCollapsed: false,
   volume: 1,
   muted: false,
@@ -89,6 +109,7 @@ const ALLOWED: Partial<Record<keyof Settings, ReadonlySet<unknown>>> = {
   theme: new Set(['auto', 'dark', 'light', 'oled']),
   defaultSort: new Set(['asc', 'desc']),
   prefetchAudio: new Set(['always', 'wifi', 'never']),
+  autoDownload: new Set(['always', 'wifi', 'never']),
 };
 
 /** Hex colours only — the accent feeds several `rgb()`/gradient tokens. */

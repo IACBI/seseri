@@ -124,3 +124,47 @@
   }
   .home-sub-name { -webkit-line-clamp: 1; line-clamp: 1; }
 }
+
+/* ─ New episodes rail (A3) ─
+   The heading row carries an action, so it is a flex line rather than the bare
+   label the other sections use. */
+.home-new-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-block-start: var(--s-4);
+}
+.home-new-head .search-hint {
+  margin: 0;
+}
+.home-new-clear,
+.home-check {
+  min-height: 32px;
+  padding-inline: var(--s-3);
+  font-size: var(--fs-sm);
+  color: var(--text3);
+}
+.home-check:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+/* The dismiss button is an affordance on a row that is itself a button, so it
+   only firms up on hover/focus — otherwise every row carries a second, equally
+   loud control. */
+.home-new-x {
+  min-width: 36px;
+  min-height: 36px;
+  opacity: 0.45;
+  transition: opacity var(--d-fast) var(--ease-smooth);
+}
+.home-new-row:hover .home-new-x,
+.home-new-x:focus-visible {
+  opacity: 1;
+}
+/* A touch device has no hover, so there the control is simply always visible. */
+@media (hover: none) {
+  .home-new-x {
+    opacity: 0.8;
+  }
+}

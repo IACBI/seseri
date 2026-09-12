@@ -27,10 +27,21 @@ export function t(key: LangKey, ...args: Array<string | number>): string {
   return val;
 }
 
+/**
+ * True once `applyLang` has run. The crash-recovery screen needs to know: it
+ * can be reached before `boot()` got as far as applying the saved language, and
+ * `currentLang`'s initial value is a default rather than an answer.
+ */
+let applied = false;
+export function langApplied(): boolean {
+  return applied;
+}
+
 export function applyLang(code: LangCode): void {
   document.documentElement.setAttribute('dir', LANGS[code].dir);
   document.documentElement.setAttribute('lang', code);
   currentLang.set(code);
+  applied = true;
 }
 
 /** İlk açılışta tarayıcı diline uy (kayıtlı tercih yoksa). */

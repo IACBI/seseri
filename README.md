@@ -32,12 +32,19 @@ Playing** sheet for transport, sleep timer, speed and queue access.
 
 | | |
 |---|---|
-| **Podcast search** | by name, Apple Podcasts link, or a direct RSS feed URL |
-| **Offline episodes** | downloads live in the Cache API and play (and seek) with no connection; feeds are cached in IndexedDB and refresh in the background (stale-while-revalidate) |
+| **Podcast search** | by name, Apple Podcasts link, or a direct RSS feed URL — or start from one of eight topics |
+| **The whole archive** | episode lists come from the show's own feed, so they are the complete back catalogue, not the 200 most recent episodes Apple returns. Parsing happens in the Worker when one is configured (The Daily: 19.95 MB of XML in, 2.28 MB of JSON out) and on the device when it is not |
+| **Played state** | finishing an episode marks it, or mark it yourself; filter a list to **All**, **Unplayed**, **In progress** or **Downloaded**. Marking an episode unplayed clears its saved position |
+| **New episodes** | what has appeared across every show you follow since you last looked, on the home screen, with an app badge where the platform has one |
+| **Chapters & transcripts** | Podcasting 2.0 chapters as a list plus markers on the scrubber, and VTT/SRT transcripts cue by cue with the playing line highlighted and every line seekable. Both fetched only when opened |
+| **Offline episodes** | downloads live in the Cache API and play (and seek) with no connection, showing a real percentage and cancellable while they run; feeds are cached in IndexedDB, bounded (anything over 30 days old goes, then the oldest until the cache is back under 80 MB, never below five feeds) and refreshed in the background (stale-while-revalidate) |
+| **Automatic downloads** | optionally fetch new episodes of the shows you follow in the background, and optionally delete a download once the episode is finished — finished only, so nothing you are part-way through is removed |
 | **Play queue** | queue any episode as "up next" — the queue wins over list order; own page under **Queue** |
 | **Mini transport** | leaving a feed keeps playing; the persistent dock carries skip/play controls (plus prev/next & speed on wide screens) and a seekable progress line — the chevron expands the full **Now Playing** sheet. A title too long for the dock drifts end to end instead of ending in an ellipsis |
 | **Frequency-line scrubber** | signature waveform motif — drag-to-seek hero scrubber in Now Playing, animated line on the mini player while playing |
 | **Now Playing sheet** | full-screen at every size: play/pause, prev/next, skip, speed 0.5×–2.5×, volume, sleep timer, resume position, episode notes |
+| **Episode links** | share a link that opens on that episode, and from Now Playing at the moment you are at |
+| **Per-show speed** | a show can play at its own speed instead of the default; Settings lists the ones that do and resets them |
 | **Sleep timer** | presets or any duration, or stop at the end of the episode; live countdown, **+5 min**, gentle fade-out, pauses with playback and survives a reload |
 | **Sharp artwork** | the right rendition is requested per surface, so covers are never upscaled from a thumbnail; the Now Playing background can pick up the cover's dominant colour (toggle in Settings → Appearance) |
 | **Volume** | a slider in Now Playing on every device, and in the dock from 1024px up; mute keeps the level you chose. Hidden on iOS, where the page is not allowed to set it and the hardware buttons are the control |
@@ -46,7 +53,9 @@ Playing** sheet for transport, sleep timer, speed and queue access.
 | **Themes** | Auto (system), Dark, Light, OLED Black; 7 accent colors (amber "dial glow" default) |
 | **Multilingual** | TR / EN / DE / FR / ES / AR / JA / RU (incl. RTL) |
 | **Installable** | PWA with maskable/monochrome icons, shortcuts, store screenshots |
-| **Accessible** | keyboard-operable views, aria-live status/busy states, focus management on navigation, `prefers-reduced-motion` |
+| **Accessible** | keyboard-operable views, aria-live status/busy states, focus management on navigation, `prefers-reduced-motion`. A long episode list is one tab stop with arrow-key movement between rows and across each row's buttons, not 2 973 tab stops |
+| **Private by construction** | no analytics, no accounts, and no third-party request to render the interface — the typefaces are served from the app's own origin, so `font-src` is `'self'` alone |
+| **Recoverable** | if start-up fails the app says so, with a reload button and a two-tap data wipe, instead of a blank page. Settings can copy a diagnostics report to the clipboard, which is sent nowhere |
 
 #### Keyboard shortcuts
 
@@ -62,6 +71,7 @@ so they work from any view; `[`, `Esc` and `?` are always live.
 | `[` | Collapse or expand the sidebar (desktop) |
 | `Esc` | Close the Now Playing sheet |
 | `?` | Show the shortcut list |
+| `↑` / `↓` in a list | Move between episode rows (`←` / `→` for a row's own buttons) |
 
 ### Cross-device sync
 
@@ -111,9 +121,14 @@ three of them and parses whichever answers first.
 | `npm run lint` / `typecheck` / `format` | ESLint · `tsc --noEmit` · Prettier |
 | `npm run worker:dev` / `worker:test` | wrangler dev · Worker handler tests |
 | `npm run verify` | lint + typecheck + tests + build + worker typecheck/tests |
-| `node scripts/smoke-p3-offline.cjs` | headless-Edge smoke: download → offline reload → playback |
+| `npm run smoke` | the six headless browser smokes CI runs, in order |
+| `node scripts/smoke-shell.cjs` | smoke: boot, navigation, theme and language |
+| `node scripts/smoke-p3-offline.cjs` | smoke: download → offline reload → playback |
 | `node scripts/smoke-p4-worker.cjs` | smoke: real RSS through the local Worker (needs `worker:dev`) |
 | `node scripts/smoke-p5-mini.cjs` | smoke: mini player, queue, back-navigation |
+| `node scripts/smoke-chapters.cjs` | smoke: chapter list, scrubber markers, transcript cues |
+| `node scripts/smoke-longlist.cjs` | smoke: the render window over a 900-episode archive |
+| `node scripts/smoke-p6-sync.cjs` | smoke: two devices pairing and converging |
 | `node scripts/smoke-live.cjs [url]` | smoke against the deployed site: search, feed, playback, download from the podcast's own CDN, CSP violations |
 | `node scripts/icons.cjs` | regenerate all PNG icons from `public/icons/seseri.svg` |
 | `node scripts/store-shots.cjs` | regenerate manifest/store screenshots |
@@ -128,8 +143,11 @@ three of them and parses whichever answers first.
 │   ├── app.ts             # boot & wiring
 │   ├── lib/               # format helpers, safe DOM/text utils, artwork rendition URLs (art.ts)
 │   ├── feeds/             # iTunes / RSS / input parsing / proxy chain / resolveFeed /
+│   │                      # rss-scan.ts (DOM-free feed scanner, shared with the Worker),
+│   │                      # archive.ts (Apple→feed id remap), inbox.ts (new episodes),
 │   │                      # show notes (HTML→text), credential-URL guard for private feeds
-│   ├── player/            # audio engine, media session, sleep timer, offline downloads
+│   ├── player/            # audio engine, media session, sleep timer, offline downloads,
+│   │                      # chapters, transcripts, download jobs, prefetch
 │   ├── state/             # signals: settings, queue, now-playing, sleep timer
 │   ├── storage/           # localStorage (legacy keys), IndexedDB, OPML
 │   ├── ui/
@@ -143,13 +161,14 @@ three of them and parses whichever answers first.
 │   │       shortcuts.ts, number-prompt.ts, toast.ts, confirm.ts, …
 │   ├── i18n/              # 8 languages, compile-time key completeness
 │   ├── styles/
+│   │   ├── fonts.css, fonts/   # the three typefaces, self-hosted
 │   │   ├── tokens.css, themes.css, base.css, layout.css, controls.css,
 │   │   │   overlays.css, signal-line.css   # design-system layers
 │   │   ├── views/          # one stylesheet per view (home, search, library, podcast,
 │   │   │                   # queue, settings, now-playing)
 │   │   └── index.css       # barrel import
 │   └── sw.ts              # service worker (injectManifest)
-├── worker/                # Cloudflare Worker API (Hono): /v1/feed /v1/itunes
+├── worker/                # Cloudflare Worker API (Hono): /v1/feed /v1/parse /v1/itunes /v1/sync
 ├── public/                # manifest, icons (incl. maskable/monochrome), screenshots,
 │                          # privacy-policy, 404
 ├── scripts/               # icon/screenshot generators + headless smoke tests
@@ -215,12 +234,19 @@ oynatma, uyku zamanlayıcısı, hız ve kuyruğa erişim için tam ekran **Şimd
 
 | | |
 |---|---|
-| **Podcast arama** | isim, Apple Podcasts linki veya doğrudan RSS URL'si |
-| **Çevrimdışı bölümler** | indirilenler Cache API'de yaşar, bağlantısız çalar ve sarar; feed'ler IndexedDB'de önbelleklenir, arka planda tazelenir |
+| **Podcast arama** | isim, Apple Podcasts linki veya doğrudan RSS URL'si — ya da sekiz konu başlığından biriyle başla |
+| **Arşivin tamamı** | bölüm listeleri yayının kendi feed'inden gelir, yani Apple'ın döndürdüğü son 200 bölüm değil, arşivin tümü. Worker yapılandırılmışsa ayrıştırma orada olur (The Daily: 19,95 MB XML girer, 2,28 MB JSON çıkar), yapılandırılmamışsa cihazda |
+| **Dinlendi durumu** | bölümü bitirmek işaretler, istersen kendin de işaretlersin; liste **Tümü**, **Dinlenmemiş**, **Devam eden** veya **İndirilenler** olarak süzülür. Bir bölümü dinlenmedi işaretlemek kayıtlı konumunu da siler |
+| **Yeni bölümler** | takip ettiğin yayınlarda en son baktığından bu yana ne çıktıysa ana sayfada toplanır, platform destekliyorsa uygulama nişanıyla |
+| **Bölüm işaretleri & konuşma metni** | Podcasting 2.0 bölüm işaretleri liste olarak, ayrıca sarma çizgisinde işaretlerle; VTT/SRT konuşma metni satır satır, çalan satır vurgulu ve her satır sarılabilir. İkisi de ancak açtığında indirilir |
+| **Çevrimdışı bölümler** | indirilenler Cache API'de yaşar, bağlantısız çalar ve sarar; inerken gerçek yüzde gösterir ve iptal edilebilir. Feed'ler IndexedDB'de önbelleklenir ve sınırlıdır (30 günden eskiler atılır, sonra 80 MB'ın altına düşene kadar en eskiler — ama hiçbir zaman beş feed'in altına inmez); arka planda tazelenir |
+| **Otomatik indirme** | takip ettiğin yayınların yeni bölümleri istersen arka planda indirilir; istersen bölüm bitince indirilen kopya silinir — yalnızca bitenler, yarısında bıraktığın hiçbir şey kaldırılmaz |
 | **Kuyruk** | bölümü "sıradaki" olarak işaretle — kuyruk, liste sırasından önce gelir; kendi sayfası **Kuyruk** görünümünde |
 | **Mini transport** | feed'den çıkınca çalma sürer; kalıcı dock üzerinde atlama/oynat kontrolleri (geniş ekranda önceki/sonraki ve hız) ve dokunarak sarılabilir ilerleme çizgisi — ok simgesi tam **Şimdi Çalıyor** panelini açar. Dock'a sığmayan başlık üç nokta ile kesilmek yerine baştan sona kayar |
 | **Frekans-çizgisi dalga-form** | imza motif — Şimdi Çalıyor panelinde sürüklenebilir kahraman dalga-form, çalarken mini oynatıcıda animasyonlu çizgi |
 | **Şimdi Çalıyor paneli** | her ekran boyutunda tam ekran: oynat/duraklat, önceki/sonraki, atlama, 0.5×–2.5× hız, ses düzeyi, uyku zamanlayıcısı, kaldığın yerden devam etme, bölüm notları |
+| **Bölüm linkleri** | o bölümü açan bir link paylaş; Şimdi Çalıyor panelinden paylaşırsan bulunduğun andan açılır |
+| **Yayın başına hız** | bir yayın varsayılan hız yerine kendi hızıyla çalabilir; Ayarlar bunları listeler ve sıfırlar |
 | **Uyku zamanlayıcısı** | hazır süreler veya istediğin süre, ya da bölüm sonunda dur; canlı geri sayım, **+5 dk**, yumuşak sesle kısılma, duraklatınca durur ve sayfa yenilenince kaybolmaz |
 | **Net kapak görselleri** | her yüzey için doğru çözünürlük istenir, kapaklar küçük bir görselden büyütülmez; Şimdi Çalıyor arka planı kapağın baskın rengini alabilir (Ayarlar → Görünüm'den kapatılabilir) |
 | **Ses düzeyi** | her cihazda Şimdi Çalıyor panelinde, 1024px'ten itibaren dock'ta da bir sürgü; sessize alma seçtiğin seviyeyi korur. iOS'ta gizlenir — orada sayfanın ses düzeyini ayarlamasına izin verilmez, kontrol donanım tuşlarındadır |
@@ -229,7 +255,9 @@ oynatma, uyku zamanlayıcısı, hız ve kuyruğa erişim için tam ekran **Şimd
 | **Temalar** | Otomatik (sistem), Koyu, Açık, OLED Siyah; 7 vurgu rengi (varsayılan kehribar "kadran ışıltısı") |
 | **Çok dilli** | TR / EN / DE / FR / ES / AR / JA / RU (RTL dahil) |
 | **Kurulabilir** | maskable/monochrome ikonlu PWA, kısayollar, mağaza görselleri |
-| **Erişilebilir** | klavyeyle kullanılabilir görünümler, aria-live durum/busy, gezinmede odak yönetimi, `prefers-reduced-motion` |
+| **Erişilebilir** | klavyeyle kullanılabilir görünümler, aria-live durum/busy, gezinmede odak yönetimi, `prefers-reduced-motion`. Uzun bir bölüm listesi 2 973 sekme durağı değil, tek durak: satırlar arasında ve satırın düğmeleri arasında ok tuşlarıyla gezilir |
+| **Yapısı gereği özel** | analitik yok, hesap yok, arayüzü çizmek için üçüncü taraf isteği de yok — yazı tipleri uygulamanın kendi origin'inden gelir, yani `font-src` yalnızca `'self'` |
+| **Kendini kurtarabilir** | açılış başarısız olursa uygulama boş sayfa yerine bunu söyler: yeniden yükleme düğmesi ve iki dokunuşluk veri silme. Ayarlar bir tanılama raporunu panoya kopyalayabilir, rapor hiçbir yere gönderilmez |
 
 #### Klavye kısayolları
 
@@ -245,6 +273,7 @@ eder, yani her görünümde iş görür; `[`, `Esc` ve `?` her zaman etkindir.
 | `[` | Kenar çubuğunu daralt veya genişlet (masaüstü) |
 | `Esc` | Şimdi Çalıyor panelini kapat |
 | `?` | Kısayol listesini göster |
+| Listede `↑` / `↓` | Bölüm satırları arasında gezin (`←` / `→` satırın kendi düğmeleri) |
 
 ### Cihazlar arası eşitleme
 

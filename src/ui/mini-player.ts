@@ -8,6 +8,7 @@ import { initSleepControl } from './sleep-control';
 import { initVolumeControl } from './volume-control';
 import { nowPlayingLabel, playing } from '../player/session';
 import { setSetting, settings } from '../state/settings';
+import { feedSpeedRevision, hasOwnSpeed, setFeedSpeed, speedFor } from '../state/feed-speed';
 import type { PlaybackController } from './playback-controller';
 import { must } from './shell';
 
@@ -137,20 +138,31 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
   btnFwd.addEventListener('click', () => playback.seekRel(settings().skipForward));
   btnPrev.addEventListener('click', () => playback.prev());
   btnNext.addEventListener('click', () => playback.next());
+  // Per show while something is playing, global otherwise — the same rule the
+  // Now Playing sheet's control follows.
   speedSel.addEventListener('change', () => {
     const v = parseFloat(speedSel.value) || 1;
-    setSetting('defaultSpeed', v);
+    const feedId = playing()?.feedId;
+    if (feedId) setFeedSpeed(feedId, v);
+    else setSetting('defaultSpeed', v);
     pbSetRate(v);
   });
+
+  const refreshSpeed = (): void => {
+    const feedId = playing()?.feedId;
+    speedSel.value = String(speedFor(feedId));
+    speedSel.classList.toggle('has-own', hasOwnSpeed(feedId));
+  };
 
   settings.subscribe((S) => {
     lblBack.textContent = String(S.skipBack);
     lblFwd.textContent = String(S.skipForward);
-    speedSel.value = String(S.defaultSpeed);
+    refreshSpeed();
   });
+  feedSpeedRevision.subscribe(refreshSpeed);
   lblBack.textContent = String(settings().skipBack);
   lblFwd.textContent = String(settings().skipForward);
-  speedSel.value = String(settings().defaultSpeed);
+  refreshSpeed();
 
   // ── tap/drag-to-seek on the progress hairline ────────────────────
   let scrubbing = false;

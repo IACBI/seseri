@@ -1,16 +1,16 @@
 /* Live smoke against the production site + worker (real network, no mocks).
  * Usage: node scripts/smoke-live.cjs [url]  (default: https://iacbi.github.io/seseri/) */
 const puppeteer = require('puppeteer-core');
+const { launchOptions } = require('./lib/harness.cjs');
 
 const BASE = process.argv[2] || 'https://iacbi.github.io/seseri/';
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 
 (async () => {
   const results = [];
   const ok = (name, pass, extra = '') => { results.push(pass); console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${extra ? '  (' + extra + ')' : ''}`); };
   let browser;
   try {
-    browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio', '--autoplay-policy=no-user-gesture-required'] });
+    browser = await puppeteer.launch(launchOptions());
     const page = await browser.newPage();
     const workerCalls = [];
     const cspErrors = [];

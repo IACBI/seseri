@@ -69,6 +69,30 @@ describe('desktop CSP tracks the shipped web CSP', () => {
     expect(sources.filter((s) => s.startsWith('https://'))).toEqual([]);
   });
 
+  /**
+   * Fonts moved onto our own origin (src/styles/fonts.css). The web policy was
+   * the only one edited for that, and this file's whole reason for existing is
+   * that the desktop copy is edited by hand and exercised by nothing — so a
+   * leftover Google origin here is exactly the drift to catch. The desktop
+   * window's own origin is `tauri://`, not the site, so `font-src` has to name
+   * the site the way `style-src` and `script-src` already do.
+   */
+  it('no longer reaches Google Fonts from either policy', () => {
+    const all = [...Object.values(web), ...Object.values(desktop)].join(' ');
+    expect(all).not.toContain('fonts.googleapis.com');
+    expect(all).not.toContain('fonts.gstatic.com');
+  });
+
+  it('lets the desktop window load fonts from the site it renders', () => {
+    const sources = (desktop['font-src'] ?? '').split(' ');
+    expect(sources).toContain("'self'");
+    expect(sources).toContain('https://iacbi.github.io');
+  });
+
+  it('serves web fonts from our own origin only', () => {
+    expect(web['font-src']).toBe("'self'");
+  });
+
   it('keeps script-src off the open internet in both', () => {
     // A wildcard scheme here would let any https host execute; a named origin
     // (the site the desktop window loads) is fine.

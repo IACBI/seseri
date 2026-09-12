@@ -451,3 +451,12 @@
 }
 .tab:hover { color: var(--text); }
 .tab[aria-selected="true"] { color: var(--accent); border-block-end-color: var(--accent); }
+
+/* A show playing at its own speed rather than the default says so, quietly:
+   without this the control reads as the global setting and the listener has no
+   way to tell that this one show is different. */
+.seri-select.has-own,
+.mini-sel.has-own {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}

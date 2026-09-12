@@ -1,14 +1,12 @@
 /* Store screenshots for the web manifest / store listings:
  * 1920×1080 wide + 1080×1920 narrow, saved into public/screenshots/. */
-const { spawn } = require('child_process');
-const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const puppeteer = require('puppeteer-core');
+const { launchOptions, startServer, stopServer, waitServer } = require('./lib/harness.cjs');
 
 const PORT = 5204;
 const ORIGIN = `http://localhost:${PORT}`;
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const OUT = path.join(__dirname, '..', 'public', 'screenshots');
 
 const LOOKUP = {
@@ -23,22 +21,13 @@ const LOOKUP = {
   ],
 };
 
-function waitServer(url, tries = 60) {
-  return new Promise((resolve, reject) => {
-    const ping = (n) => http.get(url, (r) => { r.resume(); resolve(); }).on('error', () =>
-      n <= 0 ? reject(new Error('no server')) : setTimeout(() => ping(n - 1), 500));
-    ping(tries);
-  });
-}
-
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
-  const server = spawn('npx.cmd', ['vite', 'preview', '--port', String(PORT), '--strictPort'],
-    { cwd: path.join(__dirname, '..'), shell: true, stdio: 'ignore' });
+  const server = startServer({ port: PORT });
   let browser;
   try {
     await waitServer(ORIGIN + '/');
-    browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio'] });
+    browser = await puppeteer.launch(launchOptions());
 
     const mock = async (page) => {
       await page.setRequestInterception(true);
@@ -92,7 +81,6 @@ function waitServer(url, tries = 60) {
     await grab(page2, 'narrow-feed', 360, 640, 3, '/?podcast=777000111', true);
   } finally {
     if (browser) await browser.close().catch(() => {});
-    server.kill('SIGTERM');
-    try { process.kill(server.pid); } catch {}
+    await stopServer(server);
   }
 })();

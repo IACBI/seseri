@@ -136,3 +136,80 @@
   transition: transform var(--d-slow) var(--ease-out), visibility 0s;
 }
 
+
+/* ─ Crash recovery screen (ui/fatal.ts) ─
+   Replaces the whole page, so it does not inherit the shell's layout: a
+   centred column that stands on the base tokens alone. `has-fatal` on <body>
+   hides the chrome in case the shell had already rendered before the throw. */
+.fatal {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--s-5) var(--s-4);
+  padding-block-start: max(var(--s-5), env(safe-area-inset-top, 0px));
+  background: var(--bg);
+}
+.fatal-box {
+  inline-size: min(100%, 560px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.fatal-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: var(--text);
+}
+.fatal-body {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text2);
+}
+.fatal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+/* The armed state of the two-tap wipe: unmistakable, no animation needed so
+   prefers-reduced-motion has nothing to suppress. */
+.fatal-actions .s-btn.danger.armed {
+  background: color-mix(in srgb, var(--red) 18%, var(--surface));
+  border-color: var(--red);
+}
+.fatal-summary {
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--text3);
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.fatal-detail {
+  margin: var(--s-2) 0 0;
+  padding: var(--s-3);
+  max-height: 40dvh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--bg2);
+  color: var(--text3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  /* A stack trace has no spaces to break on; without this it scrolls the page
+     sideways on a phone. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* Left-to-right even in RTL: a stack trace is code, not prose. */
+  direction: ltr;
+  text-align: start;
+}
+body.has-fatal .app-nav,
+body.has-fatal .app-main,
+body.has-fatal .mini-player,
+body.has-fatal .np-sheet {
+  display: none;
+}

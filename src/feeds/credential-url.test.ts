@@ -24,6 +24,11 @@ describe('carriesCredential — protects private feeds', () => {
     ['https://www.patreon.com/rss/creator?auth=Ab3xK9zQ11mNpQrStUvWxYz', 'Patreon auth param'],
     ['https://example.com/feed?token=abc123def456ghi789jkl012', 'token param'],
     ['https://example.com/feed?access_token=xyz', 'access_token by name'],
+    // `auth` and `token` were both in the list but `auth_token` — the spelling
+    // most services actually use — matched neither, and its value is usually
+    // too short for the opaque-value rule to catch on its own.
+    ['https://example.com/feed?auth_token=short', 'auth_token by name'],
+    ['https://example.com/feed?auth-token=short', 'auth-token by name'],
     ['https://example.com/feed?api_key=k', 'api_key by name'],
     ['https://example.com/feed?apiKey=k', 'camelCase apiKey'],
     ['https://example.com/feed?signature=deadbeef', 'signature by name'],

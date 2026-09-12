@@ -137,6 +137,33 @@ export function moveInQueue(ref: { feedId: string; trackId: string }, dir: -1 | 
   persist(next);
 }
 
+/**
+ * Rewrite the episode ids of one feed's queued items.
+ *
+ * Same reason as `remapProgressIds`: after the Apple→RSS archive switch a
+ * queued episode would no longer match anything in the list, so it would sit
+ * in the queue unplayable. Returns how many entries changed.
+ */
+export function remapQueueIds(
+  feedId: string,
+  pairs: ReadonlyArray<readonly [string, string]>,
+): number {
+  const map = new Map(pairs.filter(([from, to]) => from !== to));
+  if (!map.size) return 0;
+  let changed = 0;
+  const next = queue().map((qi) => {
+    if (qi.feedId !== feedId) return qi;
+    const to = map.get(qi.trackId);
+    if (!to) return qi;
+    changed++;
+    return { ...qi, trackId: to };
+  });
+  // Not `persist`: the queue's own order and stamp are unchanged, and
+  // restamping it would make this device win every subsequent sync conflict.
+  if (changed) setQueueStamped(next, queueAt);
+  return changed;
+}
+
 export function clearQueue(): void {
   persist([]);
 }

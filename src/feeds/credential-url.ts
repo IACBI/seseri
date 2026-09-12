@@ -23,7 +23,7 @@
  */
 
 const SECRET_PARAM =
-  /^(auth|authorization|token|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|apikey|key|secret|password|passwd|pwd|sig|signature|hmac|jwt|session|session[_-]?id|feed[_-]?token|user[_-]?token|subscriber[_-]?id|member[_-]?id|pass|credential)$/i;
+  /^(auth|authorization|token|auth[_-]?token|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|apikey|key|secret|password|passwd|pwd|sig|signature|hmac|jwt|session|session[_-]?id|feed[_-]?token|user[_-]?token|subscriber[_-]?id|member[_-]?id|pass|credential)$/i;
 
 /** Token-ish enough to be a credential rather than a slug or a numeric id. */
 function looksOpaque(v: string): boolean {

@@ -40,6 +40,20 @@ export interface SubEntry {
   meta?: FeedMeta;
 }
 
+/**
+ * Whether an episode has been heard, when the listener said so by hand.
+ *
+ * `unplayed` has to travel as a stamped entry rather than as an absence, for
+ * the same reason a removed subscription does: the merge is a union and
+ * positions are additive, so "I have not heard this" expressed only as a
+ * deleted position would be undone by any device that still had the position.
+ */
+export interface PlayedEntry {
+  at: number;
+  /** Absent means played; true means explicitly marked unplayed. */
+  unplayed?: true;
+}
+
 /** The queue travels whole; see `mergePayload` for why it is not merged item by item. */
 export interface QueueSnapshot {
   list: QueueItem[];
@@ -55,4 +69,12 @@ export interface SyncPayload {
   /** feedId → subscription or tombstone */
   subs: Record<string, SubEntry>;
   queue: QueueSnapshot;
+  /**
+   * episode trackId → heard, or explicitly not heard.
+   *
+   * Optional on the way in: a device still on payload v1 sends none, and its
+   * absence must read as "nothing to say about any episode" rather than as a
+   * payload this build cannot apply.
+   */
+  played?: Record<string, PlayedEntry>;
 }

@@ -8,7 +8,7 @@
  * --player-font-size / --list-row-height side-effect tokens on documentElement.
  */
 
-import { t } from '../../i18n';
+import { currentLang, t } from '../../i18n';
 import type { LangKey } from '../../i18n/types';
 import { createLangMenu } from '../lang-menu';
 import {
@@ -24,9 +24,10 @@ import {
 import { formatCode } from '../../sync/code';
 import { SYNC_AVAILABLE } from '../../sync/transport';
 import { clearAllDownloads, storageInfo } from '../../player/offline';
-import { clearFeedCache } from '../../storage/db';
+import { clearPlayed } from '../../storage/played';
+import { clearFeedSpeeds, feedSpeedCount, feedSpeedRevision } from '../../state/feed-speed';
 import { clearProgress, saveProgressNow } from '../../storage/progress';
-import { local } from '../../storage/local';
+import { hardReset } from '../../storage/reset';
 import { exportBackup, restoreBackup } from '../../storage/backup';
 import { exportOpml, parseOpml } from '../../storage/opml';
 import { subscriptions, toggleSubscription, isSubscribed } from '../../storage/subscriptions';
@@ -40,6 +41,8 @@ import {
   type ThemeName,
 } from '../../state/settings';
 import { fmtBytes } from '../../lib/format';
+import { collectDiagnostics } from '../../lib/diagnostics';
+import { feedCacheInfo } from '../../storage/db';
 import { toast } from '../toast';
 import { confirmDialog } from '../confirm';
 import { ACCENT_SWATCHES, normalizeAccent, applyAccent, applyTheme } from '../theme';
@@ -72,6 +75,14 @@ const MARKUP = `
         <option value="2">2×</option>
         <option value="2.5">2.5×</option>
       </select>
+    </div>
+
+    <div class="s-row">
+      <div>
+        <div class="s-label" data-i18n="s_feed_speeds">Şova özel hızlar</div>
+        <div class="s-sublabel" id="feedSpeedInfo"></div>
+      </div>
+      <button class="s-btn" id="btnResetFeedSpeeds" data-i18n="btn_reset_feed_speeds">Sıfırla</button>
     </div>
 
     <div class="s-row">
@@ -193,6 +204,29 @@ const MARKUP = `
         <option value="never" data-i18n="s_prefetch_never">Asla</option>
       </select>
     </div>
+
+    <div class="s-row">
+      <div>
+        <div class="s-label" data-i18n="s_auto_download">Yeni bölümleri indir</div>
+        <div class="s-sublabel" data-i18n="s_auto_download_sub">Abone olduğun şovlarda çıkan bölümler arka planda iner; her denetlemede en fazla 5 tanesi.</div>
+      </div>
+      <select class="s-select" id="s_autoDownload">
+        <option value="always" data-i18n="s_prefetch_always">Her zaman</option>
+        <option value="wifi" data-i18n="s_prefetch_wifi">Yalnızca Wi-Fi</option>
+        <option value="never" selected data-i18n="s_prefetch_never">Asla</option>
+      </select>
+    </div>
+
+    <div class="s-row">
+      <div>
+        <div class="s-label" data-i18n="s_delete_played">Dinlenince indirmeyi sil</div>
+        <div class="s-sublabel" data-i18n="s_delete_played_sub">Yalnızca biten bölümler silinir; kaldığın bölümlere dokunulmaz.</div>
+      </div>
+      <label class="s-toggle">
+        <input type="checkbox" id="s_deleteAfterPlayed">
+        <span class="s-toggle-track"></span>
+      </label>
+    </div>
   </section>
 
   <section class="s-section">
@@ -249,7 +283,10 @@ const MARKUP = `
   <section class="s-section">
     <div class="s-section-title" data-i18n="s_data">Veri</div>
     <div class="s-row">
-      <div><div class="s-label" data-i18n="s_storage">Depolama</div></div>
+      <div>
+        <div class="s-label" data-i18n="s_storage">Depolama</div>
+        <div class="s-sublabel" id="feedCacheUsage"></div>
+      </div>
       <span class="s-sublabel" id="storageUsage">—</span>
     </div>
     <div class="s-data-btns">
@@ -257,6 +294,7 @@ const MARKUP = `
       <button class="s-btn" id="btnOpmlImport" data-i18n="btn_opml_import">OPML İçe Aktar</button>
       <button class="s-btn" id="btnJsonExport" data-i18n="btn_json_export">JSON Yedeği İndir</button>
       <button class="s-btn" id="btnJsonImport" data-i18n="btn_json_import">JSON Yedeğini Geri Yükle</button>
+      <button class="s-btn" id="btnDiagnostics" data-i18n="btn_diagnostics">Teşhis Bilgisini Kopyala</button>
       <button class="s-btn danger" id="btnClearDownloads" data-i18n="btn_clear_downloads">🗑 İndirilenleri Sil</button>
       <button class="s-btn danger" id="btnClearProgress" data-i18n="btn_clear_progress">🗑 Tüm İlerlemeyi Sıfırla</button>
       <button class="s-btn danger" id="btnClearAll" data-i18n="btn_clear_all">🗑 Tüm Verileri Temizle</button>
@@ -289,10 +327,33 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   const sShowDl = pick<HTMLInputElement>('s_showDl');
   const sProxies = pick<HTMLInputElement>('s_allowPublicProxies');
   const sPrefetch = pick<HTMLSelectElement>('s_prefetchAudio');
+  const sAutoDl = pick<HTMLSelectElement>('s_autoDownload');
+  const sDeletePlayed = pick<HTMLInputElement>('s_deleteAfterPlayed');
   // Language: the shared flag listbox (native <option> can't render flags)
   pick<HTMLDivElement>('s_lang').append(createLangMenu());
   const swatchWrap = pick<HTMLDivElement>('colorSwatches');
   const storageUsageEl = pick<HTMLSpanElement>('storageUsage');
+  const feedSpeedInfoEl = pick<HTMLDivElement>('feedSpeedInfo');
+  const feedCacheUsageEl = pick<HTMLDivElement>('feedCacheUsage');
+  const resetSpeedsBtn = pick<HTMLButtonElement>('btnResetFeedSpeeds');
+
+  /**
+   * The per-show speeds are set while listening, from the Now Playing sheet, so
+   * Settings is where a listener finds out they exist — and the only place they
+   * can be undone in one go.
+   */
+  function refreshFeedSpeeds(): void {
+    const n = feedSpeedCount();
+    feedSpeedInfoEl.textContent = t('s_feed_speeds_sub', n);
+    resetSpeedsBtn.disabled = n === 0;
+  }
+  resetSpeedsBtn.addEventListener('click', () => {
+    clearFeedSpeeds();
+    toast(t('toast_feed_speeds_reset'));
+  });
+  feedSpeedRevision.subscribe(refreshFeedSpeeds);
+  currentLang.subscribe(refreshFeedSpeeds);
+  refreshFeedSpeeds();
 
   // ── accent swatches (now dynamic from ACCENT_SWATCHES) ───────────
   const swatches = ACCENT_SWATCHES.map(({ hex, name }) => {
@@ -341,6 +402,8 @@ export function initSettingsView(deps: SettingsViewDeps): View {
     sShowDl.checked = S.showDl;
     sProxies.checked = S.allowPublicProxies;
     sPrefetch.value = S.prefetchAudio;
+    sAutoDl.value = S.autoDownload;
+    sDeletePlayed.checked = S.deleteAfterPlayed;
     updateSwatchActive();
   }
 
@@ -354,6 +417,12 @@ export function initSettingsView(deps: SettingsViewDeps): View {
     storageUsageEl.textContent =
       t('storage_usage', fmtBytes(info.usageBytes), fmtBytes(info.quotaBytes)) +
       (info.downloadCount ? ` · ${info.downloadCount} ⤓ ${fmtBytes(info.downloadBytes)}` : '');
+    // The feed cache was an invisible consumer of the same quota: it kept every
+    // feed ever opened, and one full archive is a couple of megabytes.
+    const feeds = await feedCacheInfo();
+    feedCacheUsageEl.textContent = feeds.count
+      ? t('storage_feeds', feeds.count, fmtBytes(feeds.bytes))
+      : '';
   }
 
   // ── wiring ───────────────────────────────────────────────────────
@@ -386,6 +455,12 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   );
   sPrefetch.addEventListener('change', () =>
     setSetting('prefetchAudio', sPrefetch.value as PrefetchMode),
+  );
+  sAutoDl.addEventListener('change', () =>
+    setSetting('autoDownload', sAutoDl.value as PrefetchMode),
+  );
+  sDeletePlayed.addEventListener('change', () =>
+    setSetting('deleteAfterPlayed', sDeletePlayed.checked),
   );
 
   // ── data section ─────────────────────────────────────────────────
@@ -535,6 +610,15 @@ export function initSettingsView(deps: SettingsViewDeps): View {
     });
   });
 
+  pick('btnDiagnostics').addEventListener('click', () => {
+    void collectDiagnostics().then((text) =>
+      navigator.clipboard?.writeText(text).then(
+        () => toast(t('toast_diagnostics')),
+        () => toast(t('toast_sync_copy_failed'), 'error'),
+      ),
+    );
+  });
+
   pick('btnClearDownloads').addEventListener('click', () => {
     void confirmDialog('confirm_clear_downloads').then((ok) => {
       if (!ok) return;
@@ -549,6 +633,9 @@ export function initSettingsView(deps: SettingsViewDeps): View {
     void confirmDialog('confirm_clear_progress').then((ok) => {
       if (!ok) return;
       clearProgress();
+      // The marks are part of "how far have I got"; leaving them would report
+      // a cleared archive as fully heard.
+      clearPlayed();
       deps.onDataCleared();
     });
   });
@@ -556,14 +643,13 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   pick('btnClearAll').addEventListener('click', () => {
     void confirmDialog('confirm_clear_all').then(async (ok) => {
       if (!ok) return;
+      // Cancels the throttled progress write, so it cannot land after the wipe.
       saveProgressNow();
-      // localStorage alone left the bulk of the data in place: the IndexedDB
-      // feed/resume/download stores and, worst of all, the `seseri-audio`
-      // Cache API bucket holding every downloaded episode — potentially
-      // gigabytes that "clear all data" silently kept.
-      await clearAllDownloads();
-      await clearFeedCache();
-      local.clear();
+      // One implementation, shared with the crash-recovery screen: localStorage
+      // alone left the bulk of the data in place — the IndexedDB stores and,
+      // worst of all, the `seseri-audio` Cache API bucket holding every
+      // downloaded episode, potentially gigabytes that "clear all data" kept.
+      await hardReset();
       location.reload();
     });
   });

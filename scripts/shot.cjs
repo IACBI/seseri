@@ -1,25 +1,13 @@
 /* Screenshot helper for UI review of the "Sinyal" UI: home, search view, feed
  * (desktop/tablet/mobile), the settings VIEW and the Now Playing sheet. */
-const { spawn } = require('child_process');
-const http = require('http');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
+const { launchOptions, makeWav, startServer, stopServer, waitServer } = require('./lib/harness.cjs');
 
 const PORT = 5202;
 const ORIGIN = `http://localhost:${PORT}`;
-const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const OUT = process.argv[2] || path.join(__dirname, '..', 'docs', 'screens-v4');
 
-function makeWav(seconds = 120) {
-  const rate = 8000;
-  const data = Buffer.alloc(rate * seconds, 128); // 8-bit silence
-  const h = Buffer.alloc(44);
-  h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8);
-  h.write('fmt ', 12); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22);
-  h.writeUInt32LE(rate, 24); h.writeUInt32LE(rate, 28); h.writeUInt16LE(1, 32); h.writeUInt16LE(8, 34);
-  h.write('data', 36); h.writeUInt32LE(data.length, 40);
-  return Buffer.concat([h, data]);
-}
 const WAV = makeWav();
 
 const LOOKUP = {
@@ -32,22 +20,13 @@ const LOOKUP = {
   ],
 };
 
-function waitServer(url, tries = 60) {
-  return new Promise((resolve, reject) => {
-    const ping = (n) => http.get(url, (r) => { r.resume(); resolve(); }).on('error', () =>
-      n <= 0 ? reject(new Error('no server')) : setTimeout(() => ping(n - 1), 500));
-    ping(tries);
-  });
-}
-
 (async () => {
   require('fs').mkdirSync(OUT, { recursive: true });
-  const server = spawn('npx.cmd', ['vite', 'preview', '--port', String(PORT), '--strictPort'],
-    { cwd: path.join(__dirname, '..'), shell: true, stdio: 'ignore' });
+  const server = startServer({ port: PORT });
   let browser;
   try {
     await waitServer(ORIGIN + '/');
-    browser = await puppeteer.launch({ executablePath: EDGE, headless: 'new', args: ['--mute-audio', '--autoplay-policy=no-user-gesture-required'] });
+    browser = await puppeteer.launch(launchOptions());
     const page = await browser.newPage();
     await page.setRequestInterception(true);
     page.on('request', (req) => {
@@ -117,7 +96,6 @@ function waitServer(url, tries = 60) {
     console.log('shot now-playing-sheet');
   } finally {
     if (browser) await browser.close().catch(() => {});
-    server.kill('SIGTERM');
-    try { process.kill(server.pid); } catch {}
+    await stopServer(server);
   }
 })();
