@@ -131,3 +131,14 @@ Patch numbers step one at a time to 99, then roll the minor (`4.1.99` → `4.2.0
    curl -s -o /dev/null -w '%{http_code}\n' -H 'Origin: http://localhost' \
      "$API/v1/itunes?url=<encoded>"   # must be 403 from production
    ```
+
+   **On this machine that curl does not connect.** `curl` exits 35 and
+   PowerShell reports "The SSL connection could not be established" for
+   `*.workers.dev`, and the desktop app's Browser pane fails the same fetch
+   while reaching `itunes.apple.com` fine — the browser the smoke harness
+   launches is the only client here that completes the handshake. Probe
+   through it instead: `node scripts/smoke-live.cjs` covers the deployed
+   site, and for the Origin check drive a page with
+   `page.setExtraHTTPHeaders({ Origin: 'http://localhost' })` and read
+   `response.status()`. A refusal you could not send is not evidence that
+   the route is closed.
