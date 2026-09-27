@@ -63,11 +63,20 @@ async function seedVersion2(records: Array<{ id: string; fetchedAt: number; byte
   return d;
 }
 
-/** Wait for a condition, on real time — IndexedDB work is not timer-driven. */
-async function until(pred: () => boolean | Promise<boolean>, label: string): Promise<void> {
-  for (let i = 0; i < 400; i++) {
+/**
+ * Wait for a condition, on real time — IndexedDB work is not timer-driven.
+ * A deadline, not a number of polls: how long a poll takes depends on the
+ * machine, and pruning waits a fixed three seconds.
+ */
+async function until(
+  pred: () => boolean | Promise<boolean>,
+  label: string,
+  ms = 8000,
+): Promise<void> {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
     if (await pred()) return;
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r, 20));
   }
   throw new Error('timed out waiting for: ' + label);
 }
@@ -120,50 +129,60 @@ describe('schema 3', () => {
 });
 
 describe('pruning reads the stats, not the archives', () => {
-  it('evicts a stale feed without ever reading the feeds store whole', async () => {
-    const reads: string[] = [];
-    // `IDBObjectStore` is fake-indexeddb's here (installed by /auto).
-    const getAll = IDBObjectStore.prototype.getAll;
-    vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (
-      this: IDBObjectStore,
-      ...args: Parameters<typeof getAll>
-    ) {
-      reads.push(this.name);
-      return getAll.apply(this, args);
-    });
+  it(
+    'evicts a stale feed without ever reading the feeds store whole',
+    { timeout: 15_000 },
+    async () => {
+      const reads: string[] = [];
+      // `IDBObjectStore` is fake-indexeddb's here (installed by /auto).
+      const getAll = IDBObjectStore.prototype.getAll;
+      vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (
+        this: IDBObjectStore,
+        ...args: Parameters<typeof getAll>
+      ) {
+        reads.push(this.name);
+        return getAll.apply(this, args);
+      });
 
-    // Six feeds, one of them 40 days old: over the floor of five, so the
-    // stale one is eligible.
-    const old = await seedVersion2([{ id: 'stale', fetchedAt: Date.now() - 40 * DAY, bytes: 10 }]);
-    old.close();
-    for (const id of ['f1', 'f2', 'f3', 'f4', 'f5']) await putCachedFeed(feed(id));
+      // Six feeds, one of them 40 days old: over the floor of five, so the
+      // stale one is eligible.
+      const old = await seedVersion2([
+        { id: 'stale', fetchedAt: Date.now() - 40 * DAY, bytes: 10 },
+      ]);
+      old.close();
+      for (const id of ['f1', 'f2', 'f3', 'f4', 'f5']) await putCachedFeed(feed(id));
 
-    // Pruning waits for the burst of writes to end.
-    await until(async () => !(await getCachedFeed('stale')), 'the stale feed to be pruned');
+      // Pruning waits for the burst of writes to end.
+      await until(async () => !(await getCachedFeed('stale')), 'the stale feed to be pruned');
 
-    expect((await feedCacheInfo()).count).toBe(5);
-    expect(reads).toContain('feedStats');
-    expect(reads).not.toContain('feeds');
-  });
+      expect((await feedCacheInfo()).count).toBe(5);
+      expect(reads).toContain('feedStats');
+      expect(reads).not.toContain('feeds');
+    },
+  );
 });
 
 describe('an upgrade another tab is blocking', () => {
-  it('fails fast instead of hanging, then recovers when the tab lets go', async () => {
-    // A tab still running 4.2.9: it holds a schema-2 connection and does not
-    // close it when asked to.
-    const other = await seedVersion2([{ id: 'a', fetchedAt: 1, bytes: 5 }]);
-    other.onversionchange = () => undefined;
+  it(
+    'fails fast instead of hanging, then recovers when the tab lets go',
+    { timeout: 15_000 },
+    async () => {
+      // A tab still running 4.2.9: it holds a schema-2 connection and does not
+      // close it when asked to.
+      const other = await seedVersion2([{ id: 'a', fetchedAt: 1, bytes: 5 }]);
+      other.onversionchange = () => undefined;
 
-    const started = Date.now();
-    await expect(listDownloads()).resolves.toEqual([]);
-    await expect(getCachedFeed('a')).resolves.toBeUndefined();
-    expect(Date.now() - started).toBeLessThan(1000);
+      const started = Date.now();
+      await expect(listDownloads()).resolves.toEqual([]);
+      await expect(getCachedFeed('a')).resolves.toBeUndefined();
+      expect(Date.now() - started).toBeLessThan(1000);
 
-    other.close();
+      other.close();
 
-    await until(async () => (await feedCacheInfo()).count === 1, 'the upgrade to go through');
-    await putDownload({ id: 'd1', feedId: 'a', title: 'T', bytes: 1, addedAt: 1 });
-    expect((await listDownloads()).map((d) => d.id)).toEqual(['d1']);
-    expect((await db()).version).toBe(3);
-  });
+      await until(async () => (await feedCacheInfo()).count === 1, 'the upgrade to go through');
+      await putDownload({ id: 'd1', feedId: 'a', title: 'T', bytes: 1, addedAt: 1 });
+      expect((await listDownloads()).map((d) => d.id)).toEqual(['d1']);
+      expect((await db()).version).toBe(3);
+    },
+  );
 });

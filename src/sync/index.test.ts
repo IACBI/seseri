@@ -45,8 +45,10 @@ const DEBOUNCE_MS = 30_000;
  * Sealing goes through WebCrypto and CompressionStream — real async work that
  * fake timers do not drive — so wait on the outcome, not on a number of turns.
  */
-async function until(pred: () => boolean, label: string): Promise<void> {
-  for (let i = 0; i < 5000; i++) {
+async function until(pred: () => boolean, label: string, ms = 4000): Promise<void> {
+  // `performance.now`, not `Date.now`: it is not among the faked clocks here.
+  const deadline = performance.now() + ms;
+  while (performance.now() < deadline) {
     if (pred()) return;
     await new Promise((r) => setImmediate(r));
   }
