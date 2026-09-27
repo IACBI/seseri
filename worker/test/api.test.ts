@@ -1,4 +1,5 @@
-import { createExecutionContext, env, fetchMock, waitOnExecutionContext } from 'cloudflare:test';
+import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
+import { fetchMock } from './upstream';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import worker from '../src/index';
 import { safeTarget } from '../src/safe-fetch';

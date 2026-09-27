@@ -216,6 +216,7 @@ const ru: Lang = {
   fatal_wipe: "Очистить данные",
   fatal_wipe_confirm: "Уверены? Нажмите ещё раз, чтобы удалить",
   fatal_details: "Технические подробности",
+  filter_group: "Фильтр выпусков",
   filter_all: "Все",
   filter_unplayed: "Непрослушанные",
   filter_inprogress: "Начатые",
@@ -233,6 +234,8 @@ const ru: Lang = {
   home_check_now: "Проверить новые выпуски",
   toast_new_found: (n) => `${n} ${plural(Number(n), 'новый выпуск', 'новых выпуска', 'новых выпусков')}`,
   toast_no_new: "Ничего нового.",
+  toast_check_failed: (n) =>
+    `Не удалось загрузить ${n} ${plural(Number(n), 'подкаст', 'подкаста', 'подкастов')}`,
   share_episode: "Поделиться выпуском",
   share_episode_at: (time) => `Поделиться выпуском с ${time}`,
   link_copied_at: (time) => `Ссылка скопирована (${time})`,

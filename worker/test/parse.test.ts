@@ -1,4 +1,5 @@
-import { createExecutionContext, env, fetchMock, waitOnExecutionContext } from 'cloudflare:test';
+import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
+import { fetchMock } from './upstream';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import worker from '../src/index';
 
@@ -163,6 +164,20 @@ describe('GET /v1/parse', () => {
     expect(body.total).toBe(50);
     expect(body.offset).toBe(10);
     expect(body.episodes.map((e) => e.trackId)).toEqual(['g10', 'g11', 'g12', 'g13', 'g14']);
+  });
+
+  it('keeps the archive past one response, so it can be paged', async () => {
+    // One response carries at most 5000 episodes. The cached document used to
+    // be cut there too, so an offset past it came back empty and the rest of
+    // a long archive could not be fetched at all.
+    serve('/huge.xml', feed(5003));
+    const first = (await (await call(parseUrl('/huge.xml'))).json()) as ParsedBody;
+    expect(first.total).toBe(5003);
+    expect(first.episodes).toHaveLength(5000);
+
+    const rest = (await (await call(parseUrl('/huge.xml', '&offset=5000'))).json()) as ParsedBody;
+    expect(rest.offset).toBe(5000);
+    expect(rest.episodes.map((e) => e.trackId)).toEqual(['g5000', 'g5001', 'g5002']);
   });
 
   it('treats a nonsense offset or limit as absent rather than failing', async () => {

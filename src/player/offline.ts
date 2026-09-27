@@ -66,6 +66,23 @@ function counting(
   );
 }
 
+/**
+ * False for a body that is plainly a document rather than audio.
+ *
+ * A 200 is not proof of an episode: a paywall, a captive portal or a CDN's
+ * error page all answer 200 with HTML, and stored under the episode's key that
+ * page played as nothing, every time, while the row said "downloaded". Only
+ * document types are refused — hosts label real audio every which way
+ * (`application/octet-stream`, `binary/octet-stream`, no type at all), and
+ * refusing one of those would lose a download that works.
+ */
+export function mayBeAudio(contentType: string | null): boolean {
+  const type = (contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+  if (!type) return true;
+  if (type.startsWith('text/')) return false;
+  return !/^application\/(json|xml|xhtml\+xml|javascript)$|[+](xml|json)$/.test(type);
+}
+
 /** Fetch the episode audio into the offline cache. */
 export async function downloadOffline(
   ep: Episode,
@@ -82,6 +99,10 @@ export async function downloadOffline(
       ...(opts.signal ? { signal: opts.signal } : {}),
     });
     if (!res.ok) return 'failed';
+    if (!mayBeAudio(res.headers.get('content-type'))) {
+      void res.body?.cancel().catch(() => {});
+      return 'failed';
+    }
 
     // Refuse up front when the episode obviously will not fit — the estimate is
     // right here and was previously only used for the settings readout.

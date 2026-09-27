@@ -87,22 +87,50 @@ export async function fetchParsedFeed(
 ): Promise<ParsedFeedResponse | null> {
   if (!API_BASE) return null;
   if (signal?.aborted) throw abortError();
-  try {
-    const res = await fetchWithTimeout(
-      `${API_BASE}/v1/parse?url=${encodeURIComponent(url)}${notes ? '' : '&notes=0'}`,
-      signal,
-      perTimeout,
-    );
-    if (!res.ok) return null;
-    const body = (await res.json()) as ParsedFeedResponse;
-    // A 200 with nothing in it is not an answer; let the XML path try.
-    if (!body || !Array.isArray(body.episodes) || !body.episodes.length) return null;
-    return body;
-  } catch (e) {
-    if (signal?.aborted) throw e;
-    return null;
+  const page = async (offset: number): Promise<ParsedFeedResponse | null> => {
+    try {
+      const res = await fetchWithTimeout(
+        `${API_BASE}/v1/parse?url=${encodeURIComponent(url)}${notes ? '' : '&notes=0'}` +
+          (offset ? `&offset=${offset}` : ''),
+        signal,
+        perTimeout,
+      );
+      if (!res.ok) return null;
+      const body = (await res.json()) as ParsedFeedResponse;
+      return body && Array.isArray(body.episodes) ? body : null;
+    } catch (e) {
+      if (signal?.aborted) throw e;
+      return null;
+    }
+  };
+
+  const first = await page(0);
+  // A 200 with nothing in it is not an answer; let the XML path try.
+  if (!first?.episodes.length) return null;
+
+  /**
+   * The Worker answers at most 5000 episodes a response, and the rest used to
+   * be dropped without a word: the list simply ended, and nothing said it was
+   * part of a longer archive. The remainder is fetched a page at a time from
+   * the document the Worker already parsed and cached. A page that fails ends
+   * the walk, and `total` then tells the caller the list is partial.
+   */
+  const episodes = first.episodes.slice();
+  const total = Math.max(first.total || 0, episodes.length);
+  while (episodes.length < Math.min(total, MAX_PARSED_EPISODES)) {
+    const next = await page(episodes.length);
+    if (!next?.episodes.length) break;
+    episodes.push(...next.episodes);
   }
+  return { ...first, offset: 0, total, episodes: episodes.slice(0, MAX_PARSED_EPISODES) };
 }
+
+/**
+ * Ceiling on an archive fetched a page at a time. Far past any real show (the
+ * longest-running daily podcasts are in the low thousands), and low enough
+ * that a feed claiming a million items cannot keep the client paging forever.
+ */
+const MAX_PARSED_EPISODES = 20_000;
 
 /**
  * The show notes for a single episode, from the document the Worker has
@@ -163,8 +191,15 @@ export async function fetchTextProxied(
   if (carriesCredential(url)) throw new Error(PRIVATE_FEED_ERROR);
   if (!publicProxiesAllowed()) throw new Error(PROXIES_DISABLED_ERROR);
 
+  // The losers are cancelled once one proxy has answered: left running, each
+  // went on downloading the whole feed — megabytes for a long archive — only
+  // for the body to be thrown away.
+  const race = new AbortController();
+  const onOuterAbort = (): void => race.abort();
+  outerSignal?.addEventListener('abort', onOuterAbort, { once: true });
+
   const attempts = RSS_PROXIES.map((proxy) =>
-    fetchWithTimeout(proxy(url), outerSignal, perTimeout)
+    fetchWithTimeout(proxy(url), race.signal, perTimeout)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
@@ -179,6 +214,9 @@ export async function fetchTextProxied(
   } catch {
     if (outerSignal?.aborted) throw abortError();
     throw new Error('fetch failed');
+  } finally {
+    outerSignal?.removeEventListener('abort', onOuterAbort);
+    race.abort();
   }
 }
 

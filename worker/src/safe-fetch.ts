@@ -135,6 +135,9 @@ export async function fetchWithTimeout(
       if (!REDIRECT_STATUS.has(res.status)) return res;
       const loc = res.headers.get('location');
       if (!loc) return res;
+      // The hop's own body is never read; left open it holds the connection
+      // until the whole chain is done.
+      void res.body?.cancel().catch(() => {});
       if (hop >= MAX_REDIRECTS) throw new Error('too many redirects');
 
       const resolved = new URL(loc, currentUrl);
@@ -190,9 +193,11 @@ const EMPTY = new Uint8Array(0);
  *
  * `budget` is the isolate-wide ceiling above; it is a parameter only so a test
  * can drive the shared gauge without allocating 48 MB.
+ *
+ * Takes a request as readily as a response: sync reads its uploads through it.
  */
 export async function readCapped(
-  res: Response,
+  res: Pick<Response, 'headers' | 'body'>,
   maxBytes: number,
   { timeoutMs = 30_000, budget = DRAIN_BUDGET_BYTES }: { timeoutMs?: number; budget?: number } = {},
 ): Promise<Uint8Array> {

@@ -49,7 +49,7 @@ Playing** sheet for transport, sleep timer, speed and queue access.
 | **Sharp artwork** | the right rendition is requested per surface, so covers are never upscaled from a thumbnail; the Now Playing background can pick up the cover's dominant colour (toggle in Settings → Appearance) |
 | **Volume** | a slider in Now Playing on every device, and in the dock from 1024px up; mute keeps the level you chose. Hidden on iOS, where the page is not allowed to set it and the hardware buttons are the control |
 | **Desktop layout** | ≥900px swaps the tab bar for a persistent left sidebar (Home/Search/Library/Settings). Collapse it to an icon rail from the toggle beside the wordmark or with `[`; pointing at the rail peeks it open over the page, clicking it pins it open. The language switcher sits in the window's own top corner |
-| **Subscriptions** | star podcasts; live in **Library**; OPML import/export + JSON backup |
+| **Subscriptions** | star podcasts; live in **Library**; OPML import/export — readable by other podcast apps, shows you already follow are skipped — + JSON backup |
 | **Themes** | Auto (system), Dark, Light, OLED Black; 7 accent colors (amber "dial glow" default) |
 | **Multilingual** | TR / EN / DE / FR / ES / AR / JA / RU (incl. RTL) |
 | **Installable** | PWA with maskable/monochrome icons, shortcuts, store screenshots |
@@ -252,7 +252,7 @@ oynatma, uyku zamanlayıcısı, hız ve kuyruğa erişim için tam ekran **Şimd
 | **Net kapak görselleri** | her yüzey için doğru çözünürlük istenir, kapaklar küçük bir görselden büyütülmez; Şimdi Çalıyor arka planı kapağın baskın rengini alabilir (Ayarlar → Görünüm'den kapatılabilir) |
 | **Ses düzeyi** | her cihazda Şimdi Çalıyor panelinde, 1024px'ten itibaren dock'ta da bir sürgü; sessize alma seçtiğin seviyeyi korur. iOS'ta gizlenir — orada sayfanın ses düzeyini ayarlamasına izin verilmez, kontrol donanım tuşlarındadır |
 | **Masaüstü düzeni** | ≥900px'te sekme çubuğu yerini kalıcı soldan kenar çubuğuna bırakır (Ana Sayfa/Ara/Kütüphane/Ayarlar). Kelime markasının yanındaki düğmeyle ya da `[` tuşuyla simge şeridine daraltılır; şeridin üzerine gelince sayfanın üstünde geçici olarak açılır, tıklayınca açık kalır. Dil seçici pencerenin kendi üst köşesinde durur |
-| **Abonelikler** | yıldızla; **Kütüphane**'de yaşar; OPML içe/dışa aktarma + JSON yedek |
+| **Abonelikler** | yıldızla; **Kütüphane**'de yaşar; OPML içe/dışa aktarma — diğer podcast uygulamaları okuyabilir, zaten takip ettiklerin atlanır — + JSON yedek |
 | **Temalar** | Otomatik (sistem), Koyu, Açık, OLED Siyah; 7 vurgu rengi (varsayılan kehribar "kadran ışıltısı") |
 | **Çok dilli** | TR / EN / DE / FR / ES / AR / JA / RU (RTL dahil) |
 | **Kurulabilir** | maskable/monochrome ikonlu PWA, kısayollar, mağaza görselleri |

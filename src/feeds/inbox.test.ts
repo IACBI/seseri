@@ -32,8 +32,10 @@ import {
   newSince,
   pendingInbox,
   resetSeen,
+  sweepMessage,
   sweepSubscriptions,
 } from './inbox';
+import { applyLang } from '../i18n';
 import { loadPlayed, markPlayed } from '../storage/played';
 import { loadProgress } from '../storage/progress';
 import { DEFAULT_SETTINGS, settings } from '../state/settings';
@@ -180,6 +182,7 @@ describe('failures are not news', () => {
     resolveFeed.mockRejectedValue(new Error('fetch failed'));
     const result = await sweepSubscriptions([sub('f1')], { now: NOW });
     expect(result.found).toBe(0);
+    expect(result).toMatchObject({ checked: 0, failed: 1 });
     expect(inbox()).toEqual([]);
   });
 
@@ -191,8 +194,11 @@ describe('failures are not news', () => {
 
     const result = await sweepSubscriptions([sub('f1'), sub('f2')], { now: NOW });
 
-    expect(result.checked).toBe(2); // both were attempted
+    // Both were attempted; the one that answered is a check, the one that did
+    // not is a failure. It used to count as a check, so a sweep that reached
+    // nothing reported "nothing new" with a straight face.
     expect(resolveFeed).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ checked: 1, failed: 1 });
   });
 
   it('ignores a subscription from the retired YouTube source', async () => {
@@ -404,5 +410,35 @@ describe('applyAppBadge', () => {
     vi.stubGlobal('navigator', {});
     expect(() => applyAppBadge(2)).not.toThrow();
     vi.unstubAllGlobals();
+  });
+});
+
+describe('what "check now" says', () => {
+  beforeEach(() => applyLang('en'));
+
+  const r = (found: number, checked: number, failed: number) => ({
+    found,
+    checked,
+    failed,
+    skipped: 0,
+  });
+
+  it('says nothing is new only when it could look', () => {
+    expect(sweepMessage(r(0, 3, 0))).toEqual(['Nothing new.', 'info']);
+  });
+
+  it('is an error, not "nothing new", when no feed could be reached', () => {
+    expect(sweepMessage(r(0, 0, 3))).toEqual(['3 shows could not be reached', 'error']);
+  });
+
+  it('names the unreachable ones beside a partial answer', () => {
+    expect(sweepMessage(r(0, 2, 1))).toEqual([
+      'Nothing new. · 1 show could not be reached',
+      'info',
+    ]);
+    expect(sweepMessage(r(2, 2, 1))).toEqual([
+      '2 new episodes · 1 show could not be reached',
+      'info',
+    ]);
   });
 });

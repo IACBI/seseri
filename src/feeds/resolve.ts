@@ -16,6 +16,8 @@ interface FeedContents {
   episodes: Episode[];
   /** True when the list arrived without show notes (see episode-notes.ts). */
   notesDeferred: boolean;
+  /** Episodes the feed contains; more than `episodes.length` when partial. */
+  total: number;
 }
 
 /**
@@ -31,7 +33,12 @@ interface FeedContents {
 async function loadFeedUrl(url: string, opts: ResolveOptions): Promise<FeedContents> {
   const parsedByWorker = await fetchParsedFeed(url, opts.signal);
   if (parsedByWorker) {
-    return { ...parsedByWorker.meta, episodes: parsedByWorker.episodes, notesDeferred: true };
+    return {
+      ...parsedByWorker.meta,
+      episodes: parsedByWorker.episodes,
+      notesDeferred: true,
+      total: Math.max(parsedByWorker.total, parsedByWorker.episodes.length),
+    };
   }
   const xml = await fetchTextProxied(url, opts.signal);
   const parsed = parseRss(xml);
@@ -41,6 +48,7 @@ async function loadFeedUrl(url: string, opts: ResolveOptions): Promise<FeedConte
     art: parsed.art,
     episodes: parsed.episodes,
     notesDeferred: false,
+    total: parsed.episodes.length,
   };
 }
 
@@ -83,11 +91,12 @@ async function withFullArchive(
       name: apple.meta.name || archive.name,
       artist: apple.meta.artist || archive.artist,
       art: apple.meta.art || archive.art,
+      ...(apple.meta.feedUrl ? { feedUrl: apple.meta.feedUrl } : {}),
     },
     episodes: archive.episodes,
-    // No longer a slice of anything.
-    limited: false,
-    total: archive.episodes.length,
+    // A slice only if even the feed's own archive could not be read whole.
+    limited: archive.total > archive.episodes.length,
+    total: archive.total,
     ...(archive.notesDeferred ? { notesDeferred: true } : {}),
   };
 }
@@ -113,7 +122,8 @@ export async function resolveFeed(req: FeedRequest, opts: ResolveOptions): Promi
           art: contents.art,
         },
         episodes: contents.episodes,
-        limited: false,
+        limited: contents.total > contents.episodes.length,
+        ...(contents.total > contents.episodes.length ? { total: contents.total } : {}),
         ...(contents.notesDeferred ? { notesDeferred: true } : {}),
       };
     }

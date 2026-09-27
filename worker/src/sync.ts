@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from './env';
 import { clientKey, rateLimited } from './ratelimit';
+import { readCapped } from './safe-fetch';
 
 /**
  * Cross-device sync storage.
@@ -133,11 +134,19 @@ syncRoutes.put('/', async (c) => {
   const rev = parseRev(c.req.header('if-match') ?? '');
   if (rev === null) return c.json({ error: 'bad if-match' }, 400, headers());
 
-  const body = new Uint8Array(await c.req.arrayBuffer());
-  if (body.byteLength === 0) return c.json({ error: 'empty payload' }, 400, headers());
-  if (body.byteLength > MAX_BLOB_BYTES) {
-    return c.json({ error: 'payload too large' }, 413, headers());
+  // Streamed against the cap rather than buffered whole: without a declared
+  // length, `arrayBuffer()` would hold any size of upload in memory before the
+  // check below ever ran.
+  let body: Uint8Array;
+  try {
+    body = await readCapped(c.req.raw, MAX_BLOB_BYTES);
+  } catch (e) {
+    const reason = (e as Error).message;
+    if (reason === 'too large') return c.json({ error: 'payload too large' }, 413, headers());
+    if (reason === 'read timeout') return c.json({ error: 'upload timeout' }, 408, headers());
+    return c.json({ error: 'busy' }, 503, headers({ 'retry-after': '5' }));
   }
+  if (body.byteLength === 0) return c.json({ error: 'empty payload' }, 400, headers());
 
   const now = Date.now();
   const write =

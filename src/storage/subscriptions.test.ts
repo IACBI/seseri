@@ -9,6 +9,8 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  addSubscriptions,
+  refreshSubscription,
   loadSubscriptions,
   sanitizeSubscriptions,
   setSubscriptionsStamped,
@@ -83,5 +85,72 @@ describe('setSubscriptionsStamped', () => {
     const remote = [null, { id: 'f2', name: 'Remote' }] as never;
     expect(() => setSubscriptionsStamped(remote, { f2: 1 }, {})).not.toThrow();
     expect(subscriptions()).toEqual([{ id: 'f2', name: 'Remote', artist: '', art: '' }]);
+  });
+});
+
+describe('addSubscriptions', () => {
+  const meta = (id: string) => ({ id, name: id, artist: '', art: '' });
+
+  it('adds only what is new, in one change', () => {
+    loadSubscriptions();
+    addSubscriptions([meta('a')]);
+    let emits = 0;
+    const off = subscriptions.subscribe(() => emits++);
+
+    const added = addSubscriptions([meta('a'), meta('b'), meta('c'), meta('b')]);
+
+    off();
+    expect(added).toBe(2);
+    expect(subscriptions().map((s) => s.id)).toEqual(['a', 'b', 'c']);
+    expect(emits).toBe(1);
+    expect(JSON.parse(localStorage.getItem('pp_favs') ?? '[]')).toHaveLength(3);
+    // Stamped like any other subscribe, so the import travels with sync.
+    expect(Object.keys(JSON.parse(localStorage.getItem('pp_subs_at') ?? '{}')).sort()).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('writes nothing when every entry is already there', () => {
+    loadSubscriptions();
+    addSubscriptions([meta('a')]);
+    let emits = 0;
+    const off = subscriptions.subscribe(() => emits++);
+    expect(addSubscriptions([meta('a')])).toBe(0);
+    off();
+    expect(emits).toBe(0);
+  });
+});
+
+describe('the feed address of an Apple subscription', () => {
+  it('survives a reload, https only', () => {
+    store([
+      { id: '1', name: 'A', artist: '', art: '', feedUrl: 'https://feeds.example.com/a' },
+      { id: '2', name: 'B', artist: '', art: '', feedUrl: 'http://feeds.example.com/b' },
+      { id: '3', name: 'C', artist: '', art: '', feedUrl: 42 },
+    ]);
+    loadSubscriptions();
+    expect(subscriptions().map((s) => s.feedUrl)).toEqual([
+      'https://feeds.example.com/a',
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('is learned by a subscription made before it was kept', () => {
+    store([{ id: '7', name: 'Old', artist: 'H', art: 'https://img/a.jpg' }]);
+    loadSubscriptions();
+    refreshSubscription({
+      id: '7',
+      name: 'Old',
+      artist: 'H',
+      art: 'https://img/a.jpg',
+      feedUrl: 'https://feeds.example.com/old',
+    });
+    expect(subscriptions()[0]?.feedUrl).toBe('https://feeds.example.com/old');
+    expect(JSON.parse(localStorage.getItem('pp_favs') ?? '[]')[0].feedUrl).toBe(
+      'https://feeds.example.com/old',
+    );
   });
 });

@@ -154,6 +154,21 @@ describe('progress', () => {
     await done;
   });
 
+  it('does not republish per chunk for a host that declares no length', async () => {
+    // Nothing visible moves without a length (the row reads "…" throughout),
+    // and every publish re-renders the episode list.
+    const job = controllable();
+    const done = startDownload(ep(), 'f1');
+
+    job.report(64_000, 0);
+    const first = downloadJobs();
+    for (let n = 2; n <= 50; n++) job.report(n * 64_000, 0);
+    expect(downloadJobs()).toBe(first);
+
+    job.finish('ok');
+    await done;
+  });
+
   it('clamps a host that sends more than it declared', async () => {
     const job = controllable();
     const done = startDownload(ep(), 'f1');

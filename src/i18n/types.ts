@@ -206,6 +206,7 @@ export interface Lang {
   fatal_wipe_confirm: string;
   fatal_details: string;
   /* episode state filters + played marks */
+  filter_group: string;
   filter_all: string;
   filter_unplayed: string;
   filter_inprogress: string;
@@ -224,6 +225,7 @@ export interface Lang {
   home_check_now: string;
   toast_new_found: LangFn;
   toast_no_new: string;
+  toast_check_failed: LangFn;
   /* episode sharing (A4) */
   share_episode: string;
   share_episode_at: LangFn;

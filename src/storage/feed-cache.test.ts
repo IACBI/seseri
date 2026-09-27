@@ -61,6 +61,14 @@ describe('feedsToEvict — budget', () => {
     expect(feedsToEvict(all, 'a', NOW, LIMITS)).toEqual([]);
   });
 
+  it('keeps every feed of a burst of writes', () => {
+    // Pruning runs once after a sweep has written every subscription, and none
+    // of what that sweep just wrote may be the thing that goes.
+    const all = [rec('s1', 1, 4), rec('s2', 2, 4), rec('s3', 3, 4), rec('other', 5, 4)];
+    const doomed = feedsToEvict(all, new Set(['s1', 's2', 's3']), NOW, LIMITS);
+    expect(doomed).toEqual(['other']);
+  });
+
   it('keeps the feed just written even when it is the thing over budget', () => {
     // A single 2900-episode archive can be most of the budget on its own, and
     // evicting it would make the write that triggered this pointless.

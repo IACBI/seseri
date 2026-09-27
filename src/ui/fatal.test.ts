@@ -4,7 +4,7 @@
  * cannot fire on one click, and the error detail — which contains whatever a
  * feed or a stored value put in the message — reaches the DOM as text.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { applyLang } from '../i18n';
 import { bootContext, buildFatalScreen, describeError, showFatal } from './fatal';
 
@@ -14,8 +14,8 @@ beforeEach(() => {
   applyLang('en');
 });
 
-function handlers(): { reload: ReturnType<typeof vi.fn>; wipe: ReturnType<typeof vi.fn> } {
-  return { reload: vi.fn(), wipe: vi.fn(async () => undefined) };
+function handlers(): { reload: Mock<() => void>; wipe: Mock<() => Promise<void>> } {
+  return { reload: vi.fn<() => void>(), wipe: vi.fn(async () => undefined) };
 }
 
 describe('describeError', () => {

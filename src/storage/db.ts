@@ -58,8 +58,24 @@ export interface ResumeEntry {
   updatedAt: number;
 }
 
+/**
+ * What the cache policy needs to know about one cached feed, kept apart from
+ * the feed itself.
+ *
+ * Pruning and the Settings readout only ever need an id, a date and a size,
+ * but the `feeds` store can only hand those back inside whole records — every
+ * episode of every archive, structured-cloned out of IndexedDB to read three
+ * numbers. With thirty subscriptions that was tens of megabytes per prune.
+ */
+export interface FeedStat {
+  id: string;
+  fetchedAt: number;
+  bytes: number;
+}
+
 interface SeseriDB extends DBSchema {
   feeds: { key: string; value: CachedFeed };
+  feedStats: { key: string; value: FeedStat };
   downloads: { key: string; value: DownloadRecord };
   resume: { key: string; value: ResumeEntry };
 }
@@ -67,9 +83,18 @@ interface SeseriDB extends DBSchema {
 /** Exported so `storage/reset.ts` deletes the same database this opens. */
 export const DB_NAME = 'seseri';
 
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<SeseriDB>> | null = null;
+
+/**
+ * An open that is waiting for another tab to let go. While it waits, a second
+ * open request would queue behind it and — by the spec — never hear `blocked`
+ * itself, so it would hang where the first one was refused.
+ */
+let waitingOpen: Promise<IDBPDatabase<SeseriDB>> | null = null;
+
+const BLOCKED = 'database upgrade blocked by another tab';
 
 /**
  * Drop the cached connection so `indexedDB.deleteDatabase` can proceed.
@@ -79,6 +104,12 @@ let dbPromise: Promise<IDBPDatabase<SeseriDB>> | null = null;
  * `storage/reset.ts`). The next `db()` call simply opens again.
  */
 export function closeDb(): void {
+  // A prune firing mid-delete would open a fresh connection and block it.
+  if (pruneTimer) clearTimeout(pruneTimer);
+  pruneTimer = null;
+  pruneKeep.clear();
+  // A blocked open that lands after this is closed on arrival (see `db`).
+  waitingOpen = null;
   const pending = dbPromise;
   dbPromise = null;
   if (!pending) return;
@@ -90,21 +121,87 @@ export function closeDb(): void {
   );
 }
 
+/** Exported for the migration test; the app goes through `db()`. */
+export const DB_SCHEMA_VERSION = DB_VERSION;
+
 export function db(): Promise<IDBPDatabase<SeseriDB>> {
-  if (!dbPromise) {
-    dbPromise = openDB<SeseriDB>(DB_NAME, DB_VERSION, {
-      upgrade(d, oldVersion) {
-        if (oldVersion < 1) {
-          d.createObjectStore('feeds', { keyPath: 'id' });
-          d.createObjectStore('downloads', { keyPath: 'id' });
+  if (dbPromise) return dbPromise;
+  if (waitingOpen) return Promise.reject(new Error(BLOCKED));
+
+  /**
+   * An upgrade waits for every other connection to close, and a tab still
+   * running the previous build holds one and has no reason to let go. Until
+   * it does, the open neither succeeds nor fails — and everything that awaits
+   * the database waited with it, including opening a feed, which reads the
+   * download list first. So a blocked open is reported as a failure straight
+   * away: every caller already treats that as "no cache", and the app works
+   * without one. The open itself stays pending and is adopted the moment the
+   * other tab lets go.
+   */
+  let refuse: (e: Error) => void = () => undefined;
+  const blocked = new Promise<never>((_resolve, reject) => {
+    refuse = reject;
+  });
+  const opening = openDB<SeseriDB>(DB_NAME, DB_VERSION, {
+    async upgrade(d, oldVersion, _newVersion, tx) {
+      if (oldVersion < 1) {
+        d.createObjectStore('feeds', { keyPath: 'id' });
+        d.createObjectStore('downloads', { keyPath: 'id' });
+      }
+      if (oldVersion < 2) {
+        d.createObjectStore('resume', { keyPath: 'id' });
+      }
+      if (oldVersion < 3) {
+        const stats = d.createObjectStore('feedStats', { keyPath: 'id' });
+        // One pass over what is already cached, once. Records from before
+        // sizes were measured carry none, and count as zero as they always
+        // have (see `CachedFeed.bytes`).
+        if (oldVersion >= 1) {
+          for await (const cursor of tx.objectStore('feeds')) {
+            const rec = cursor.value;
+            await stats.put({ id: rec.id, fetchedAt: rec.fetchedAt, bytes: recordBytes(rec) });
+          }
         }
-        if (oldVersion < 2) {
-          d.createObjectStore('resume', { keyPath: 'id' });
+      }
+    },
+    blocked() {
+      refuse(new Error(BLOCKED));
+    },
+    // A newer build wants to upgrade: let it, rather than be the tab that
+    // blocks it. The next `db()` here reopens — and fails cleanly if the
+    // version moved past this build, which callers treat as "no cache".
+    blocking() {
+      closeDb();
+    },
+    terminated() {
+      dbPromise = null;
+    },
+  });
+
+  const current = Promise.race([opening, blocked]);
+  dbPromise = current;
+  void current.catch(() => {
+    if (dbPromise !== current) return;
+    dbPromise = null;
+    // Blocked: adopt the connection once the other tab lets go, and refuse
+    // every call until then. Failed outright: `opening` has rejected as well,
+    // so this clears straight away and the next call tries again.
+    waitingOpen = opening;
+    void opening.then(
+      (d) => {
+        if (waitingOpen !== opening) {
+          d.close(); // closed or reset while it waited
+          return;
         }
+        waitingOpen = null;
+        dbPromise = Promise.resolve(d);
       },
-    });
-  }
-  return dbPromise;
+      () => {
+        if (waitingOpen === opening) waitingOpen = null;
+      },
+    );
+  });
+  return current;
 }
 
 // ── feed cache (stale-while-revalidate source) ─────────────────────
@@ -146,7 +243,7 @@ export const FEED_CACHE_LIMITS = {
   keepMin: FEED_KEEP_MIN,
 } as const;
 
-function recordBytes(rec: CachedFeed): number {
+function recordBytes(rec: Pick<CachedFeed, 'bytes'>): number {
   return typeof rec.bytes === 'number' && rec.bytes > 0 ? rec.bytes : 0;
 }
 
@@ -154,22 +251,23 @@ function recordBytes(rec: CachedFeed): number {
  * Which records to drop: anything too old, then the oldest until it fits.
  *
  * Pure, and separate from the store, because the policy is the part worth
- * testing and IndexedDB is not available where the unit tests run. `keepId` is
- * the feed just written — evicting it would make the write pointless, and it is
- * by definition the most recently useful record.
+ * testing and IndexedDB is not available where the unit tests run. `keep` is
+ * the feed (or feeds) just written — evicting one would make the write
+ * pointless, and it is by definition the most recently useful record.
  */
 export function feedsToEvict(
-  all: readonly CachedFeed[],
-  keepId: string,
+  all: ReadonlyArray<Pick<CachedFeed, 'id' | 'fetchedAt' | 'bytes'>>,
+  keep: string | ReadonlySet<string>,
   now: number,
   limits: { maxAgeMs: number; budgetBytes: number; keepMin: number } = FEED_CACHE_LIMITS,
 ): string[] {
   if (all.length <= limits.keepMin) return [];
+  const kept = (id: string): boolean => (typeof keep === 'string' ? id === keep : keep.has(id));
 
   const doomed: string[] = [];
-  const survivors: CachedFeed[] = [];
+  const survivors: Array<Pick<CachedFeed, 'id' | 'fetchedAt' | 'bytes'>> = [];
   for (const rec of all) {
-    if (rec.id !== keepId && now - rec.fetchedAt > limits.maxAgeMs) doomed.push(rec.id);
+    if (!kept(rec.id) && now - rec.fetchedAt > limits.maxAgeMs) doomed.push(rec.id);
     else survivors.push(rec);
   }
 
@@ -180,21 +278,22 @@ export function feedsToEvict(
   for (const rec of survivors) {
     total += recordBytes(rec);
     if (total <= limits.budgetBytes) continue;
-    if (rec.id === keepId) continue;
+    if (kept(rec.id)) continue;
     if (all.length - doomed.length <= limits.keepMin) break;
     doomed.push(rec.id);
   }
   return doomed;
 }
 
-async function pruneFeedCache(keepId: string, now = Date.now()): Promise<void> {
+async function pruneFeedCache(keep: ReadonlySet<string>, now = Date.now()): Promise<void> {
   try {
     const d = await db();
-    const doomed = feedsToEvict(await d.getAll('feeds'), keepId, now);
+    const doomed = feedsToEvict(await d.getAll('feedStats'), keep, now);
     if (!doomed.length) return;
-    const tx = d.transaction(['feeds', 'resume'], 'readwrite');
+    const tx = d.transaction(['feeds', 'feedStats', 'resume'], 'readwrite');
     for (const id of doomed) {
       void tx.objectStore('feeds').delete(id);
+      void tx.objectStore('feedStats').delete(id);
       // The resume projection is derived from the feed; keeping it would leave
       // Home a row it cannot render.
       void tx.objectStore('resume').delete(id);
@@ -205,6 +304,27 @@ async function pruneFeedCache(keepId: string, now = Date.now()): Promise<void> {
   }
 }
 
+/**
+ * Pruning reads every cached feed back out of IndexedDB — whole archives, a
+ * few megabytes each — so it runs once after a burst of writes rather than
+ * after each one. The new-episode sweep writes every subscription in turn, and
+ * pruning per write made that N full reads of the store.
+ */
+const PRUNE_DELAY_MS = 3000;
+let pruneTimer: ReturnType<typeof setTimeout> | null = null;
+const pruneKeep = new Set<string>();
+
+function schedulePrune(keepId: string): void {
+  pruneKeep.add(keepId);
+  if (pruneTimer) clearTimeout(pruneTimer);
+  pruneTimer = setTimeout(() => {
+    pruneTimer = null;
+    const keep = new Set(pruneKeep);
+    pruneKeep.clear();
+    void pruneFeedCache(keep);
+  }, PRUNE_DELAY_MS);
+}
+
 export async function putCachedFeed(feed: ResolvedFeed): Promise<void> {
   try {
     const record: CachedFeed = {
@@ -213,8 +333,15 @@ export async function putCachedFeed(feed: ResolvedFeed): Promise<void> {
       fetchedAt: Date.now(),
       bytes: JSON.stringify(feed).length,
     };
-    await (await db()).put('feeds', record);
-    await pruneFeedCache(feed.meta.id);
+    const tx = (await db()).transaction(['feeds', 'feedStats'], 'readwrite');
+    void tx.objectStore('feeds').put(record);
+    void tx.objectStore('feedStats').put({
+      id: record.id,
+      fetchedAt: record.fetchedAt,
+      bytes: recordBytes(record),
+    });
+    await tx.done;
+    schedulePrune(feed.meta.id);
   } catch {
     /* cache is best-effort */
   }
@@ -229,14 +356,12 @@ export interface FeedCacheInfo {
 /** What Settings shows, so the cache is not an invisible consumer of quota. */
 export async function feedCacheInfo(): Promise<FeedCacheInfo> {
   try {
-    const all = await (await db()).getAll('feeds');
+    const all = await (await db()).getAll('feedStats');
     return { count: all.length, bytes: all.reduce((n, r) => n + recordBytes(r), 0) };
   } catch {
     return { count: 0, bytes: 0 };
   }
 }
-
-export { pruneFeedCache };
 
 /**
  * Merge fields into one cached episode, in place.
@@ -254,7 +379,7 @@ export async function patchCachedEpisode(
 ): Promise<void> {
   try {
     const d = await db();
-    const tx = d.transaction('feeds', 'readwrite');
+    const tx = d.transaction(['feeds', 'feedStats'], 'readwrite');
     const store = tx.objectStore('feeds');
     const rec = await store.get(feedId);
     const i = rec?.feed.episodes.findIndex((e) => String(e.trackId) === trackId) ?? -1;
@@ -263,8 +388,16 @@ export async function patchCachedEpisode(
       await tx.done;
       return;
     }
-    rec.feed.episodes[i] = { ...target, ...patch };
+    const next = { ...target, ...patch };
+    rec.feed.episodes[i] = next;
+    // Notes are the bulk of a feed; the size the budget counts has to grow
+    // with them, or a feed read episode by episode never looks any bigger.
+    const grew = JSON.stringify(next).length - JSON.stringify(target).length;
+    rec.bytes = Math.max(0, recordBytes(rec) + grew);
     await store.put(rec);
+    await tx
+      .objectStore('feedStats')
+      .put({ id: rec.id, fetchedAt: rec.fetchedAt, bytes: rec.bytes });
     await tx.done;
   } catch {
     /* cache is best-effort */
@@ -275,6 +408,7 @@ export async function clearFeedCache(): Promise<void> {
   try {
     const d = await db();
     await d.clear('feeds');
+    await d.clear('feedStats');
     await d.clear('resume');
   } catch {
     /* ignore */

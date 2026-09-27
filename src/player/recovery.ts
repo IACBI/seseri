@@ -66,6 +66,11 @@ export function noteUserIntent(playing: boolean): void {
   if (!playing) clearTimers();
 }
 
+/** The intent `noteUserIntent` last recorded — not whether the element is paused. */
+export function userWantsPlayback(): boolean {
+  return wantsPlayback;
+}
+
 async function attemptRecovery(): Promise<void> {
   if (!hooks || inFlight || !wantsPlayback) return;
   if (attempt >= BACKOFF_MS.length) {

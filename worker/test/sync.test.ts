@@ -2,9 +2,9 @@ import {
   createExecutionContext,
   createScheduledController,
   env,
-  fetchMock,
   waitOnExecutionContext,
 } from 'cloudflare:test';
+import { fetchMock } from './upstream';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import worker from '../src/index';
 import type { Env, RateLimiter } from '../src/env';
@@ -182,6 +182,36 @@ describe('PUT /v1/sync', () => {
       ifMatch: '"0"',
       body: filledBlob(128 * 1024 + 1),
     });
+
+    expect(res.status).toBe(413);
+    expect(await rowCount()).toBe(0);
+  });
+
+  it('rejects an oversized upload that declares no length', async () => {
+    // Chunked: nothing to refuse up front, so the cap has to hold while reading.
+    // A fresh buffer per chunk: an enqueued one can be transferred away.
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(ctrl) {
+        if (sent++ < 3) ctrl.enqueue(filledBlob(64 * 1024));
+        else ctrl.close();
+      },
+    });
+    const ctx = createExecutionContext();
+    const req = new Request('https://api.test/v1/sync', {
+      method: 'PUT',
+      headers: {
+        origin: APP_ORIGIN,
+        'x-sync-id': freshId(),
+        'if-match': '"0"',
+        'content-type': OCTET,
+      },
+      body: stream,
+    });
+    expect(req.headers.get('content-length')).toBeNull();
+
+    const res = await worker.fetch(req, env, ctx);
+    await waitOnExecutionContext(ctx);
 
     expect(res.status).toBe(413);
     expect(await rowCount()).toBe(0);

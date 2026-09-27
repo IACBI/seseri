@@ -23,8 +23,8 @@ import { artAt, artSrcset } from '../../lib/art';
 import { dprWidths, HEADER_ART_PX } from '../art-tile';
 import { t } from '../../i18n';
 import { getProgress } from '../../storage/progress';
-import { isExplicitlyUnplayed, isPlayed, playedRevision } from '../../storage/played';
-import { downloadJobs, jobFraction, isDownloading } from '../../player/download-jobs';
+import { isExplicitlyUnplayed, isPlayed } from '../../storage/played';
+import { jobFraction, isDownloading } from '../../player/download-jobs';
 import { queue, queuePositions } from '../../state/queue';
 import { settings, type Settings } from '../../state/settings';
 import { isSubscribed, toggleSubscription } from '../../storage/subscriptions';
@@ -74,7 +74,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
         <span class="p-sort-info" id="sortInfo"></span>
         <input class="text-input p-filter" id="filterInput" type="text" placeholder="Bölüm ara..." data-i18n-ph="filter_placeholder" />
       </div>
-      <div class="p-modes" id="epModes" role="group" data-i18n-aria="btn_sort" aria-label="Filtre"></div>
+      <div class="p-modes" id="epModes" role="group" data-i18n-aria="filter_group" aria-label="Bölümleri filtrele"></div>
       <div class="ep-list" id="epList" role="list"></div>
     </div>`;
 
@@ -398,8 +398,13 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
   function grow(): void {
     const total = playback.session().filtered.length;
     if (renderLimit >= total) return;
+    const firstNew = renderLimit;
+    // The rebuild replaces the button, and focus on a removed element falls to
+    // <body>: a keyboard user who pressed it would start over from the top.
+    const hadFocus = !!document.activeElement?.classList.contains('ep-more');
     renderLimit = Math.min(total, renderLimit + RENDER_BATCH);
     renderList(playback.session());
+    if (hadFocus) focusRow(firstNew);
   }
 
   /** Make sure an index is in the DOM — the playing row has to be scrollable to. */
@@ -766,11 +771,9 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
   // The queue is no longer feed-scoped, so a mutation from anywhere (the queue
   // view, auto-next consuming an entry) must refresh this list's badges.
   queue.subscribe(() => render(playback.session()));
-  // A mark changes a row badge and, under a state filter, the list itself. The
-  // controller recomputes the session; this only has to repaint.
-  playedRevision.subscribe(() => render(playback.session()));
-  // A percentage moving is a row change like any other.
-  downloadJobs.subscribe(() => render(playback.session()));
+  // Played marks and download progress need no subscription here: the
+  // controller re-emits the session for both, and listening again rendered
+  // every change twice — for downloads, once per progress step.
   render(playback.session());
 
   const view: PodcastView = {

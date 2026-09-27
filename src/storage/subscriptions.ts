@@ -1,6 +1,7 @@
 import type { Subscription } from '../feeds/types';
 import { local } from './local';
 import { signal } from '../state/signals';
+import { httpsOnly } from '../lib/safe';
 
 /** Subscriptions ("favorites") — legacy key `pp_favs`, same entry shape. */
 export const subscriptions = signal<Subscription[]>([]);
@@ -48,11 +49,13 @@ export function sanitizeSubscriptions(raw: unknown): Subscription[] {
     const id = typeof r.id === 'string' || typeof r.id === 'number' ? String(r.id) : '';
     if (!id || seen.has(id)) continue;
     seen.add(id);
+    const feedUrl = typeof r.feedUrl === 'string' ? httpsOnly(r.feedUrl) : '';
     out.push({
       id,
       name: typeof r.name === 'string' ? r.name : '',
       artist: typeof r.artist === 'string' ? r.artist : '',
       art: typeof r.art === 'string' ? r.art : '',
+      ...(feedUrl ? { feedUrl } : {}),
     });
   }
   return out;
@@ -143,6 +146,27 @@ export function toggleSubscription(meta: Subscription): void {
   );
 }
 
+/**
+ * Subscribe to several feeds in one write. Returns how many were new.
+ *
+ * An OPML import used to toggle them one at a time, and every toggle is a full
+ * write of the list plus a re-render of Home and the Library — a 200-show file
+ * was 200 of each, for one change.
+ */
+export function addSubscriptions(metas: readonly Subscription[]): number {
+  const list = subscriptions();
+  const have = new Set(list.map((f) => String(f.id)));
+  const added: Subscription[] = [];
+  for (const meta of metas) {
+    const id = String(meta.id);
+    if (!id || have.has(id)) continue;
+    have.add(id);
+    added.push(meta);
+  }
+  if (added.length) persist([...list, ...added]);
+  return added.length;
+}
+
 export function removeSubscription(id: string): void {
   persist(subscriptions().filter((f) => String(f.id) !== String(id)));
 }
@@ -151,20 +175,30 @@ export function removeSubscription(id: string): void {
  * Fill in artwork/author for a subscription that was stored without them.
  * OPML carries only a title and a URL, so an imported subscription sat in the
  * Library as a nameless grey tile until the user opened it — and even then
- * nothing wrote the metadata back.
+ * nothing wrote the metadata back. The feed address is filled in the same way
+ * for subscriptions made before it was kept.
  */
 export function refreshSubscription(meta: Subscription): void {
   const list = subscriptions();
   const i = list.findIndex((f) => String(f.id) === String(meta.id));
   const cur = list[i];
   if (!cur) return;
+  const feedUrl = cur.feedUrl || httpsOnly(meta.feedUrl);
   const next: Subscription = {
     ...cur,
     name: cur.name || meta.name,
     artist: cur.artist || meta.artist,
     art: cur.art || meta.art,
+    ...(feedUrl ? { feedUrl } : {}),
   };
-  if (next.name === cur.name && next.artist === cur.artist && next.art === cur.art) return;
+  if (
+    next.name === cur.name &&
+    next.artist === cur.artist &&
+    next.art === cur.art &&
+    next.feedUrl === cur.feedUrl
+  ) {
+    return;
+  }
   const updated = list.slice();
   updated[i] = next;
   persist(updated);

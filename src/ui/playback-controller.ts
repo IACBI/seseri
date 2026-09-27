@@ -22,6 +22,7 @@ import type { Episode, FeedMeta, FeedRequest, ResolvedFeed } from '../feeds/type
 import { signal, type Signal } from '../state/signals';
 import { resolveFeed } from '../feeds/resolve';
 import { feedIdOf, requestFromFeedId } from '../feeds/feed-id';
+import { chronological } from '../feeds/order';
 import { t, currentLang } from '../i18n';
 import { httpsOnly } from '../lib/safe';
 import {
@@ -34,7 +35,7 @@ import {
   pbPlay,
   pbSeekTo,
 } from '../player/engine';
-import { initRecovery, noteUserIntent, resetRecovery } from '../player/recovery';
+import { initRecovery, noteUserIntent, resetRecovery, userWantsPlayback } from '../player/recovery';
 import { initPrefetch, prefetchEpisode } from '../player/prefetch';
 import { downloadEpisode } from '../player/downloads';
 import { isDownloaded, offlineAudioUrl, removeDownload } from '../player/offline';
@@ -197,21 +198,9 @@ export function emptySession(): PlaybackSession {
   };
 }
 
-/**
- * Feed order for the list: chronological when the feed actually carries dates,
- * otherwise the source order (which every source we use hands over newest-first).
- *
- * The threshold matters. `some()` was enough to switch to date sorting, so a
- * feed where only a handful of items are dated sorted every undated one as
- * epoch 0 and scattered them to one end. A majority rule keeps a fully dated
- * feed chronological and leaves a sparsely dated one in source order.
- */
+/** Feed order for the list; see `chronological` for how undated feeds sort. */
 function sortEpisodes(eps: readonly Episode[], sortAsc: boolean): Episode[] {
-  const dated = eps.reduce((n, e) => n + (e.releaseDate ? 1 : 0), 0);
-  const sorted =
-    dated * 2 > eps.length
-      ? eps.slice().sort((a, b) => +new Date(a.releaseDate || 0) - +new Date(b.releaseDate || 0))
-      : eps.slice().reverse(); // newest-first source order → oldest-first
+  const sorted = chronological(eps);
   if (!sortAsc) sorted.reverse();
   return sorted;
 }
@@ -304,9 +293,12 @@ export function createPlaybackController(): PlaybackController {
     if (cur.meta?.id === feedId && cur.episodes.length) return;
 
     loadAbort?.abort();
-    loadAbort = new AbortController();
-    const sig = loadAbort.signal;
-    const timeout = setTimeout(() => loadAbort?.abort(), req.kind === 'itunes' ? 10000 : 25000);
+    const ctrl = new AbortController();
+    loadAbort = ctrl;
+    const sig = ctrl.signal;
+    // Bound to this load's controller: reading `loadAbort` when the timer fires
+    // would abort whichever feed is loading by then.
+    const timeout = setTimeout(() => ctrl.abort(), req.kind === 'itunes' ? 10000 : 25000);
 
     // NOTE: no embedStop(), no clearQueue(), no audio.src write here. Browsing a
     // feed is not a playback action — that conflation is the bug this split fixes.
@@ -553,6 +545,12 @@ export function createPlaybackController(): PlaybackController {
     audio.src = safe;
     audio.load();
     /**
+     * The `canplay` listener below outlives this source when the listener
+     * moves on before it fires, and would then run against the next episode's
+     * `canplay` — seeking that episode to THIS one's saved position.
+     */
+    const loadedSrc = audio.src;
+    /**
      * `canplay` can fire before the element will accept a seek: until the first
      * range request lands, `seekable` is still empty and `currentTime = saved`
      * is silently dropped. Playback then starts from the top, and the next
@@ -591,6 +589,7 @@ export function createPlaybackController(): PlaybackController {
     };
 
     const applyPrefs = (): void => {
+      if (audio.src !== loadedSrc) return;
       const S = settings();
       // The show's own speed when it has one; the global default otherwise.
       audio.playbackRate = speedFor(playing()?.feedId);
@@ -625,9 +624,14 @@ export function createPlaybackController(): PlaybackController {
   /**
    * Swap in a freshly resolved URL without disturbing the session, the queue or
    * the Media Session notification: same track, same position, same rate. Used
-   * only by the recovery watchdog.
+   * by the recovery watchdog and by the prefetch handoff.
+   *
+   * `resume` is whether to play once the new source is ready. Recovery only
+   * runs while the listener wants playback, so it always does; a prefetch can
+   * land minutes after they paused, and restarting the episode then would be
+   * the app making noise nobody asked for.
    */
-  function resumeAudioAt(url: string, positionSec: number): void {
+  function resumeAudioAt(url: string, positionSec: number, resume = true): void {
     const safe = safeMediaSrc(url);
     if (!safe) return;
     // `reresolve` may hand back a blob: URL when a download landed mid-episode,
@@ -640,13 +644,15 @@ export function createPlaybackController(): PlaybackController {
     const rate = audio.playbackRate;
     audio.src = safe;
     audio.load();
+    const loadedSrc = audio.src;
     audio.addEventListener(
       'loadedmetadata',
       () => {
+        // Another episode was started before this source got that far.
+        if (audio.src !== loadedSrc) return;
         if (Number.isFinite(positionSec) && positionSec > 0) audio.currentTime = positionSec;
         audio.playbackRate = rate;
-        // Recovery only ever runs while the user's intent is "playing", so
-        // there is no paused case to preserve here.
+        if (!resume) return;
         audio.play()?.catch(() => {
           /* the OS may refuse while backgrounded; the next attempt retries */
         });
@@ -934,7 +940,7 @@ export function createPlaybackController(): PlaybackController {
   // Same `resumeAudioAt` seam as recovery: the handoff to a completed local
   // copy is exactly a source swap that must not disturb anything else.
   initPrefetch({
-    handoff: resumeAudioAt,
+    handoff: (url, positionSec) => resumeAudioAt(url, positionSec, userWantsPlayback()),
     currentTrackId: () => playing()?.trackId ?? null,
     currentPosition: () => audio.currentTime,
   });
@@ -949,7 +955,7 @@ export function createPlaybackController(): PlaybackController {
       if (local) return local; // a download landed meanwhile — best possible answer
       return httpsOnly(ep.episodeUrl || '') || null;
     },
-    resume: resumeAudioAt,
+    resume: (url, positionSec) => resumeAudioAt(url, positionSec),
     onGiveUp: () => {
       patch({ status: { kind: 'error', message: t('audio_err') } });
       setPlaybackState('paused');
@@ -1058,16 +1064,6 @@ export function createPlaybackController(): PlaybackController {
   });
 
   /**
-   * Settings change → re-emit, but only for the two the rows actually read.
-   *
-   * `bump()` makes the podcast view rebuild a row signature for every episode
-   * in the archive, and this fired on *any* settings write — including
-   * `volume`, which the slider writes on `input`, at pointer rate. Dragging it
-   * with a 2000-episode feed open meant thousands of signature builds a second
-   * for a control the list does not render. Font size and row height are CSS
-   * custom properties on the root element, so they need no re-render at all.
-   */
-  /**
    * A mark changes what a row looks like and, under a state filter, whether it
    * belongs in the list at all — so marking an episode heard in the unplayed
    * view removes the row, which is what the filter means.
@@ -1088,6 +1084,16 @@ export function createPlaybackController(): PlaybackController {
     if (p && audio.src) audio.playbackRate = speedFor(p.feedId);
   });
 
+  /**
+   * Settings change → re-emit, but only for the two the rows actually read.
+   *
+   * `bump()` makes the podcast view rebuild a row signature for every episode
+   * in the archive, and this fired on *any* settings write — including
+   * `volume`, which the slider writes on `input`, at pointer rate. Dragging it
+   * with a 2000-episode feed open meant thousands of signature builds a second
+   * for a control the list does not render. Font size and row height are CSS
+   * custom properties on the root element, so they need no re-render at all.
+   */
   let listPrefs = settingsRowKey(settings());
   settings.subscribe((S) => {
     const next = settingsRowKey(S);

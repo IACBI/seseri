@@ -21,6 +21,7 @@ vi.mock('../storage/db', () => ({
 import {
   downloadOffline,
   isDownloaded,
+  mayBeAudio,
   offlineAudioUrl,
   remapDownload,
   removeDownload,
@@ -36,15 +37,16 @@ class FakeResponse {
   ok: boolean;
   status: number;
   headers: { get(k: string): string | null };
-  private body: unknown;
+  /** Not `body`: on a real Response that is the stream, and the code reads it. */
+  private payload: unknown;
   constructor(body?: unknown, init?: { status?: number; headers?: Record<string, string> }) {
-    this.body = body ?? FAKE_BLOB;
+    this.payload = body ?? FAKE_BLOB;
     this.status = init?.status ?? 200;
     this.ok = this.status >= 200 && this.status < 300;
     const h = init?.headers ?? {};
     this.headers = { get: (k: string) => h[k.toLowerCase()] ?? h[k] ?? null };
   }
-  blob = async (): Promise<unknown> => this.body;
+  blob = async (): Promise<unknown> => this.payload;
 }
 
 type CacheEntry = Map<string, FakeResponse>;
@@ -121,6 +123,34 @@ describe('downloadOffline', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
     expect(await downloadOffline(makeEpisode(2), 'feed-1')).toBe('failed');
     expect(store.size).toBe(0);
+  });
+
+  it('refuses a web page that answered 200 in place of the episode', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new FakeResponse('<html>Sign in</html>', {
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+          }) as unknown as Response,
+      ),
+    );
+    expect(await downloadOffline(makeEpisode(4), 'feed-1')).toBe('failed');
+    expect(store.size).toBe(0);
+    expect(cachesStore.get('seseri-audio')?.size ?? 0).toBe(0);
+  });
+
+  it('keeps audio that a host labels loosely', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new FakeResponse(undefined, {
+            headers: { 'content-type': 'binary/octet-stream' },
+          }) as unknown as Response,
+      ),
+    );
+    expect(await downloadOffline(makeEpisode(5), 'feed-1')).toBe('ok');
   });
 
   it('returns "cors-blocked" on a TypeError (CDN without CORS headers)', async () => {
@@ -231,5 +261,27 @@ describe('remapDownload', () => {
     expect(await remapDownload('1001', 'guid-a')).toBe(true);
     expect(await isDownloaded('guid-a')).toBe(true);
     expect(await isDownloaded('1001')).toBe(false);
+  });
+});
+
+describe('mayBeAudio', () => {
+  it.each([
+    ['audio/mpeg', true],
+    ['audio/x-m4a', true],
+    ['video/mp4', true],
+    ['application/octet-stream', true],
+    ['binary/octet-stream', true],
+    ['application/ogg', true],
+    [null, true],
+    ['', true],
+    ['text/html; charset=utf-8', false],
+    ['text/plain', false],
+    ['application/json', false],
+    ['application/xml', false],
+    ['application/rss+xml', false],
+    ['application/problem+json', false],
+    ['Application/XHTML+XML', false],
+  ])('%s → %s', (type, expected) => {
+    expect(mayBeAudio(type)).toBe(expected);
   });
 });

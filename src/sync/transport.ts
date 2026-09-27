@@ -73,17 +73,29 @@ function revOf(res: Response): number {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-async function call(syncId: string, init: RequestInit): Promise<Response> {
+/**
+ * One request, and whatever `handle` reads from its response, under one
+ * deadline. The timer used to be cleared as soon as the headers arrived, so a
+ * server that sent them and then stalled mid-body held the sync — and with it
+ * `running`, which queues every later sync behind it — for as long as the
+ * connection stayed open.
+ */
+async function call<T>(
+  syncId: string,
+  init: RequestInit,
+  handle: (res: Response, receivedAt: number) => Promise<T>,
+): Promise<T> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    return await fetch(ENDPOINT, {
+    const res = await fetch(ENDPOINT, {
       ...init,
       signal: init.signal ?? ctrl.signal,
       credentials: 'omit',
       mode: 'cors',
       headers: { ...init.headers, 'x-sync-id': syncId },
     });
+    return await handle(res, Date.now());
   } finally {
     clearTimeout(timer);
   }
@@ -97,13 +109,13 @@ export async function pullBlob(syncId: string): Promise<PullResult> {
   if (!SYNC_AVAILABLE) return { kind: 'unavailable' };
   try {
     const t0 = Date.now();
-    const res = await call(syncId, { method: 'GET' });
-    noteServerTime(res, t0, Date.now());
-
-    if (res.status === 404) return { kind: 'empty' };
-    if (res.status === 503) return { kind: 'unavailable' };
-    if (!res.ok) return { kind: 'error', retryAfterMs: retryAfterMs(res) };
-    return { kind: 'ok', blob: await bytes(res), rev: revOf(res) };
+    return await call(syncId, { method: 'GET' }, async (res, t1): Promise<PullResult> => {
+      noteServerTime(res, t0, t1);
+      if (res.status === 404) return { kind: 'empty' };
+      if (res.status === 503) return { kind: 'unavailable' };
+      if (!res.ok) return { kind: 'error', retryAfterMs: retryAfterMs(res) };
+      return { kind: 'ok', blob: await bytes(res), rev: revOf(res) };
+    });
   } catch {
     return { kind: 'error', retryAfterMs: 0 }; // offline, aborted, CORS
   }
@@ -121,20 +133,21 @@ export async function pushBlob(
 
   try {
     const t0 = Date.now();
-    const res = await call(syncId, {
+    const init: RequestInit = {
       method: 'PUT',
       body: blob as unknown as BodyInit,
       keepalive,
       headers: { 'content-type': 'application/octet-stream', 'if-match': '"' + rev + '"' },
+    };
+    return await call(syncId, init, async (res, t1): Promise<PushResult> => {
+      noteServerTime(res, t0, t1);
+      if (res.status === 204) return { kind: 'ok', rev: revOf(res) };
+      // The winning blob comes back with the 409, so one retry converges
+      // instead of needing a separate pull first.
+      if (res.status === 409) return { kind: 'conflict', blob: await bytes(res), rev: revOf(res) };
+      if (res.status === 503) return { kind: 'unavailable' };
+      return { kind: 'error', retryAfterMs: retryAfterMs(res) };
     });
-    noteServerTime(res, t0, Date.now());
-
-    if (res.status === 204) return { kind: 'ok', rev: revOf(res) };
-    // The winning blob comes back with the 409, so one retry converges instead
-    // of needing a separate pull first.
-    if (res.status === 409) return { kind: 'conflict', blob: await bytes(res), rev: revOf(res) };
-    if (res.status === 503) return { kind: 'unavailable' };
-    return { kind: 'error', retryAfterMs: retryAfterMs(res) };
   } catch {
     return { kind: 'error', retryAfterMs: 0 };
   }
@@ -143,8 +156,7 @@ export async function pushBlob(
 export async function deleteBlob(syncId: string): Promise<boolean> {
   if (!SYNC_AVAILABLE) return false;
   try {
-    const res = await call(syncId, { method: 'DELETE' });
-    return res.status === 204;
+    return await call(syncId, { method: 'DELETE' }, async (res) => res.status === 204);
   } catch {
     return false;
   }

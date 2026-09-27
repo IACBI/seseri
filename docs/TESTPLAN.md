@@ -22,6 +22,8 @@ Referans davranış: `v1-legacy` git etiketi (`git checkout v1-legacy` + `npx se
 - [ ] Hız 0.5×–2.5× arası değişir ve sese yansır.
 - [ ] Bölüm biterken otomatik sonrakine geçer (ayar açıkken).
 - [ ] Sayfayı yenile → aynı bölüm kaldığı pozisyondan devam eder (resume).
+- [ ] Kayıtlı konumu olan bir bölümü başlat ve yüklenmeden **hemen** konumsuz
+      başka bir bölüme geç → yeni bölüm baştan başlar, öncekinin konumuna atlamaz.
 - [ ] Kilit ekranı / medya tuşları (Media Session): başlık+kapak görünür, play/pause/next çalışır.
 
 ## 3. Sleep timer
@@ -104,6 +106,12 @@ Referans davranış: `v1-legacy` git etiketi (`git checkout v1-legacy` + `npx se
 - [ ] Ayarlar → Depolama satırı kullanım gösterir; "İndirilenleri Sil" çalışır.
 - [ ] CORS engelli bir feed'de indirme → dosya indirme fallback bildirimi.
 - [ ] OPML dışa aktar → içe aktar → abonelikler aynı (round-trip).
+- [ ] Yüzlerce kayıtlı bir OPML içe aktarımı tek seferde bitiyor; zaten takip
+      edilenler ikinci kez eklenmiyor, bildirim yalnızca yenileri sayıyor.
+- [ ] Apple üzerinden takip edilen bir yayını dışa aktar → dosyada `xmlUrl`
+      var; başka bir podcast uygulaması (ör. Pocket Casts) içe aktarabiliyor.
+- [ ] Başka bir uygulamanın OPML'ini içe aktar: Apple kimliğiyle zaten takip
+      edilen yayın **ikinci kez eklenmiyor**.
 - [ ] **Windows kurulumunda (Tauri kabuğu, tarayıcıda değil):** üçüncü taraf bir
       CDN'de barınan bir bölümü indir → "kaydedildi" gelir, DevTools konsolunda
       CSP ihlali yok. *(Masaüstü kabuğu kendi CSP'sini taşır; smoke betiklerinin
@@ -275,6 +283,8 @@ bir yayının bölüm id'leri feed'in id'lerine taşınır.
 - [ ] **Tümü / Dinlenmemiş / Devam eden / İndirilenler** süzgeçleri doğru satırları
       bırakıyor; gizlenen sayısı yazıyor.
 - [ ] Süzgeç hiçbir şeyle eşleşmezse boş durum mesajı çıkıyor (hata değil).
+- [ ] Ekran okuyucu süzgeç çiplerinin grubunu **"Bölümleri filtrele"** diye
+      okuyor ("Sırala" değil).
 - [ ] Süzgeç ve sıralama **tüm arşivde** arıyor, ekrandaki 200 satırda değil.
 - [ ] İki eşleşmiş cihaz: bir cihazda dinlendi işaretle → diğeri aynı durumu
       gösteriyor. Aynı anda biri dinlendi, diğeri dinlenmedi işaretlerse
@@ -284,6 +294,10 @@ bir yayının bölüm id'leri feed'in id'lerine taşınır.
 - [ ] Nişan (badge) destekleyen platformda sayı uygulama ikonunda görünüyor;
       desteklemeyen platformda hiçbir hata çıkmıyor.
 - [ ] Bir bölümü dinleyince Yeni bölümler listesinden düşüyor.
+- [ ] Çevrimdışıyken Ana Sayfa'da "Şimdi kontrol et" → "Yeni bölüm yok" değil,
+      **"N yayına ulaşılamadı"** diyor.
+- [ ] İki eşleşmiş cihaz: birinde bir bölümü elle "dinlendi" işaretle,
+      **duraklatmadan** bekle → ~30 sn içinde diğer cihazda da dinlendi görünüyor.
 
 ## 21. Bölüm işaretleri ve konuşma metni
 
@@ -299,6 +313,10 @@ bir yayının bölüm id'leri feed'in id'lerine taşınır.
 - [ ] Bir satıra dokununca ses oraya gidiyor ve **o satır** vurgulanıyor.
 - [ ] İkisini de yayınlamayan bir bölümde iki panel de hiç görünmüyor.
 - [ ] Metin indirilemezse panel hata diyor, uygulama çalmaya devam ediyor.
+- [ ] Konuşma metni olan **iki bölümü art arda** çal, ikincisinde paneli aç →
+      ikinci bölümün metni geliyor; panel "yükleniyor"da takılı kalmıyor.
+- [ ] Metin paneli açıkken aynı yayını listeden yeniden aç (feed yenilenir) →
+      panel açık kalıyor, metin kaybolmuyor.
 
 ## 22. İndirme, otomatik indirme ve temizlik
 
@@ -313,6 +331,8 @@ bir yayının bölüm id'leri feed'in id'lerine taşınır.
 - [ ] Hücresel bağlantıda "Wi-Fi" seçiliyken otomatik indirme duruyor
       (tarayıcı bağlantı türünü bildirdiğinde; iOS bildirmez).
 - [ ] Depolama dolarken indirme "yer yok" diyor, sessizce bozulmuyor.
+- [ ] Oturum açma sayfası (HTML) döndüren bir bölüm adresi "indirildi"
+      görünmüyor; indirme başarısız sayılıyor.
 - [ ] **CORS vermeyen bir CDN (takip yönlendirmesi):** örneğin The Daily'de
       indirmeye bas → çevrimdışı kopya alınamaz, adres tarayıcıya devredilir
       ve bildirim **"Çevrimdışı kaydedilemedi — yeni sekmede açıldı"** der.
@@ -329,6 +349,8 @@ demek ve bilinçli bir maliyet (bkz. `src/player/prefetch.ts` başlığı).
       inmedi (Ayarlar → indirilenlerde yeni bir şey yok).
 - [ ] Aynı bölümü **70 saniyeden uzun** dinle → kopya iniyor ve bittiğinde
       oynatma yerel kopyaya geçiyor (ağı kesince çalma sürüyor).
+- [ ] Kopya inerken **duraklat** → kopya bitince oynatma kendiliğinden
+      başlamıyor; Oynat'a basınca aynı saniyeden devam ediyor.
 - [ ] Duraklat ve 5 dakika bekle → kopya başlamıyor (bekleme dinleme değil).
 - [ ] Sarma çubuğunu sonuna sürükle → kopya başlamıyor.
 - [ ] Bölümün **son 2 dakikasından** devam et → kopya hiç başlamıyor.
@@ -340,6 +362,8 @@ demek ve bilinçli bir maliyet (bkz. `src/player/prefetch.ts` başlığı).
       tamamı** yazıyor, ekranda 200 satır var.
 - [ ] "… bölüm daha göster" düğmesi pencereyi büyütüyor.
 - [ ] Listenin sonuna kaydırmak düğmeye basmadan da büyütüyor.
+- [ ] Klavyeyle (Tab) "… bölüm daha göster"e gel → liste büyüyor ve odak **ilk
+      yeni bölüme** geçiyor; sayfanın başına dönmüyor.
 - [ ] Sıralamayı veya süzgeci değiştirmek listeyi **başa** alıyor ve pencereyi
       sıfırlıyor.
 - [ ] Çalan bölüm pencerenin ötesinde kalsa bile listede görünüyor ve ona
@@ -347,6 +371,14 @@ demek ve bilinçli bir maliyet (bkz. `src/player/prefetch.ts` başlığı).
 - [ ] `Tab` bir kez basınca listeye bir kez giriyor; `↑`/`↓` satırlar arasında,
       `←`/`→` satırın düğmeleri arasında geziyor.
 - [ ] Ekran okuyucu satırı "başlık — n / toplam, çal" diye okuyor.
+
+## 24b. 5000'den uzun arşivler ve veritabanı yükseltmesi
+
+- [ ] 5000'den fazla bölümlü bir yayın (Worker açıkken): bölüm sayısı arşivin
+      **tamamını** gösteriyor, en eski bölümler de listede.
+- [ ] Eski sürümün açık olduğu bir sekme dururken yeni sürümü başka sekmede aç
+      → yeni sekme feed'leri açabiliyor (takılmıyor); eski sekme kapanınca
+      Ayarlar'daki önbellek satırı dolu görünüyor.
 
 ## 25. Açılış hatası, tanılama ve yazı tipleri
 

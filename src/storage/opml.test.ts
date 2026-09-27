@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { exportOpml, parseOpml } from './opml';
+import { exportOpml, feedKey, parseOpml, unfollowedEntries } from './opml';
 import type { Subscription } from '../feeds/types';
 
 const subs: Subscription[] = [
@@ -69,5 +69,82 @@ describe('parseOpml', () => {
 
   it('throws on non-XML input', () => {
     expect(() => parseOpml('not xml at all {')).toThrow();
+  });
+});
+
+describe('an Apple subscription that knows its feed', () => {
+  const apple: Subscription = {
+    id: '1200361736',
+    name: 'The Daily',
+    artist: 'NYT',
+    art: '',
+    feedUrl: 'https://feeds.simplecast.com/54nAGcIl',
+  };
+
+  it('exports the feed address other apps read, and the Apple id Seseri reads', () => {
+    const doc = new DOMParser().parseFromString(exportOpml([apple]), 'application/xml');
+    const o = doc.querySelector('outline');
+    expect(o?.getAttribute('type')).toBe('rss');
+    expect(o?.getAttribute('xmlUrl')).toBe('https://feeds.simplecast.com/54nAGcIl');
+    expect(o?.getAttribute('url')).toBe('https://podcasts.apple.com/podcast/id1200361736');
+  });
+
+  it('comes back as the same Apple subscription, address included', () => {
+    expect(parseOpml(exportOpml([apple]))).toEqual([
+      { id: '1200361736', name: 'The Daily', feedUrl: 'https://feeds.simplecast.com/54nAGcIl' },
+    ]);
+  });
+});
+
+describe('unfollowedEntries', () => {
+  const followed: Subscription[] = [
+    {
+      id: '1200361736',
+      name: 'The Daily',
+      artist: '',
+      art: '',
+      feedUrl: 'https://feeds.simplecast.com/54nAGcIl',
+    },
+    { id: 'rss:https://example.com/show/feed/', name: 'Show', artist: '', art: '' },
+  ];
+
+  it("skips a show another app's export names by address when it is followed by Apple id", () => {
+    const fromOtherApp = [{ id: 'rss:http://FEEDS.simplecast.com/54nAGcIl', name: 'The Daily' }];
+    expect(unfollowedEntries(fromOtherApp, followed)).toEqual([]);
+  });
+
+  it('skips an address that differs only in how it is written', () => {
+    const entries = [{ id: 'rss:https://www.example.com/show/feed', name: 'Show' }];
+    expect(unfollowedEntries(entries, followed)).toEqual([]);
+  });
+
+  it('skips a repeat within the file itself', () => {
+    const entries = [
+      { id: 'rss:https://new.example.com/a.xml', name: 'A' },
+      { id: 'rss:https://new.example.com/a.xml/', name: 'A again' },
+      { id: '999999999', name: 'Apple show', feedUrl: 'https://new.example.com/a.xml' },
+    ];
+    expect(unfollowedEntries(entries, followed).map((e) => e.name)).toEqual(['A']);
+  });
+
+  it('keeps what is genuinely new', () => {
+    const entries = [
+      { id: 'rss:https://example.com/show/other.xml', name: 'Other' },
+      { id: '42424242', name: 'Apple new' },
+    ];
+    expect(unfollowedEntries(entries, followed)).toEqual(entries);
+  });
+});
+
+describe('feedKey', () => {
+  it('ignores scheme, www, host case and a trailing slash', () => {
+    expect(feedKey('http://WWW.Example.com/feed/')).toBe(feedKey('https://example.com/feed'));
+  });
+
+  it('keeps what can make it a different feed', () => {
+    expect(feedKey('https://example.com/feed?id=1')).not.toBe(
+      feedKey('https://example.com/feed?id=2'),
+    );
+    expect(feedKey('https://example.com/Feed')).not.toBe(feedKey('https://example.com/feed'));
   });
 });

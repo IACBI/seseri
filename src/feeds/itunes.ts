@@ -107,6 +107,7 @@ export async function lookupPodcast(id: string, signal?: AbortSignal): Promise<I
   if (!data.results || !Array.isArray(data.results)) throw new Error('invalid api response');
 
   const metaRow = data.results.find((r) => r.wrapperType === 'collection' || r.kind === 'podcast');
+  const feedUrl = httpsOnly(metaRow?.feedUrl ?? '');
   const meta: FeedMeta = {
     id: String(id),
     name: metaRow?.collectionName || metaRow?.trackName || '',
@@ -115,6 +116,7 @@ export async function lookupPodcast(id: string, signal?: AbortSignal): Promise<I
     // but starting from 600 keeps the artwork usable if Apple ever changes the
     // URL scheme the rewrite depends on.
     art: metaRow?.artworkUrl600 || metaRow?.artworkUrl100 || '',
+    ...(feedUrl ? { feedUrl } : {}),
   };
 
   const episodes: Episode[] = data.results
@@ -142,6 +144,6 @@ export async function lookupPodcast(id: string, signal?: AbortSignal): Promise<I
     episodes,
     limited: total > episodes.length,
     total,
-    feedUrl: httpsOnly(metaRow?.feedUrl ?? ''),
+    feedUrl,
   };
 }

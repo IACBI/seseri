@@ -305,6 +305,20 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   let transcriptState: 'none' | 'idle' | 'loading' | 'ready' | 'failed' = 'none';
   /** The episode the transcript belongs to, so a late answer can be dropped. */
   let transcriptFor: string | null = null;
+  /** Loads the current episode's transcript; null when it has none. */
+  let loadTranscript: (() => void) | null = null;
+
+  /**
+   * One listener for the life of the sheet. `prepareTranscript` used to add
+   * one per episode and never remove any, so opening the panel ran every
+   * earlier episode's loader first: the oldest one claimed `loading`, fetched
+   * a transcript that was no longer wanted and dropped it, and the current
+   * episode's loader found `loading` and never ran. The panel said "loading"
+   * for good.
+   */
+  transcriptEl.addEventListener('toggle', () => {
+    if (transcriptEl.open) loadTranscript?.();
+  });
 
   function clearChapters(): void {
     chapterLoad?.abort();
@@ -330,6 +344,7 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
     transcriptEl.open = false;
     transcriptState = 'none';
     transcriptFor = null;
+    loadTranscript = null;
   }
 
   function renderChapters(): void {
@@ -460,7 +475,7 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
     transcriptEl.hidden = false;
 
     /** Fetched on first open — see the note above about half-megabyte files. */
-    const load = (): void => {
+    loadTranscript = (): void => {
       if (transcriptState !== 'idle') return;
       transcriptState = 'loading';
       transcriptBody.replaceChildren(h('p', { className: 'np-note-p' }, t('np_transcript_loading')));
@@ -480,9 +495,6 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
         markCue(cueAt(cues, pbCurrent()));
       });
     };
-    transcriptEl.addEventListener('toggle', () => {
-      if (transcriptEl.open) load();
-    });
   }
 
   // ── playing session → title, waveform, nav buttons, notes ───────
@@ -493,7 +505,8 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
     setNowTitle(label ? label.title : t('pick_episode'));
 
     const trackId = s ? s.trackId : null;
-    if (trackId !== lastTrackId) {
+    const changed = trackId !== lastTrackId;
+    if (changed) {
       lastTrackId = trackId;
       wave.build(trackId || 'seseri');
       wave.setProgress(0);
@@ -507,10 +520,16 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
     btnNext.disabled = !s || s.index >= s.episodes.length - 1;
     refreshShareLabel();
     applyNotes(ep?.description);
-    if (trackId !== lastTrackId || !chapters.length) {
-      loadChaptersFor(ep);
-      prepareTranscript(ep);
-    }
+    /**
+     * `changed` has to be read before `lastTrackId` moves above; comparing
+     * afterwards was always false, so this ran on every `playing` write for
+     * an episode without chapters — a refresh of the playing feed included —
+     * and each run closed the transcript panel and threw its text away.
+     * The retries are kept for what can arrive late: a refreshed copy of the
+     * feed may carry a chapters or transcript URL the first one lacked.
+     */
+    if (changed || !chapters.length) loadChaptersFor(ep);
+    if (changed || transcriptState === 'none') prepareTranscript(ep);
     // A different show may play at a different speed.
     refreshSpeed();
     /**

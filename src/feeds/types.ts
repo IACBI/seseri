@@ -53,6 +53,13 @@ export interface FeedMeta {
   name: string;
   artist: string;
   art: string;
+  /**
+   * The show's own RSS address, for a feed known by its Apple id; absent for
+   * an `rss:` feed, whose id already is one. https only. It is what lets an
+   * OPML export name the feed in a form other apps can import, and an import
+   * recognise a show that is already followed under its Apple id.
+   */
+  feedUrl?: string;
 }
 
 export type Subscription = FeedMeta;

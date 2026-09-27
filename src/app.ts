@@ -11,6 +11,7 @@ import {
   inbox,
   loadInbox,
   pendingInbox,
+  sweepMessage,
   sweepSubscriptions,
 } from './feeds/inbox';
 import { loadPlayed, playedRevision } from './storage/played';
@@ -39,6 +40,24 @@ import { initQueueView } from './ui/views/queue';
 import { initSearchView } from './ui/views/search';
 import { initSettingsView } from './ui/views/settings';
 import { initSync, syncFlush } from './sync';
+
+/**
+ * `pp_last_feed`, if it is still a request this build can load. It used to be
+ * checked by `kind` alone — `yt` included, a source that no longer resolves —
+ * so a retired or hand-edited value reached `openFeed` and failed there.
+ */
+function storedFeedRequest(v: unknown): FeedRequest | null {
+  if (!v || typeof v !== 'object') return null;
+  const r = v as Partial<Record<'kind' | 'id' | 'url', unknown>>;
+  const id = typeof r.id === 'number' ? String(r.id) : r.id;
+  if (r.kind === 'itunes' && typeof id === 'string' && /^\d{4,14}$/.test(id)) {
+    return { kind: 'itunes', id };
+  }
+  if (r.kind === 'rss' && typeof r.url === 'string' && /^https?:\/\//i.test(r.url)) {
+    return { kind: 'rss', url: r.url };
+  }
+  return null;
+}
 
 export function boot(): void {
   renderShell(must('app'));
@@ -122,7 +141,7 @@ export function boot(): void {
     playEpisode: (req, trackId) => openEpisode(req, trackId),
     checkForNew: async () => {
       const result = await sweepSubscriptions(subscriptions(), { force: true });
-      toast(result.found ? t('toast_new_found', result.found) : t('toast_no_new'));
+      toast(...sweepMessage(result));
     },
   });
   // (Phase 3 wires search.restoreFocus into back-navigation focus hand-off.)
@@ -247,14 +266,9 @@ export function boot(): void {
   const route = parseLocation();
   const resumeReq =
     new URLSearchParams(location.search).get('resume') === '1'
-      ? local.get<FeedRequest | null>('pp_last_feed', null)
+      ? storedFeedRequest(local.get<unknown>('pp_last_feed', null))
       : null;
-  const initialReq =
-    route.kind === 'feed'
-      ? route.req
-      : resumeReq && ['itunes', 'rss', 'yt'].includes(resumeReq.kind)
-        ? resumeReq
-        : null;
+  const initialReq = route.kind === 'feed' ? route.req : resumeReq;
   if (initialReq && route.kind === 'feed' && route.episodeId) {
     /**
      * A shared episode link. It loads that episode and seeks to the moment the

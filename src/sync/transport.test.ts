@@ -191,3 +191,37 @@ describe('when the feature is switched off', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('the request deadline', () => {
+  /** Headers straight away, then a body that never finishes — until aborted. */
+  function stallingBody(): ReturnType<typeof vi.fn> {
+    const fn = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(ctrl) {
+          ctrl.enqueue(Uint8Array.from([1]));
+          init.signal?.addEventListener('abort', () =>
+            ctrl.error(new DOMException('aborted', 'AbortError')),
+          );
+        },
+      });
+      return new Response(body, { status: 200, headers: { etag: '"3"' } });
+    });
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+
+  it('covers the body, not just the headers', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const { pullBlob } = await loadTransport();
+      stallingBody();
+
+      const pending = pullBlob(SYNC_ID);
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      await expect(pending).resolves.toEqual({ kind: 'error', retryAfterMs: 0 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

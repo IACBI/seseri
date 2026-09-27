@@ -1,4 +1,4 @@
-import { fetchMock } from 'cloudflare:test';
+import { fetchMock } from './upstream';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
   fetchWithTimeout,

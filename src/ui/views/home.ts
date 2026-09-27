@@ -265,11 +265,16 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
   }
 
   // Rebuild when subscriptions change or the language switches (localizes the
-  // dynamically-built section labels / empty-state text).
-  subscriptions.subscribe(() => void render());
-  currentLang.subscribe(() => void render());
+  // dynamically-built section labels / empty-state text). Only while visible:
+  // a render reads IndexedDB once per subscription, and `onShow` renders
+  // anyway, so a change made elsewhere is picked up on the way back.
+  const renderIfShown = (): void => {
+    if (!el.hidden) void render();
+  };
+  subscriptions.subscribe(renderIfShown);
+  currentLang.subscribe(renderIfShown);
   // A sweep finishing, or a row being dismissed, changes the rail.
-  inbox.subscribe(() => void render());
+  inbox.subscribe(renderIfShown);
 
   const view: HomeView = {
     name: 'home',

@@ -90,8 +90,12 @@ sw.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          void caches.open(CACHE).then((c) => c.put(req, copy));
+          // An error page stored here would be what this URL opens to offline,
+          // in place of the app shell the fallback below serves.
+          if (res.ok) {
+            const copy = res.clone();
+            void caches.open(CACHE).then((c) => c.put(req, copy));
+          }
           return res;
         })
         .catch(

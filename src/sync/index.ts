@@ -3,6 +3,7 @@ import { playing } from '../player/session';
 import { queue } from '../state/queue';
 import { signal } from '../state/signals';
 import { local } from '../storage/local';
+import { playedRevision } from '../storage/played';
 import { saveProgressNow } from '../storage/progress';
 import { subscriptions } from '../storage/subscriptions';
 import { decodeCode, generateCode } from './code';
@@ -148,6 +149,9 @@ export async function linkSync(typed: string): Promise<boolean> {
 
 /** Stop syncing on this device. Local listening history is untouched. */
 export function unlinkSync(): void {
+  // The pending debounce belongs to the pairing being dropped.
+  if (timer) clearTimeout(timer);
+  timer = null;
   keys = null;
   rev = 0;
   local.remove(STATE_KEY);
@@ -318,6 +322,12 @@ function wire(): void {
     if (!applying) syncSoon();
   });
   queue.subscribe(() => {
+    if (!applying) syncSoon();
+  });
+  // A mark set by hand is as deliberate as a subscribe. It used to wait for the
+  // next pause or for the tab to close, so the other device kept offering an
+  // episode the listener had just said they were done with.
+  playedRevision.subscribe(() => {
     if (!applying) syncSoon();
   });
 }

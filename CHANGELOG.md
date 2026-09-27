@@ -4,6 +4,155 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.10 — 2026-09-27
+
+An audit of the whole codebase. The playback, transcript, sync, archive,
+download and feed-cache fixes below each have a test that fails against 4.2.9
+and passes now; the storage and sync ones were also checked by breaking the fix
+on purpose and watching the test catch it. Of the hardening items only the
+sync-upload cap has a test of its own, and it passes against 4.2.9 too: what
+changed there is memory, which a status code cannot show.
+
+### An episode could start at another episode's saved position
+
+Loading an episode attaches a one-shot `canplay` listener that restores its
+saved position. Moving on before that event arrived left the listener attached,
+and it then ran on the *next* episode's `canplay` — seeking it to the previous
+one's position. Tapping a second episode while the first was still loading was
+enough. The recovery/prefetch source swap had the same shape with
+`loadedmetadata`, and could start the next episode playing. Both listeners now
+check that the element still holds the source they were attached for.
+
+### The background copy restarted a paused episode
+
+When the prefetched local copy finished downloading, playback was switched over
+to it and always resumed — so pausing during a long download meant the episode
+started playing again on its own minutes later. The switch now keeps playing
+only if the listener still wants playback.
+
+### The transcript panel stuck on "loading"
+
+Every episode with a transcript added its own listener to the panel and none
+was removed. Opening the panel on the second such episode ran the first one's
+loader, which claimed the panel, fetched the wrong transcript and threw it
+away; the right one never loaded. Separately, a track-change check that could
+never be true re-prepared the panel on every playback-state write, so a refresh
+of the playing feed closed an open transcript and discarded its text.
+
+### Archives longer than 5000 episodes were cut off without a word
+
+The Worker answers at most 5000 episodes per `/v1/parse` response, and it also
+cut the document it caches at 5000 — so the rest of a longer archive could not
+be asked for at all, and the app showed the first 5000 as if that were the
+show. The Worker now keeps the whole archive (up to 20 000 episodes) and the app
+fetches it a page at a time. If a page cannot be fetched, the list says it is
+partial ("5000 episodes · of 6200 in the archive") instead of looking complete.
+**Needs the Worker redeployed**; against the old Worker the app now says
+"partial" where it used to say nothing.
+
+### Marking an episode heard reaches your other devices at once
+
+A mark set by hand waited for the next pause or for the tab to close before it
+synced, so the other device kept offering an episode you had just finished. It
+now syncs on the same 30-second debounce as subscribing and the queue.
+
+### A stalled sync could block every sync after it
+
+The sync request's 10-second deadline stopped at the response headers. A server
+that sent headers and then stalled mid-body held the sync open indefinitely, and
+every later sync queued behind it. The deadline now covers reading the body.
+
+### "Nothing new" for a check that could not reach anything
+
+A feed that could not be fetched was counted as checked, so "Check now" said
+"Nothing new." while offline. Failures are counted now: when nothing could be
+reached the toast says how many shows could not be reached, and a partial check
+says both.
+
+### A web page could be saved as an episode
+
+A paywall, captive portal or CDN error page answers 200 with HTML, and that page
+was stored as the episode's audio: the row said "downloaded" and played nothing.
+Downloads that are plainly documents (`text/*`, JSON, XML) are refused now.
+Real audio labelled loosely — `application/octet-stream`, no type at all — is
+still accepted.
+
+### OPML that other apps can read, and no duplicates on import
+
+A show followed through Apple was exported as an Apple link only, which no other
+podcast app can import. The app now remembers each Apple show's own feed address
+(learned when the show loads or on the next new-episode check) and exports it as
+`xmlUrl`, keeping the Apple id beside it so Seseri reads the file back as the
+same subscription. Importing another app's OPML no longer subscribes a second
+time to a show you follow by its Apple id, or to one whose address differs only
+by `http`/`https`, `www.` or a trailing slash.
+
+### Lighter on long libraries
+
+- Pruning the feed cache read every cached archive back out of IndexedDB to
+  learn three numbers per feed — and the new-episode sweep pruned after every
+  feed it wrote, so a sweep read the whole store once per subscription. The
+  sizes now live in a small store of their own (IndexedDB schema 3, migrated
+  once on first start), and pruning runs once, after the last write of a burst.
+- Upgrading the database waits for every other tab to close its connection, and
+  a tab still running the old version never does; everything that waited on the
+  database waited with it — opening a feed included. The app now carries on
+  without the cache until the other tab lets go, then picks the database up.
+- A download from a host that sends no `Content-Length` re-rendered the episode
+  list on every network chunk; it now publishes once, since nothing visible
+  changes. The podcast view also rendered every download step and played mark
+  twice.
+- When the public proxies are raced, the two that lose are now cancelled
+  instead of downloading the whole feed for nothing.
+- Home no longer re-renders (one IndexedDB read per subscription) while it is
+  hidden; it renders when shown, as it already did.
+- OPML import adds all subscriptions in one write instead of one write and one
+  Home/Library re-render per entry.
+
+### Hardening
+
+- The Worker's sync upload is read against its 128 KiB cap as it streams,
+  rather than buffered whole first — an upload without `Content-Length` could
+  make it hold any size of body in memory before refusing it. **The Worker has
+  to be redeployed for this.**
+- The Worker releases the body of each redirect hop it follows.
+- The service worker no longer stores an error response as a page's offline
+  copy.
+- The "Resume" shortcut validates the stored feed before opening it (a retired
+  `yt` entry used to reach the loader).
+- CI runs with a read-only token, and every GitHub Action is pinned to a commit
+  rather than a movable tag; Dependabot keeps the pins current.
+
+### Smaller fixes
+
+- The episode filter chips were announced to screen readers as "Sort"; they
+  now have their own label in all eight languages.
+- Reaching "show more" with the keyboard grows the list — focusing the button
+  scrolls it into the observer's margin — and the rebuild removed the focused
+  button, dropping focus to the top of the page. Focus now moves to the first
+  of the new episodes.
+- `smoke-longlist.cjs` clicked "show more" by coordinates, and on Windows the
+  list grew under the pointer first, so the click landed on an episode and
+  started it — which then failed the window-reset check for an unrelated
+  reason. It clicks the button itself now.
+- A duplicated block of proxy tests is gone, and the list-order rule shared by
+  the episode list and the new-episode sweep lives in one place
+  (`src/feeds/order.ts`).
+
+### Tooling
+
+- Vitest 3 → 4 (clears the `@vitest/mocker` advisory) in the app and the Worker.
+- The Worker's test pool 0.8 → 0.22 and Wrangler 4.107 → 4.142. The pool no
+  longer ships `fetchMock`; `worker/test/upstream.ts` provides the part of it
+  the tests used, on top of `globalThis.fetch`, so no test changed. Storage is
+  reset between tests explicitly, since the pool now isolates per file.
+  What `npm audit` still reports in `worker/` is inside the pool's own pinned
+  Wrangler — a local test runtime, not anything deployed — and clears when the
+  pool next updates it.
+- `fake-indexeddb` runs the database layer, migration included, against a real
+  IndexedDB implementation in the unit tests.
+- The desktop shell drops two Rust crates it never used (`serde`, `serde_json`).
+
 ## 4.2.9 — 2026-09-13
 
 ### Downloads looked gone on the one load that mattered

@@ -245,6 +245,15 @@ app.get('/v1/itunes', async (c) => {
 /** Hard ceiling on what one response will carry, whatever the feed claims. */
 const PARSE_MAX_EPISODES = 5000;
 
+/**
+ * Ceiling on what the cached document keeps, which is what `offset` pages
+ * through. It used to be the per-response cap as well, so everything past the
+ * first 5000 items was discarded before anyone could ask for it. Matches the
+ * client's own ceiling (`MAX_PARSED_EPISODES` in src/feeds/proxy-chain.ts);
+ * the 20 MB read cap bounds the document long before this in practice.
+ */
+const PARSE_DOC_MAX_EPISODES = 20_000;
+
 /** Charset for a feed's bytes: the header first, then the XML declaration. */
 function feedCharset(contentType: string, head: Uint8Array): string {
   const fromHeader = /charset=["']?([\w-]+)/i.exec(contentType)?.[1];
@@ -322,7 +331,7 @@ app.get('/v1/parse', async (c) => {
       return Response.json({
         meta: { name: parsed.title, artist: parsed.author, art: parsed.art },
         total: parsed.episodes.length,
-        episodes: parsed.episodes.slice(0, PARSE_MAX_EPISODES),
+        episodes: parsed.episodes.slice(0, PARSE_DOC_MAX_EPISODES),
       });
     } catch (e) {
       // `invalid rss` is the parser's verdict on something that is not a feed,

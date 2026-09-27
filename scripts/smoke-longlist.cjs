@@ -122,7 +122,13 @@ const CORS = { 'access-control-allow-origin': '*' };
     );
 
     // ── growing ─────────────────────────────────────────────────────
-    await page.click('.ep-more');
+    // A DOM click, not `page.click`: that scrolls the button into view first,
+    // the observer's 600px margin grows the window in that same moment, and
+    // the pointer then lands on the row that took the button's place — which
+    // starts episode 201 playing. Where the IntersectionObserver won that race
+    // (always, on Windows), the playing row later held the window open past
+    // one batch and failed the reset check below for a reason unrelated to it.
+    await page.$eval('.ep-more', (b) => b.click());
     await page.waitForFunction(
       (n) => document.querySelectorAll('.ep-item').length === n,
       {},

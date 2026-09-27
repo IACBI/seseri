@@ -102,6 +102,7 @@ export async function startDownload(
   });
   publish(next);
 
+  let painted = false;
   let lastPainted = 0;
   try {
     return await downloadOffline(ep, feedId, {
@@ -110,8 +111,12 @@ export async function startDownload(
       onProgress: ({ received, total }) => {
         const fraction = total > 0 ? received / total : 0;
         // Always publish the first chunk (so "0%" becomes a real number) and
-        // the total, then only on a visible step.
-        if (lastPainted && fraction - lastPainted < PROGRESS_STEP) return;
+        // the total, then only on a visible step. With no declared length the
+        // fraction never moves — the row shows "…" throughout — so after the
+        // first chunk there is nothing to publish. It used to publish every
+        // chunk then, re-rendering the list dozens of times a second.
+        if (painted && fraction - lastPainted < PROGRESS_STEP) return;
+        painted = true;
         lastPainted = fraction;
         patch(id, { received, total });
       },

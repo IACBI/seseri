@@ -24,8 +24,11 @@
 
 import type { Episode, FeedRequest, Subscription } from './types';
 import { requestFromFeedId } from './feed-id';
+import { t } from '../i18n';
+import { chronological } from './order';
 import { resolveFeed } from './resolve';
 import { putCachedFeed } from '../storage/db';
+import { refreshSubscription } from '../storage/subscriptions';
 import { isPlayed } from '../storage/played';
 import { local } from '../storage/local';
 import { settings } from '../state/settings';
@@ -173,19 +176,6 @@ export function newSince(list: readonly Episode[], mark: SeenMark): Episode[] {
   });
 }
 
-/** Oldest-first, so "everything after the previous newest" is a tail slice. */
-function chronological(episodes: readonly Episode[]): Episode[] {
-  const dated = episodes.reduce((n, e) => n + (e.releaseDate ? 1 : 0), 0);
-  // Same majority rule as the episode list: a sparsely dated feed is left in
-  // source order rather than having its undated items flung to one end.
-  if (dated * 2 > episodes.length) {
-    return episodes
-      .slice()
-      .sort((a, b) => +new Date(a.releaseDate || 0) - +new Date(b.releaseDate || 0));
-  }
-  return episodes.slice().reverse();
-}
-
 export interface SweepResult {
   checked: number;
   skipped: number;
@@ -194,11 +184,18 @@ export interface SweepResult {
 }
 
 /**
- * Check one feed. Returns the items it added.
- *
- * Never throws: a feed host that is down, a feed that no longer parses and a
- * proxy configuration that cannot reach it are all "nothing new from this one".
+ * What "check now" reports. "Nothing new" used to be said for a sweep that
+ * could not reach a single feed — offline, say — which is a claim about the
+ * shows the app never got to look at.
  */
+export function sweepMessage(r: SweepResult): [string, 'info' | 'error'] {
+  const unreachable = r.failed ? t('toast_check_failed', r.failed) : '';
+  if (r.found)
+    return [t('toast_new_found', r.found) + (unreachable ? ' · ' + unreachable : ''), 'info'];
+  if (r.failed && !r.checked) return [unreachable, 'error'];
+  return [t('toast_no_new') + (unreachable ? ' · ' + unreachable : ''), 'info'];
+}
+
 /**
  * Download what the sweep just found.
  *
@@ -220,7 +217,16 @@ async function autoDownload(found: ReadonlyArray<{ ep: Episode; feedId: string }
   }
 }
 
-async function checkFeed(sub: Subscription, now: number): Promise<InboxItem[]> {
+/**
+ * Check one feed. Returns the items it added, or null when the feed could not
+ * be read at all.
+ *
+ * Never throws. A feed host that is down, a feed that no longer parses and a
+ * proxy configuration that cannot reach it all mean "nothing new from this
+ * one" — but they are counted as failures rather than as checks, so "nothing
+ * new" is not reported for a sweep that could not look.
+ */
+async function checkFeed(sub: Subscription, now: number): Promise<InboxItem[] | null> {
   // A subscription's id IS its feed id (see feeds/feed-id.ts); the request is
   // the round trip back to something fetchable, and null for a retired source.
   const feedId = String(sub.id);
@@ -236,8 +242,11 @@ async function checkFeed(sub: Subscription, now: number): Promise<InboxItem[]> {
     feedName = resolved.meta.name || feedName;
     feedArt = resolved.meta.art || feedArt;
     void putCachedFeed(resolved);
+    // Subscriptions made before the feed address was kept learn it here, on
+    // the first sweep, without the listener having to open each show.
+    refreshSubscription(resolved.meta);
   } catch {
-    return [];
+    return null;
   }
   if (!episodes.length) return [];
 
@@ -304,15 +313,7 @@ export async function sweepSubscriptions(
     const found: InboxItem[] = [];
     for (let i = 0; i < due.length; i += CONCURRENCY) {
       const batch = due.slice(i, i + CONCURRENCY);
-      const settled = await Promise.all(
-        batch.map(async (sub) => {
-          try {
-            return await checkFeed(sub, now);
-          } catch {
-            return null; // counted as a failure below
-          }
-        }),
-      );
+      const settled = await Promise.all(batch.map((sub) => checkFeed(sub, now)));
       for (const items of settled) {
         if (items === null) result.failed++;
         else {

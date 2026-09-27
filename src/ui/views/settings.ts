@@ -29,8 +29,8 @@ import { clearFeedSpeeds, feedSpeedCount, feedSpeedRevision } from '../../state/
 import { clearProgress, saveProgressNow } from '../../storage/progress';
 import { hardReset } from '../../storage/reset';
 import { exportBackup, restoreBackup } from '../../storage/backup';
-import { exportOpml, parseOpml } from '../../storage/opml';
-import { subscriptions, toggleSubscription, isSubscribed } from '../../storage/subscriptions';
+import { exportOpml, parseOpml, unfollowedEntries } from '../../storage/opml';
+import { addSubscriptions, subscriptions } from '../../storage/subscriptions';
 import { pbSetRate } from '../../player/engine';
 import {
   settings,
@@ -572,14 +572,17 @@ export function initSettingsView(deps: SettingsViewDeps): View {
     if (!f) return;
     void f.text().then((xml) => {
       try {
-        const entries = parseOpml(xml);
-        let added = 0;
-        for (const e of entries) {
-          if (!isSubscribed(e.id)) {
-            toggleSubscription({ id: e.id, name: e.name, artist: '', art: '' });
-            added++;
-          }
-        }
+        const entries = unfollowedEntries(parseOpml(xml), subscriptions());
+        const added = addSubscriptions(
+          entries.map((e) => ({
+            id: e.id,
+            name: e.name,
+            artist: '',
+            art: '',
+            // Only an Apple entry keeps it: an `rss:` id already is the address.
+            ...(e.feedUrl && !e.id.startsWith('rss:') ? { feedUrl: e.feedUrl } : {}),
+          })),
+        );
         toast(t('opml_imported', added));
       } catch {
         toast(t('opml_invalid'), 'error');
