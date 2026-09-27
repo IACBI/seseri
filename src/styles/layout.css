@@ -106,7 +106,14 @@
     padding-block-end: env(safe-area-inset-bottom, 0px);
   }
   .nav-items { justify-content: space-around; block-size: var(--tabbar-h); }
+  /* One equal column per tab. `flex: 1` on the button did nothing while its
+     parent was a plain <li>, so each tab was as wide as its label and the
+     centres drifted with the translation ("Kütüphane" vs "Ara"). */
+  .nav-items > li { flex: 1; display: flex; justify-content: center; }
   .nav-item { flex: 1; max-width: 120px; }
+  /* The rail's spacer is an empty tab slot here, and `space-around` gave it a
+     share of the bar — the gap between Library and Settings. */
+  .nav-items .nav-spring { display: none; }
 }
 
 /* Desktop: static left sidebar */
@@ -154,7 +161,10 @@
     font-weight: 700;
     letter-spacing: -0.02em;
   }
-  .nav-items { flex-direction: column; gap: var(--s-1); }
+  /* Grows to the rail's height, so the spacer below has room to push Settings
+     to the bottom. Without it the column was only as tall as its items, the
+     spacer had nothing to fill, and Settings sat straight under Library. */
+  .nav-items { flex-direction: column; gap: var(--s-1); flex: 1 0 auto; }
   .nav-item {
     flex-direction: row;
     justify-content: flex-start;

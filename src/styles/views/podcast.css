@@ -310,10 +310,14 @@ body:not(.is-playing) .ep-eq i {
   color: var(--accent-2);
   font-weight: 600;
 }
+/* Wraps rather than clipping: on a phone the date, the duration and a badge
+   ("kaldığın yer", "продолжить") do not fit one line, and the badge was the
+   part cut off — two letters of it in the install screenshots. */
 .ep-date-dur {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--s-1);
+  gap: 2px var(--s-1);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--text3);

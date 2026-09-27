@@ -4,6 +4,30 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.12 — 2026-09-28
+
+### Three layout faults the new screenshots showed
+
+Regenerating the screenshots — the three in the manifest are what people see
+when they install the app — turned up three faults, all older than this
+release:
+
+- **A gap in the phone's tab bar.** The spacer that exists to push Settings to
+  the bottom of the desktop rail was an empty fifth slot on a phone, and
+  `space-around` gave it a share of the bar. The tabs were also as wide as
+  their labels, so their centres drifted with the language. They are four equal
+  columns now (98 px apart at 390 px, in all eight languages; "Einstellungen"
+  still fits at 320 px).
+- **Settings was never at the bottom of the desktop rail.** The same spacer had
+  no room to grow, because the list it sits in was only as tall as its items;
+  Settings sat straight under Library. It is pinned to the bottom now, expanded
+  and collapsed, and a window too short for the list still scrolls instead of
+  overlapping.
+- **The resume badge was cut to two letters on a phone.** "15.06.2026 · 52dk ·
+  kaldığın yer" does not fit one line on a phone, and the badge was the part
+  that got clipped — in 14 of 20 language × width combinations measured. The
+  line now wraps and the badge moves under the date when it has to.
+
 ## 4.2.11 — 2026-09-27
 
 ### iTunes stops taking the long way round while Apple refuses the Worker

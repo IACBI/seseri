@@ -162,8 +162,11 @@ Referans davranış: `v1-legacy` git etiketi (`git checkout v1-legacy` + `npx se
 - [ ] `[` tuşu her görünümden şeridi açıp kapatır; **Türkçe-Q klavyede aynı fiziksel tuş** (`ğ`) de çalışır; bir metin alanına yazarken çalışmaz; <900px'te hiçbir şey yapmaz. Kısayol listesinde (`?`) görünür.
 - [ ] ≥900px: Ana Sayfa'daki dil seçici, 720px'lik okuma sütununun değil **pencerenin** sağ üst köşesindedir; ilk satırın altına girmez.
 - [ ] <900px: alttan sekme çubuğu + tek panelli ekran davranışı korunur; daraltma düğmesi görünmez.
+- [ ] <900px: dört sekme **eşit aralıklı** (Kütüphane ile Ayarlar arasında boşluk yok); 320px'te en uzun etiket ("Einstellungen") sığar.
+- [ ] ≥900px: **Ayarlar kenar çubuğunun en altında**, açıkken de daraltılmışken de; pencere çok kısaysa öğeler üst üste binmez, şerit kayar.
 - [ ] Tema "Otomatik": işletim sistemi teması değişince uygulama canlı uyar (4 tema: Dark/Light/OLED Black + Otomatik).
 - [ ] Bölüm satırlarında ilerleme çizgisi; bitenler soluk + ✓.
+- [ ] Telefonda kayıtlı konumu olan bölümde **"kaldığın yer" rozeti kesilmeden** görünür (sığmazsa tarihin altına iner).
 
 ## 15. Responsive & erişilebilirlik denetimi
 
