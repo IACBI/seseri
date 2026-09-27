@@ -221,6 +221,43 @@ export async function fetchTextProxied(
 }
 
 /**
+ * How long to go straight to Apple after the Worker reports that Apple refused
+ * it. Long enough that a session stops paying for the detour, short enough
+ * that the Worker — and its edge cache — come back soon after Apple relents.
+ */
+export const ITUNES_BYPASS_MS = 30 * 60 * 1000;
+
+/** Until when iTunes calls skip the Worker; 0 while they go through it. */
+let itunesBypassUntil = 0;
+
+/** Test seam: forget a remembered refusal. */
+export function resetItunesBypass(): void {
+  itunesBypassUntil = 0;
+}
+
+/**
+ * True when the Worker's answer means Apple will not talk to the Worker, as
+ * opposed to anything being wrong with this request.
+ *
+ * Apple has refused requests from Cloudflare's egress outright (`upstream 403`
+ * on lookups, `upstream 429` on search), and every iTunes call then paid a
+ * round trip to the Worker before falling back to Apple directly. A 429 of the
+ * Worker's own rate limit means the same thing for the next minute and more.
+ * A Worker that cannot be reached at all, or that rejects the URL, is not
+ * remembered: that is not Apple's verdict, and it may be gone next time.
+ */
+async function appleRefusedWorker(res: Response): Promise<boolean> {
+  if (res.status === 429) return true;
+  if (res.status !== 502) return false;
+  try {
+    const body = (await res.json()) as { error?: unknown };
+    return typeof body.error === 'string' && /^upstream 4\d\d$/.test(body.error);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fetch JSON from the iTunes API, working around its CDN CORS bug: responses
  * are cached without varying on Origin, so a cache-busting param forces a
  * fresh, correctly-attributed response. Worker (P4) → direct → proxies.
@@ -233,7 +270,7 @@ export async function itunesFetch<T = unknown>(url: string, signal?: AbortSignal
     Date.now().toString(36) +
     Math.random().toString(36).slice(2, 8);
 
-  if (API_BASE) {
+  if (API_BASE && Date.now() >= itunesBypassUntil) {
     try {
       const res = await fetchWithTimeout(
         `${API_BASE}/v1/itunes?url=${encodeURIComponent(url)}`,
@@ -241,6 +278,7 @@ export async function itunesFetch<T = unknown>(url: string, signal?: AbortSignal
         10000,
       );
       if (res.ok) return (await res.json()) as T;
+      if (await appleRefusedWorker(res)) itunesBypassUntil = Date.now() + ITUNES_BYPASS_MS;
     } catch (e) {
       if (signal?.aborted) throw e;
     }

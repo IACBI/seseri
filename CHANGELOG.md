@@ -4,6 +4,25 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.11 — 2026-09-27
+
+### iTunes stops taking the long way round while Apple refuses the Worker
+
+Apple is refusing iTunes requests from Cloudflare's egress — `403` on
+lookups, `429` on search — and has been since at least 4.2.10's release; the
+4.2.9 Worker code gets the same answer, so it is not anything the Worker does.
+The app already fell back to asking Apple directly from the browser, so search
+and opening a show kept working, but every one of those calls went to the
+Worker first, waited for its refusal, and only then went to Apple.
+
+When the Worker reports that Apple refused it (or that its own rate limit is
+spent), the app now goes straight to Apple for the next 30 minutes, then tries
+the Worker again — so its edge cache comes back as soon as Apple relents. A
+Worker that cannot be reached, or an error that is not Apple's refusal, is not
+remembered. Checked in a real browser against a Worker giving exactly the
+deployed one's answer: three searches used to reach it three times, and now
+reach it once.
+
 ## 4.2.10 — 2026-09-27
 
 An audit of the whole codebase. The playback, transcript, sync, archive,

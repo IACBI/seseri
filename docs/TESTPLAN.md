@@ -11,6 +11,9 @@ Referans davranış: `v1-legacy` git etiketi (`git checkout v1-legacy` + `npx se
 - [ ] Arama kutusuna **ham RSS URL** yapıştır (örn. `https://feeds.simplecast.com/54nAGcIl`) → feed açılır.
 - [ ] Geçersiz/ölü RSS URL → kullanıcıya görünür hata, uygulama kilitlenmez.
 - [ ] Boş arama sonucu → boş durum mesajı görünür.
+- [ ] DevTools → Network: Worker `/v1/itunes` 502 (`upstream 403/429`) dönerse
+      ilk aramadan sonra aramalar **doğrudan** `itunes.apple.com`'a gidiyor,
+      Worker'a tekrar gitmiyor; sonuçlar yine geliyor.
 
 ## 2. Oynatma (temel)
 
