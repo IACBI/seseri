@@ -1,16 +1,17 @@
-# iOS kabuğu (Capacitor) — uygulanmamış prosedür
+# iOS shell (Capacitor) — a procedure not yet carried out
 
-> **Bu dosyadaki hiçbir adım çalıştırılmadı.** Capacitor bağımlılıkları repoya
-> eklenmedi ve `ios/` dizini üretilmedi: her ikisi de macOS + Xcode + Apple
-> Developer hesabı olmadan doğrulanamaz, doğrulanmamış bir `ios/` ağacını
-> commit'lemek de yanıltıcı olur. Aşağıdakiler bir Mac'te sırayla uygulanacak
-> adımlardır — `docs/STORE.md` §5'in devamı.
+> **None of the steps in this file has been run.** The Capacitor dependencies
+> are not in the repository and no `ios/` directory has been generated: neither
+> can be verified without macOS, Xcode and an Apple Developer account, and
+> committing an unverified `ios/` tree would be misleading. What follows are the
+> steps to take, in order, on a Mac — a continuation of `docs/STORE.md` §5.
 
-Amaç tek bir şey: iOS'ta ekran kilitliyken sesin devam etmesi. Safari PWA'da
-WebKit arka plandaki sayfayı askıya alabiliyor; `UIBackgroundModes: audio` +
-`AVAudioSession(.playback)` bunu ortadan kaldıran tek mekanizma.
+The goal is one thing: audio that keeps playing on iOS with the screen locked.
+In a Safari PWA, WebKit can suspend the page in the background;
+`UIBackgroundModes: audio` plus `AVAudioSession(.playback)` is the only
+mechanism that prevents it.
 
-## 1) Bağımlılıklar
+## 1) Dependencies
 
 ```bash
 npm i -D @capacitor/cli
@@ -18,7 +19,7 @@ npm i @capacitor/core @capacitor/ios
 npx cap init Seseri io.github.iacbi.seseri --web-dir dist
 ```
 
-## 2) `capacitor.config.ts` (repo kökü)
+## 2) `capacitor.config.ts` (repository root)
 
 ```ts
 import type { CapacitorConfig } from '@capacitor/cli';
@@ -26,12 +27,12 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'io.github.iacbi.seseri',
   appName: 'Seseri',
-  // Paketlenmiş varlıklar. `server.url` ile canlı siteye bağlamak cazip ama
-  // uygulamayı çevrimdışı kullanılamaz hale getirir ve App Review'un
-  // "sadece web sitesi sarmalayıcı" reddine doğrudan davetiye çıkarır.
+  // Bundled assets. Pointing `server.url` at the live site is tempting, but it
+  // makes the app unusable offline and invites App Review's "just a website
+  // wrapper" rejection outright.
   webDir: 'dist',
   ios: {
-    // <audio> tam ekran oynatıcıya kaçmasın; arka plan sesi buna bağlı.
+    // Keep <audio> out of the full-screen player; background audio depends on it.
     limitsNavigationsToAppBoundDomains: true,
   },
 };
@@ -39,7 +40,7 @@ const config: CapacitorConfig = {
 export default config;
 ```
 
-`npm run build` sonrası `npx cap sync ios`.
+After `npm run build`, run `npx cap sync ios`.
 
 ## 3) `ios/App/App/Info.plist`
 
@@ -50,42 +51,43 @@ export default config;
 </array>
 ```
 
-Bu anahtar olmadan diğer her şey işe yaramaz: iOS uygulamayı arka plana
-düştüğü anda askıya alır.
+Without this key nothing else matters: iOS suspends the app the moment it goes
+to the background.
 
 ## 4) `ios/App/App/AppDelegate.swift`
 
-`application(_:didFinishLaunchingWithOptions:)` içine:
+Inside `application(_:didFinishLaunchingWithOptions:)`:
 
 ```swift
 import AVFoundation
 
-// .playback: sessize alma anahtarına ve ekran kilidine rağmen çalar.
-// .spokenAudio: konuşma içeriği için doğru mod — araç sistemleri ve AirPods
-// bunu müzikten farklı ele alır (ör. navigasyon anonsunda durdurup devam eder).
+// .playback: plays through the silent switch and the screen lock.
+// .spokenAudio: the right mode for speech — car systems and AirPods treat it
+// differently from music (e.g. pause and resume around a navigation prompt).
 try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
 try? AVAudioSession.sharedInstance().setActive(true)
 ```
 
-## 5) İstemci tarafında yapılmayacak olan
+## 5) What not to do on the client
 
-**Ses motorunu değiştirme.** `WKWebView` + `AVAudioSession(.playback)` altında
-mevcut `<audio>` elementi zaten arka planda çalar. `Capacitor.isNativePlatform()`
-ile ikinci bir yerel ses motoruna geçmek (`@capacitor-community/native-audio` vb.)
-hız kontrolü, waveform, uyku zamanlayıcı ve Media Session entegrasyonunun
-tamamını kırar — hepsi tek bir element etrafında kurulu (`src/player/engine.ts`).
-Tek motor korunur.
+**Do not replace the audio engine.** Under `WKWebView` with
+`AVAudioSession(.playback)` the existing `<audio>` element already plays in the
+background. Switching to a second, native audio engine behind
+`Capacitor.isNativePlatform()` (`@capacitor-community/native-audio` and the
+like) would break speed control, the waveform, the sleep timer and the Media
+Session integration — all of them are built around one element
+(`src/player/engine.ts`). Keep the single engine.
 
-## 6) Gerekli hesap/sertifika
+## 6) Accounts and certificates needed
 
-1. Apple Developer Program üyeliği ($99/yıl).
-2. Xcode'da signing team + bundle id kaydı.
-3. App Store Connect kaydı, gizlilik formu (veri toplanmıyor).
-4. `docs/STORE.md` §5'teki ToS notu iOS için de geçerlidir.
+1. Apple Developer Program membership ($99/year).
+2. A signing team and bundle id registered in Xcode.
+3. An App Store Connect record and the privacy form (no data collected).
+4. The terms-of-service note in `docs/STORE.md` §5 applies to iOS as well.
 
-## 7) Android uyarısı
+## 7) A warning about Android
 
-Android'i Capacitor'a **taşıma.** Mevcut TWA, Chrome'un medya ön plan
-servisini bedava alıyor; Capacitor'ın `WebView`'i almaz ve yerel bir
-`MediaSessionService` plugin'i yazmadan arka plan sesi gerileyerek çıkar.
-Detay: `docs/STORE.md` §4.
+**Do not move Android to Capacitor.** The current TWA gets Chrome's media
+foreground service for free; Capacitor's `WebView` does not, and background
+audio gets worse unless a native `MediaSessionService` plugin is written.
+Details: `docs/STORE.md` §4.
