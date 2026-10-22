@@ -32,6 +32,11 @@ hardening items are done:
   CI instead of being logged.
 - Vite 7.3.6 → 7.3.7 and Hono 4.13.7 → 4.13.13, both for advisories. The Hono
   one is in `serveStatic`, which the Worker does not use.
+- Dev-only dependencies brought past their advisories (vitest 4.1.12,
+  brace-expansion, source-map-js). The Worker's `package.json` now carries
+  `overrides` for `undici` and `sharp`: miniflare, even at its latest, pins
+  versions with known advisories. Neither ships in the deployed Worker; drop the
+  overrides once miniflare moves past them.
 
 ## 4.2.12 — 2026-09-28
 
