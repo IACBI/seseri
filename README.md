@@ -137,7 +137,7 @@ running, the app falls back as described under [Configuration](#configuration).
 | `npm run lint` / `typecheck` | ESLint / `tsc --noEmit` |
 | `npm run worker:dev` / `worker:test` | the Worker under `wrangler dev` / its tests in the Workers runtime |
 | `npm run verify` | lint, typecheck, unit tests, build, Worker typecheck and tests — the gate before any change |
-| `npm run smoke` | the seven headless browser smokes CI runs |
+| `npm run smoke` | the eight headless browser smokes CI runs |
 | `node scripts/smoke-p4-worker.cjs` | a real RSS feed through the local Worker (needs `worker:dev`) |
 | `node scripts/smoke-live.cjs [url]` | the deployed site against real CDNs, including CSP violations |
 | `node scripts/store-shots.cjs` | regenerate the install screenshots in `public/screenshots/` |
@@ -355,7 +355,7 @@ yola düşer.
 | `npm run lint` / `typecheck` | ESLint / `tsc --noEmit` |
 | `npm run worker:dev` / `worker:test` | Worker'ı `wrangler dev` altında çalıştırır / testlerini Workers çalışma ortamında koşar |
 | `npm run verify` | lint, tip denetimi, birim testleri, derleme, Worker tip denetimi ve testleri — her değişiklikten önceki kapı |
-| `npm run smoke` | CI'ın koştuğu yedi tarayıcı smoke testi |
+| `npm run smoke` | CI'ın koştuğu sekiz tarayıcı smoke testi |
 | `node scripts/smoke-p4-worker.cjs` | gerçek bir RSS feed'ini yerel Worker üzerinden dener (`worker:dev` gerekir) |
 | `node scripts/smoke-live.cjs [url]` | yayındaki siteyi gerçek CDN'lere karşı dener, CSP ihlalleri dahil |
 | `node scripts/store-shots.cjs` | `public/screenshots/` içindeki yükleme ekran görüntülerini yeniden üretir |

@@ -201,6 +201,9 @@ Screenshot tooling: `scripts/shot.cjs` (headless Chrome through
 ## 16. Worker and deep links
 
 - [ ] With `npm run worker:dev` running, RSS comes through the Worker (`/v1/parse` or `/v1/feed` in Network).
+- [ ] **Against the deployed Worker**, `/v1/feed` for a URL that is not a feed
+      (a `text/plain` file, say) answers `415 not a feed`, while a real RSS
+      feed answers `200`. Use a fresh URL: the edge cache holds old answers.
 - [ ] With the Worker stopped and the third-party proxies turned on, the same
       feed still loads through them; with the proxies off, it fails with a
       message that says so.

@@ -82,11 +82,12 @@ is also a Chromium but refuses to launch under CDP on this machine, reporting
 passes.
 
 ```bash
-npm run smoke                       # the seven below, in order — 89 assertions
+npm run smoke                       # the eight below, in order — 94 assertions
 node scripts/smoke-shell.cjs        # boot, navigation, theme, language
 node scripts/smoke-p3-offline.cjs   # download → offline reload → playback
 node scripts/smoke-p5-mini.cjs      # dock, queue, back-navigation
 node scripts/smoke-chapters.cjs     # chapter list, scrubber markers, transcript
+node scripts/smoke-shownotes.cjs    # show notes fetch nothing they point at
 node scripts/smoke-longlist.cjs     # the render window over a 900-episode feed
 node scripts/smoke-migrate.cjs      # Apple ids → feed ids, on state the app wrote
 node scripts/smoke-p6-sync.cjs      # two devices pairing and converging

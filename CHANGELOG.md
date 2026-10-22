@@ -4,7 +4,7 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
-## Unreleased
+## 4.2.13 — 2026-10-23
 
 ### Security review follow-ups
 
