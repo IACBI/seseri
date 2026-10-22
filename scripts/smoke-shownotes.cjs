@@ -172,7 +172,10 @@ function isProbe(u) {
       },
       { timeout: 15000 },
     );
-    await page.click('#npNotes > summary');
+    // A DOM click, not a pointer one: the sheet animates in from
+    // `visibility:hidden`, and on a slow runner puppeteer finds the summary
+    // "not clickable" mid-transition. Geometry is not what this smoke tests.
+    await page.$eval('#npNotes > summary', (el) => el.click());
     await page.waitForFunction(() => document.getElementById('npNotes')?.open === true, {
       timeout: 5000,
     });
