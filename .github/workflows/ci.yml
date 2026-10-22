@@ -80,6 +80,11 @@ jobs:
         env:
           SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
 
+      - name: Show notes never fetch what they point at
+        run: npm run smoke:shownotes
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
       - name: A long archive, rendered a window at a time
         run: npm run smoke:longlist
         env:
@@ -96,15 +101,18 @@ jobs:
         env:
           SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
 
-  # Non-blocking dependency vulnerability signal (runtime deps only).
+  # Blocking for high and critical advisories in runtime deps (root and worker).
+  # Moderate advisories are reported in the log but do not fail the job.
+  # A temporary exception to a failing advisory must go through a reviewed PR:
+  # pin or override the dependency, or lower the level here, with the reason
+  # recorded in that PR.
   audit:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
-      - run: npm audit --omit=dev
-      - run: npm audit --omit=dev --prefix worker
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high --prefix worker

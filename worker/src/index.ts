@@ -16,6 +16,7 @@ import { cors } from 'hono/cors';
 import type { AppContext, Env } from './env';
 import { carriesCredential } from './credential-url';
 import { edgeCached, fetchWithTimeout, readCapped, safeTarget } from './safe-fetch';
+import { isFeedDocument } from './feed-shape';
 import { scanRss } from './rss-scan';
 import { clientKey, rateLimited } from './ratelimit';
 import { sweepSync, syncRoutes } from './sync';
@@ -106,11 +107,12 @@ const NOSNIFF = { 'x-content-type-options': 'nosniff' } as const;
  *
  * Only `text/html` used to be refused, which left every other document type
  * through — `image/svg+xml` and `application/xhtml+xml` both render as markup
- * if a browser is ever pointed straight at the proxy URL. The origin gate above
- * already refuses a plain navigation (it carries no `Origin`), so this is the
- * second lock rather than the first, but a passthrough content type is not
- * something to leave open-ended. An absent content type is allowed: plenty of
- * small feed hosts send none, and the body is capped and never executed.
+ * if a browser is ever pointed straight at the proxy URL. The origin gate only
+ * stops a browser navigation (which sends no `Origin`), so a passthrough
+ * content type is not something to leave open-ended. An
+ * absent content type is allowed: plenty of small feed hosts send none, and the
+ * body is capped and never executed. `isFeedDocument` is the check that does
+ * not depend on what the upstream claims to be.
  */
 function feedContentType(ct: string): boolean {
   if (!ct) return true;
@@ -121,10 +123,13 @@ app.use('*', async (c, next) => {
   const ip = c.req.header('cf-connecting-ip') ?? '';
 
   if (c.req.path !== '/' && !allowOrigin(c.req.header('origin') ?? '', c.req.url)) {
-    // Without this the proxy endpoints are usable as a general-purpose open
-    // proxy, which also lets anyone seed our edge cache. Browsers always send
-    // Origin on a cross-origin fetch and the app is never same-origin with the
-    // worker, so a missing or foreign Origin means the caller is not the app.
+    // Browser-side CORS policy, not authentication. Any client can send
+    // `Origin: https://iacbi.github.io` — the app is a public static client with
+    // no secret to check — so this only turns away a page on another site. It
+    // does not stop curl. The abuse limits are the ones below and in
+    // safeTarget(): private hosts refused and redirects re-checked, the
+    // per-client rate limit, size and time caps, and the feed-shape check on
+    // /v1/feed.
     return c.json({ error: 'forbidden' }, 403);
   }
 
@@ -159,6 +164,8 @@ app.get('/v1/feed', async (c) => {
       const ct = (res.headers.get('content-type') || '').toLowerCase();
       if (!feedContentType(ct)) return c.json({ error: 'not a feed' }, 415);
       const body = await readCapped(res, FEED_MAX_BYTES);
+      // Refused before edgeCached stores anything: only a 200 is cached.
+      if (!isFeedDocument(body)) return c.json({ error: 'not a feed' }, 415);
       return new Response(body, {
         headers: {
           'content-type': ct || 'application/xml; charset=utf-8',
