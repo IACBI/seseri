@@ -4,6 +4,35 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## Unreleased
+
+### Security review follow-ups
+
+An outside review of the repository raised two medium findings and three
+hardening items. One finding held, one did not reproduce, and all three
+hardening items are done:
+
+- **The Worker's `Origin` check was described as more than it is.** Any
+  client can send `Origin: https://iacbi.github.io`, so the header never stopped
+  `curl` from using `/v1/feed` as a general fetcher. The check stays as browser
+  CORS policy, and `SECURITY.md` no longer calls it a limit. What narrows the
+  endpoint now is the body itself: `/v1/feed` answers 415 unless the document
+  begins with an `rss`, `feed` or `rdf:RDF` root (after a BOM, declaration,
+  comments and DOCTYPE), and a refused body is never edge-cached.
+- **Show notes do not fetch what they point at, and now a smoke proves it.**
+  The review expected `DOMParser` to load images and frames in an episode
+  description before they are filtered out. Measured in Chromium, it loads
+  none, as the HTML spec says for a document with no browsing context.
+  `smoke:shownotes` serves a description full of load-bearing elements aimed
+  at a probe host and fails on a single request to it.
+- **The Pages build no longer holds write tokens.** `npm ci` and the build run
+  in a job with read-only permissions, and only the deploy step gets
+  `pages: write` and `id-token: write`.
+- **The dependency audit blocks.** High and critical runtime advisories now fail
+  CI instead of being logged.
+- Vite 7.3.6 → 7.3.7 and Hono 4.13.7 → 4.13.13, both for advisories. The Hono
+  one is in `serveStatic`, which the Worker does not use.
+
 ## 4.2.12 — 2026-09-28
 
 ### Three layout faults the new screenshots showed

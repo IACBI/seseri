@@ -22,10 +22,11 @@
     "smoke:offline": "node scripts/smoke-p3-offline.cjs",
     "smoke:mini": "node scripts/smoke-p5-mini.cjs",
     "smoke:chapters": "node scripts/smoke-chapters.cjs",
+    "smoke:shownotes": "node scripts/smoke-shownotes.cjs",
     "smoke:longlist": "node scripts/smoke-longlist.cjs",
     "smoke:migrate": "node scripts/smoke-migrate.cjs",
     "smoke:sync": "node scripts/smoke-p6-sync.cjs",
-    "smoke": "vite build && npm run smoke:shell && npm run smoke:offline && npm run smoke:mini && npm run smoke:chapters && npm run smoke:longlist && npm run smoke:migrate && npm run smoke:sync"
+    "smoke": "vite build && npm run smoke:shell && npm run smoke:offline && npm run smoke:mini && npm run smoke:chapters && npm run smoke:shownotes && npm run smoke:longlist && npm run smoke:migrate && npm run smoke:sync"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
@@ -38,7 +39,7 @@
     "puppeteer-core": "^25.10.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.0",
-    "vite": "^7.0.0",
+    "vite": "^7.3.7",
     "vite-plugin-pwa": "^1.0.1",
     "vitest": "^4.1.11"
   },

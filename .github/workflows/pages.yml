@@ -5,20 +5,21 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+# Workflow-level token is read-only. Write scopes are granted per job below.
+permissions: {}
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # Runs third-party package code (npm ci, npm run build). Holds no write
+  # scopes, so a compromised dependency cannot publish to Pages.
+  build:
+    permissions:
+      contents: read
+      # configure-pages calls GET /repos/{owner}/{repo}/pages (read only).
+      pages: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -50,6 +51,18 @@ jobs:
         with:
           path: dist
 
+  # Only the deploy step touches Pages and the OIDC token. It runs no
+  # project or dependency code.
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

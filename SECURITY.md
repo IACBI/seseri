@@ -25,9 +25,13 @@ You can expect an initial response within a week.
   carries a subscriber credential are served with `Cache-Control: no-store` and
   never written to the shared edge cache. It enforces an SSRF guard on user-supplied URLs (re-validated on every redirect hop —
   redirects are followed manually, max 3 hops, and each `Location` target must
-  pass the same private-host checks), response size caps, an app-origin
-  requirement so the proxy endpoints cannot be used as an open proxy, and rate
-  limiting per client network prefix; it stores no user data. A proxied body is
+  pass the same private-host checks), response size caps, a feed-shape check so
+  `/v1/feed` returns only bodies that begin like RSS, Atom or RDF, and rate
+  limiting per client network prefix; it stores no user data. The `Origin`
+  check is browser-side CORS policy, not authentication: any client can send
+  `Origin: https://iacbi.github.io`, and the app is a public static client with
+  no secret that could prove a request came from it. It stops other sites'
+  pages from calling the proxy; it does not stop `curl`. A proxied body is
   also bounded in two ways a per-request cap cannot manage on its own: the drain
   has its own deadline (the fetch timeout covers reaching a response, not
   reading it, so a one-byte-a-second upstream used to pin a request and its
@@ -35,6 +39,11 @@ You can expect an initial response within a week.
   request in one isolate are capped in aggregate — a handful of maximum-size
   feeds at once would otherwise take the isolate over its memory limit and kill
   every request in flight on it. Both answer with a 5xx and a `Retry-After`.
+  `/v1/feed` is a feed fetcher, not a general URL fetcher: a body that does not
+  start with an XML root of `rss`, `feed` or `rdf:RDF` (after an optional BOM,
+  declaration, comments and DOCTYPE) is refused with 415 and never edge-cached.
+  That check looks at the bytes, not the upstream's `Content-Type`, so it holds
+  against a host that lies about its type.
   A localhost `Origin` is accepted only by a Worker that is itself running on
   localhost — `wrangler dev` needs it, and until 4.2.4 the deployed Worker
   honoured the header too, which any client could simply send. Proxied bodies are returned with
@@ -89,9 +98,10 @@ The threat model, stated plainly:
   burst from one address drew no refusal at all). That binding is kept as the
   fallback for when the object cannot be reached, because a loose brake still
   beats failing open. Keys are the IPv4 address or the IPv6 /64, so an attacker
-  with addresses across many prefixes draws a budget per prefix — the app-origin
-  requirement, the size cap, the drain deadline and the isolate-wide drain
-  budget are what bound that.
+  with addresses across many prefixes draws a budget per prefix — the SSRF
+  guard, the feed-shape check, the size cap, the drain deadline and the
+  isolate-wide drain budget are what bound that. The `Origin` header is not a
+  limit: it is a value the caller chooses.
 - The Windows installer is currently unsigned (SmartScreen warning expected)
   pending a code-signing certificate.
 - Credential detection for private feeds is tuned for precision: it inspects

@@ -203,6 +203,43 @@ describe('open-proxy protection', () => {
   });
 });
 
+describe('forged Origin is not authentication', () => {
+  // `call` sends the app's own Origin, which is exactly what curl can send too.
+  // Everything below must hold for that request as it would for a browser's.
+  const feedUrl = (path: string) => '/v1/feed?url=' + encodeURIComponent('https://feeds.example.com' + path);
+
+  it.each([
+    ['an HTML page', 'text/html; charset=utf-8', '<!doctype html><html><body>hi</body></html>'],
+    ['JSON', 'application/json', '{"ok":true}'],
+    ['JSON with no content type', '', '{"ok":true}'],
+    ['plain text', 'text/plain', 'hello'],
+    ['an empty body', 'application/rss+xml', ''],
+  ])('refuses %s with 415 and stores nothing', async (label, contentType, body) => {
+    // Two calls, both expected upstream: a cached refusal would answer the
+    // second from the edge, and the unused mock then fails the test.
+    fetchMock
+      .get('https://feeds.example.com')
+      .intercept({ path: new RegExp('^/refuse/' + encodeURIComponent(label) + '$') })
+      .reply(200, body, { headers: contentType ? { 'content-type': contentType } : {} })
+      .times(2);
+    const path = '/refuse/' + encodeURIComponent(label);
+    expect((await call(feedUrl(path))).status).toBe(415);
+    expect((await call(feedUrl(path))).status).toBe(415);
+  });
+
+  it('serves a real RSS body to the same forged Origin', async () => {
+    fetchMock
+      .get('https://feeds.example.com')
+      .intercept({ path: '/forged-ok.xml' })
+      .reply(200, '<?xml version="1.0"?><rss version="2.0"><channel><title>Real</title></channel></rss>', {
+        headers: { 'content-type': 'application/rss+xml' },
+      });
+    const res = await call(feedUrl('/forged-ok.xml'));
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('<title>Real</title>');
+  });
+});
+
 describe('CORS', () => {
   it('allows the production origin', async () => {
     const ctx = createExecutionContext();
