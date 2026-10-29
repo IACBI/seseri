@@ -111,9 +111,8 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
 
         <div class="np-secondary">
           <div class="np-sec-ctl np-sleep">
-            <span class="np-sec-cap" data-i18n="sleep_short" aria-hidden="true">Uyku</span>
+            <span class="np-sec-cap" aria-hidden="true"><svg class="icon"><use href="#ic-moon"/></svg><span data-i18n="sleep_short">Uyku</span></span>
             <span class="np-sec-row">
-              <svg class="icon" aria-hidden="true"><use href="#ic-moon"/></svg>
               <select class="seri-select np-sel" id="sleepSel" data-i18n-aria="sleep_timer" aria-label="Uyku zamanlayıcısı (dk)"></select>
               <span class="np-sleep-left mono" id="sleepLeft" data-i18n-aria="sleep_remaining" aria-label="Kalan uyku süresi" aria-live="off" hidden></span>
               <button class="np-sleep-plus" id="sleepPlus" type="button" title="+5" hidden>+5</button>

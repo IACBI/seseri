@@ -195,7 +195,9 @@ body.has-ambient .np-inner::before { opacity: 1; }
 /* ─ Secondary row: sleep, speed, queue ─ */
 .np-secondary {
   display: flex;
-  align-items: center;
+  /* Bottoms, not centres: the captioned controls are taller than the queue
+     button, and centring left it floating above the selects. */
+  align-items: flex-end;
   justify-content: center;
   flex-wrap: wrap;
   gap: var(--s-3) var(--s-5);
@@ -216,7 +218,12 @@ body.has-ambient .np-inner::before { opacity: 1; }
   gap: var(--s-1);
 }
 .np-sec-ctl svg { inline-size: 16px; block-size: 16px; }
+.np-sec-cap svg { inline-size: 12px; block-size: 12px; }
+/* The icon rides in the caption, so the caption centres over the select alone. */
 .np-sec-cap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.1em;
