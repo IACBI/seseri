@@ -58,7 +58,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
           <div class="p-count"><span id="pEpCount">0</span> <span data-i18n="ep_count_unit">bölüm</span></div>
         </div>
         <div class="p-header-actions">
-          <button class="icon-btn p-fav" id="favBtn" data-i18n-aria="fav_btn" aria-label="Abonelik ekle/çıkar"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-star"/></svg></button>
+          <button class="icon-btn p-fav" id="favBtn" data-i18n-aria="fav_btn" aria-label="Abonelik ekle/çıkar"><svg class="icon" aria-hidden="true"><use href="#ic-star"/></svg></button>
           <button class="icon-btn p-share" id="shareBtn" data-i18n-aria="share_btn" aria-label="Linki paylaş"><svg class="icon" aria-hidden="true"><use href="#ic-share"/></svg></button>
         </div>
       </div>
@@ -198,7 +198,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
       ep.trackTimeMillis ? ' · ' + fmtDur(ep.trackTimeMillis) : '',
     );
     if (listened) {
-      dateDur.append(' ', h('span', { className: 'ep-done-badge badge badge-done' }, '✓'));
+      dateDur.append(' ', h('span', { className: 'ep-done-badge badge badge-done' }, icon('ic-check')));
     } else if (hasSaved) {
       dateDur.append(' ', h('span', { className: 'ep-saved-badge badge' }, t('ep_saved_badge')));
     }
@@ -310,9 +310,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
         },
         running
           ? h('span', { className: 'ep-dl-pct' }, running === '…' ? '…' : running + '%')
-          : done
-            ? '✓'
-            : icon('ic-download'),
+          : icon(done ? 'ic-download-done' : 'ic-download'),
       );
       actions.append(button);
     }
@@ -530,7 +528,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
     }
     thumbEl.classList.toggle('has-art', !!art);
     countEl.textContent = String(s.episodes.length);
-    favBtn.classList.toggle('faved', !!(meta && isSubscribed(meta.id)));
+    syncFav(!!(meta && isSubscribed(meta.id)));
 
     dotEl.className = 'dot ' + s.status.kind;
     statusTextEl.textContent = s.status.message;
@@ -603,6 +601,13 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
     filterTimer = setTimeout(() => playback.setFilter(value), 200);
   });
 
+  /** Outline star = not subscribed, filled = subscribed; never colour alone. */
+  function syncFav(on: boolean): void {
+    favBtn.classList.toggle('faved', on);
+    favBtn.setAttribute('aria-pressed', String(on));
+    favBtn.querySelector('.icon')?.classList.toggle('icon-fill', on);
+  }
+
   favBtn.addEventListener('click', () => {
     const meta = playback.session().meta;
     if (!meta) return;
@@ -612,12 +617,12 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
         const m = playback.session().meta;
         if (ok && m) {
           toggleSubscription(m);
-          favBtn.classList.toggle('faved', isSubscribed(m.id));
+          syncFav(isSubscribed(m.id));
         }
       });
     } else {
       toggleSubscription(meta);
-      favBtn.classList.toggle('faved', isSubscribed(meta.id));
+      syncFav(isSubscribed(meta.id));
     }
   });
 
@@ -659,6 +664,11 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
         toast(wasPlayed ? t('toast_marked_unplayed') : t('toast_marked_played'));
       } else if (actBtn.dataset.act === 'queue') {
         playback.toggleQueued(idx);
+      } else if (actBtn.classList.contains('done')) {
+        // The finished state deletes the file; a stray tap must not.
+        void confirmDialog('confirm_delete_download').then((ok) => {
+          if (ok) void playback.downloadToggle(idx);
+        });
       } else {
         // No optimistic label: the job registry publishes the real state, and
         // a hand-written one here would be overwritten a frame later anyway.

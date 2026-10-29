@@ -131,6 +131,7 @@ const tr: Lang = {
   confirm_cancel: "Vazgeç",
   confirm_clear_downloads: "İndirilen tüm bölümler silinecek. Emin misin?",
   confirm_unsubscribe: "Bu podcast aboneliklerden kaldırılsın mı?",
+  confirm_delete_download: "İndirilen bu bölüm cihazdan silinsin mi?",
   queue_title: "Çalma kuyruğu",
   queue_empty: "Kuyruk boş.",
   queue_clear: "Kuyruğu temizle",

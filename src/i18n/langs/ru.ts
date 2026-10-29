@@ -146,6 +146,7 @@ const ru: Lang = {
   confirm_cancel: "Отмена",
   confirm_clear_downloads: "Все загруженные выпуски будут удалены. Вы уверены?",
   confirm_unsubscribe: "Убрать этот подкаст из подписок?",
+  confirm_delete_download: "Удалить этот загруженный выпуск с устройства?",
   queue_title: "Очередь воспроизведения",
   queue_empty: "Очередь пуста.",
   queue_clear: "Очистить очередь",

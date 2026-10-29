@@ -131,6 +131,7 @@ const ar: Lang = {
   confirm_cancel: "إلغاء",
   confirm_clear_downloads: "سيتم حذف جميع الحلقات المنزَّلة. هل أنت متأكد؟",
   confirm_unsubscribe: "إزالة هذا البودكاست من اشتراكاتك؟",
+  confirm_delete_download: "هل تريد حذف هذه الحلقة المنزَّلة من الجهاز؟",
   queue_title: "قائمة الانتظار",
   queue_empty: "قائمة الانتظار فارغة.",
   queue_clear: "مسح قائمة الانتظار",

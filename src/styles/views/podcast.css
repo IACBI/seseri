@@ -84,10 +84,6 @@
 .p-fav.faved {
   color: var(--accent);
 }
-.p-fav:not(.faved) .icon {
-  /* Outline-star feel: dim until subscribed. */
-  opacity: 0.85;
-}
 
 /* ── status strip ───────────────────────────────────────────────── */
 .p-status {
@@ -337,12 +333,12 @@ body:not(.is-playing) .ep-eq i {
 .ep-actions {
   display: flex;
   align-items: center;
-  gap: var(--s-1);
+  gap: var(--s-2);
   flex-shrink: 0;
 }
 .ep-act {
-  min-inline-size: 40px;
-  min-block-size: 40px;
+  min-inline-size: 44px;
+  min-block-size: 44px;
   color: var(--text3);
 }
 .ep-act:hover {
@@ -365,9 +361,17 @@ body:not(.is-playing) .ep-eq i {
   font-size: var(--fs-xs);
   font-weight: 700;
 }
+/* Last in the row and set apart from its neighbours: in the finished state a
+   tap here deletes the file, so a mis-aimed thumb should land elsewhere. */
+.ep-dl-btn {
+  margin-inline-start: var(--s-2);
+}
 .ep-dl-btn.done {
   color: var(--green);
-  font-size: var(--fs-md);
+}
+.ep-done-badge .icon {
+  inline-size: 12px;
+  block-size: 12px;
 }
 
 /* thin progress underline for partially-played rows */

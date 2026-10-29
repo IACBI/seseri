@@ -131,6 +131,7 @@ const es: Lang = {
   confirm_cancel: "Cancelar",
   confirm_clear_downloads: "Se eliminarán todos los episodios descargados. ¿Estás seguro?",
   confirm_unsubscribe: "¿Quitar este pódcast de tus suscripciones?",
+  confirm_delete_download: "¿Eliminar este episodio descargado del dispositivo?",
   queue_title: "Cola de reproducción",
   queue_empty: "La cola está vacía.",
   queue_clear: "Vaciar cola",

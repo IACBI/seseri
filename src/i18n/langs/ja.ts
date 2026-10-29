@@ -131,6 +131,7 @@ const ja: Lang = {
   confirm_cancel: "キャンセル",
   confirm_clear_downloads: "ダウンロード済みのエピソードをすべて削除します。よろしいですか？",
   confirm_unsubscribe: "このポッドキャストの登録を解除しますか？",
+  confirm_delete_download: "ダウンロードしたこのエピソードを端末から削除しますか？",
   queue_title: "再生キュー",
   queue_empty: "キューは空です。",
   queue_clear: "キューをクリア",

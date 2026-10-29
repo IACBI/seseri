@@ -131,6 +131,7 @@ const de: Lang = {
   confirm_cancel: "Abbrechen",
   confirm_clear_downloads: "Alle heruntergeladenen Folgen werden gelöscht. Bist du sicher?",
   confirm_unsubscribe: "Diesen Podcast aus deinen Abos entfernen?",
+  confirm_delete_download: "Diese heruntergeladene Folge vom Gerät löschen?",
   queue_title: "Warteschlange",
   queue_empty: "Die Warteschlange ist leer.",
   queue_clear: "Warteschlange leeren",

@@ -133,6 +133,7 @@ export interface Lang {
   confirm_cancel: string;
   confirm_clear_downloads: string;
   confirm_unsubscribe: string;
+  confirm_delete_download: string;
   queue_title: string;
   queue_empty: string;
   queue_clear: string;

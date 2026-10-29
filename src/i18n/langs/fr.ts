@@ -131,6 +131,7 @@ const fr: Lang = {
   confirm_cancel: "Annuler",
   confirm_clear_downloads: "Tous les épisodes téléchargés seront supprimés. Êtes-vous sûr ?",
   confirm_unsubscribe: "Retirer ce podcast de vos abonnements ?",
+  confirm_delete_download: "Supprimer cet épisode téléchargé de l'appareil ?",
   queue_title: "File d’attente",
   queue_empty: "La file d’attente est vide.",
   queue_clear: "Vider la file",

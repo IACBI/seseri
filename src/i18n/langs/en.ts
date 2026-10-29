@@ -131,6 +131,7 @@ const en: Lang = {
   confirm_cancel: "Cancel",
   confirm_clear_downloads: "All downloaded episodes will be deleted. Are you sure?",
   confirm_unsubscribe: "Remove this podcast from your subscriptions?",
+  confirm_delete_download: "Delete this downloaded episode from the device?",
   queue_title: "Play queue",
   queue_empty: "Queue is empty.",
   queue_clear: "Clear queue",

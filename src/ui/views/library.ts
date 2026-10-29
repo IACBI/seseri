@@ -88,7 +88,7 @@ export function initLibraryView(deps: LibraryViewDeps): View {
       className: 'icon-btn faved',
       type: 'button',
       title: t('fav_btn'),
-      attrs: { 'aria-label': t('fav_btn') },
+      attrs: { 'aria-label': t('fav_btn'), 'aria-pressed': 'true' },
       on: {
         click: async (e) => {
           e.stopPropagation();
@@ -96,7 +96,7 @@ export function initLibraryView(deps: LibraryViewDeps): View {
           // the subscriptions signal drives the re-render (see subscribe below)
         },
       },
-    }, icon('ic-star'));
+    }, icon('ic-star', 'icon-fill'));
 
     const activate = (): void => {
       const req = requestFromSubscription(f);
