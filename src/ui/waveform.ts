@@ -1,4 +1,5 @@
 import { fmtTime } from '../lib/format';
+import { scrubFraction, seekDirection } from '../lib/scrub';
 import { pbCurrent, pbDuration, pbSeekTo } from '../player/engine';
 
 const WAVE_BARS = 56;
@@ -83,12 +84,10 @@ export function initWaveform(
   window.addEventListener('resize', invalidateRect);
   window.addEventListener('scroll', invalidateRect, { passive: true, capture: true });
 
+  // .signal-layers is mirrored under [dir="rtl"], so the visual start (right
+  // edge) has to map to 0 — scrubFraction does that, as the mini dock does.
   function frac(clientX: number): number {
-    const r = rect();
-    const f = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-    // .signal-layers is mirrored under [dir="rtl"] — invert so the visual
-    // start (right edge) maps to 0, matching the mini player's math.
-    return document.documentElement.dir === 'rtl' ? 1 - f : f;
+    return scrubFraction(clientX, rect());
   }
   function seekAt(clientX: number): void {
     const dur = pbDuration();
@@ -100,7 +99,9 @@ export function initWaveform(
   function showTip(clientX: number): void {
     const f = frac(clientX);
     const dur = pbDuration();
-    tip.style.left = f * 100 + '%';
+    // A custom property read by a transform: moving the bubble must not
+    // dirty layout on every pointermove.
+    tip.style.setProperty('--tip-x', f * rect().width + 'px');
     tip.textContent = dur ? fmtTime(f * dur) : '0:00';
   }
   function endScrub(): void {
@@ -139,12 +140,10 @@ export function initWaveform(
   wrap.addEventListener('pointerup', endScrub);
   wrap.addEventListener('pointercancel', endScrub);
   wrap.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') {
+    const dir = seekDirection(e.key);
+    if (dir !== 0) {
       e.preventDefault();
-      opts.seekRel(-opts.skipBack());
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      opts.seekRel(opts.skipFwd());
+      opts.seekRel(dir < 0 ? -opts.skipBack() : opts.skipFwd());
     } else if (e.key === 'Home') {
       e.preventDefault();
       if (pbDuration()) {

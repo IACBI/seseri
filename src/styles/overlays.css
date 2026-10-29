@@ -16,6 +16,13 @@
 @media (min-width: 900px) {
   .toast-host { inset-block-end: calc(var(--mini-h) + var(--s-5)); }
 }
+/* The sheet covers the tab bar and dock these offsets clear, so with it open
+   a toast would sit over the queue and show-notes controls. Under the sheet's
+   header instead: it is pointer-events:none, and nothing there is a control. */
+body:has(.np-sheet.open) .toast-host {
+  inset-block-end: auto;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 64px);
+}
 .toast {
   max-width: min(420px, calc(100vw - 32px));
   padding: var(--s-3) var(--s-4);
@@ -123,12 +130,19 @@
   flex-direction: column;
   overflow-y: auto;
   transform: translateY(100%);
+  will-change: transform;
   /* visibility flips instantly on open (so focus() can land inside) and only
      after the slide-out on close, so the sheet is never display:none. */
   transition: transform var(--d-slow) var(--ease-out), visibility 0s var(--d-slow);
   visibility: hidden;
+  /* Don't chain a scroll past the sheet into the page behind it. */
+  overscroll-behavior: contain;
   padding-block-start: env(safe-area-inset-top, 0px);
   padding-block-end: env(safe-area-inset-bottom, 0px);
+  /* Physical on purpose: a landscape notch sits on a particular side whatever
+     the reading direction is. */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 .np-sheet.open {
   transform: none;

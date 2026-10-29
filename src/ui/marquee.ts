@@ -17,6 +17,8 @@ const SPEED_PX_PER_S = 26;
 const DWELL_MS = 1800;
 /** Under a few pixels the ellipsis is cheaper than the motion. */
 const MIN_OVERFLOW_PX = 6;
+/** Width of the fade on the edge that is cutting text off. */
+const FADE_PX = 14;
 
 export interface Marquee {
   /** Replace the text, then re-measure and restart the drift if it overflows. */
@@ -38,11 +40,14 @@ export function initMarquee(host: HTMLElement): Marquee {
 
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null;
   let anim: Animation | null = null;
+  let fade: Animation | null = null;
   let frame = 0;
 
   function stop(): void {
     anim?.cancel();
+    fade?.cancel();
     anim = null;
+    fade = null;
     // Back to a plain inline run, which is what `text-overflow` needs to
     // draw the ellipsis — and what the measurement below assumes.
     host.classList.remove('marquee-on');
@@ -60,15 +65,38 @@ export function initMarquee(host: HTMLElement): Marquee {
     const sign = getComputedStyle(host).direction === 'rtl' ? 1 : -1;
     const away = `translateX(${sign * shift}px)`;
     host.classList.add('marquee-on');
+    const at: [number, number, number, number, number] = [
+      0,
+      DWELL_MS / total,
+      (DWELL_MS + travelMs) / total,
+      (2 * DWELL_MS + travelMs) / total,
+      1,
+    ];
+    const timing = { duration: total, iterations: Infinity };
     anim = track.animate(
       [
-        { offset: 0, transform: 'none', easing: 'ease-in-out' },
-        { offset: DWELL_MS / total, transform: 'none', easing: 'ease-in-out' },
-        { offset: (DWELL_MS + travelMs) / total, transform: away, easing: 'ease-in-out' },
-        { offset: (2 * DWELL_MS + travelMs) / total, transform: away, easing: 'ease-in-out' },
-        { offset: 1, transform: 'none' },
+        { offset: at[0], transform: 'none', easing: 'ease-in-out' },
+        { offset: at[1], transform: 'none', easing: 'ease-in-out' },
+        { offset: at[2], transform: away, easing: 'ease-in-out' },
+        { offset: at[3], transform: away, easing: 'ease-in-out' },
+        { offset: at[4], transform: 'none' },
       ],
-      { duration: total, iterations: Infinity },
+      timing,
+    );
+    // The edge that has text running past it fades; the one that does not stays
+    // crisp, so a title at rest starts with a whole first letter. Same clock and
+    // easing as the drift. The custom properties are registered in
+    // signal-line.css; elsewhere they snap instead of fading, which is harmless.
+    const FADE = `${FADE_PX}px`;
+    fade = host.animate(
+      [
+        { offset: at[0], '--fade-s': '0px', '--fade-e': FADE, easing: 'ease-in-out' },
+        { offset: at[1], '--fade-s': '0px', '--fade-e': FADE, easing: 'ease-in-out' },
+        { offset: at[2], '--fade-s': FADE, '--fade-e': '0px', easing: 'ease-in-out' },
+        { offset: at[3], '--fade-s': FADE, '--fade-e': '0px', easing: 'ease-in-out' },
+        { offset: at[4], '--fade-s': '0px', '--fade-e': FADE },
+      ],
+      timing,
     );
   }
 

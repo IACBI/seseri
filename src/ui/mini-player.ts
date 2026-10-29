@@ -2,6 +2,7 @@ import { currentLang, t } from '../i18n';
 import { artAt, artSrcset } from '../lib/art';
 import { dprWidths, MINI_ART_PX } from './art-tile';
 import { fmtTime } from '../lib/format';
+import { scrubFraction, seekDirection } from '../lib/scrub';
 import { onEngine, pbDuration, pbSeekTo, pbSetRate } from '../player/engine';
 import { initMarquee } from './marquee';
 import { initSleepControl } from './sleep-control';
@@ -120,7 +121,7 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
         // 4 Hz, and nothing here is observable while the tab is hidden.
         if (document.hidden) break;
         const pct = e.duration ? (e.current / e.duration) * 100 : 0;
-        progress.style.width = pct + '%';
+        progress.style.transform = `scaleX(${pct / 100})`;
         scrub.setAttribute('aria-valuenow', String(Math.round(pct)));
         if (e.duration) {
           scrub.setAttribute('aria-valuetext', fmtTime(e.current) + ' / ' + fmtTime(e.duration));
@@ -167,11 +168,9 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
   function seekAt(clientX: number): void {
     const dur = pbDuration();
     if (!dur) return;
-    const rect = scrub.getBoundingClientRect();
-    let f = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    if (document.documentElement.dir === 'rtl') f = 1 - f;
+    const f = scrubFraction(clientX, scrub.getBoundingClientRect());
     pbSeekTo(f * dur);
-    progress.style.width = f * 100 + '%';
+    progress.style.transform = `scaleX(${f})`;
   }
   scrub.addEventListener('pointerdown', (e) => {
     if (!pbDuration()) return;
@@ -192,22 +191,16 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
   scrub.addEventListener('pointerup', endScrub);
   scrub.addEventListener('pointercancel', endScrub);
   scrub.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      playback.seekRel(-settings().skipBack);
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      playback.seekRel(settings().skipForward);
-    }
+    const dir = seekDirection(e.key);
+    if (dir === 0) return;
+    e.preventDefault();
+    playback.seekRel(dir < 0 ? -settings().skipBack : settings().skipForward);
   });
 
   // ── expand to the full Now Playing sheet ─────────────────────────
+  // The title area is a pointer convenience only: the chevron is the one
+  // control keyboards and screen readers reach, so the two are not announced
+  // as the same button twice.
   expand.addEventListener('click', deps.onOpen);
   main.addEventListener('click', deps.onOpen);
-  main.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      deps.onOpen();
-    }
-  });
 }

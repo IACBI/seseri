@@ -93,12 +93,15 @@
   box-shadow: 0 0 12px 3px var(--accent-glow);
 }
 
-/* scrub/hover time bubble (mono) — left% set by waveform.ts */
+/* scrub/hover time bubble (mono) — --tip-x (px along the layer) set by
+   waveform.ts. Physical `left: 0`: the layer is mirrored in RTL, so the
+   offset is measured from its own, unmirrored, left edge. */
 .signal-tip {
   position: absolute;
   inset-block-end: 100%;
+  left: 0;
   margin-block-end: var(--s-1);
-  transform: translateX(-50%);
+  transform: translateX(calc(var(--tip-x, 0px) - 50%));
   padding: 2px 7px;
   border-radius: var(--r-xs);
   background: var(--surface2);
@@ -111,7 +114,7 @@
   pointer-events: none;
   transition: opacity var(--d-fast) var(--ease-smooth);
 }
-[dir="rtl"] .signal-tip { transform: translateX(-50%) scaleX(-1); }
+[dir="rtl"] .signal-tip { transform: translateX(calc(var(--tip-x, 0px) - 50%)) scaleX(-1); }
 .signal-scrub:hover .signal-tip,
 .signal-scrub.scrubbing .signal-tip { opacity: 1; }
 .signal-scrub.scrubbing .signal-head { inline-size: 3px; }
@@ -142,8 +145,13 @@
 .mini-player {
   align-items: center;
   gap: var(--s-2);
+  /* Landscape notches: layout.css fixes the inline insets, so the safe areas
+     come off as margins (they shrink an abspos box with both insets set). */
+  margin-left: env(safe-area-inset-left, 0px);
+  margin-right: env(safe-area-inset-right, 0px);
   padding-inline: var(--s-3) var(--s-2);
-  padding-block: 0;
+  /* The bottom strip is the seek hairline's reach; the controls stay above it. */
+  padding-block: 0 8px;
   overflow: hidden;
   border-radius: var(--r-lg);
   background: var(--glass);
@@ -177,8 +185,12 @@
 /* The transport is a run of 38px buttons whose own padding is the spacing;
    the secondary cluster is separate controls, which need to read as separate.
    Spacing lives here rather than on the controls, so one rhythm governs it. */
-.mini-controls { gap: 0; }
+.mini-controls { gap: 2px; }
 .mini-secondary { gap: var(--s-3); }
+/* Above the seek track, whose touch area reaches up into their padding. */
+.mini-main,
+.mini-controls,
+.mini-secondary { position: relative; z-index: 1; }
 .mini-sec-ctl {
   display: none;
   align-items: center;
@@ -196,7 +208,7 @@
   .mini-secondary { justify-self: end; }
 }
 .mini-tp {
-  min-inline-size: 38px;
+  min-inline-size: 44px;
   min-block-size: 44px;
   color: var(--text2);
 }
@@ -206,10 +218,13 @@
 .mini-tp svg { inline-size: 19px; block-size: 19px; }
 
 .mini-sel {
-  min-block-size: 34px;
+  min-block-size: 40px;
   padding-inline: var(--s-2);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
+}
+@media (pointer: coarse) {
+  .mini-sel { min-block-size: 44px; }
 }
 .mini-sel.active { color: var(--accent); border-color: var(--accent); }
 select.mini-wide2 { display: none; }
@@ -225,7 +240,7 @@ select.mini-wide2 { display: none; }
 /* Volume in the dock is a wide-screen convenience — the Now Playing sheet
    carries it on every size. It needs ~110px the narrower docks do not have. */
 .mini-vol { display: none; gap: var(--s-1); }
-.mini-vol .vol-btn { min-inline-size: 34px; }
+.mini-vol .vol-btn { min-inline-size: 44px; }
 .mini-vol .vol-btn svg { inline-size: 17px; block-size: 17px; }
 .mini-vol-range { inline-size: 72px; }
 @media (min-width: 1024px) {
@@ -280,18 +295,26 @@ body.is-playing .mini-signal i:nth-child(4n) { animation-delay: -0.85s; }
   content: '';
   position: absolute;
   inset-inline: 0;
-  inset-block: -10px 0;
+  /* 24px: the WCAG 2.5.8 floor. The transport sits above it (z-index on
+     .mini-controls et al.), so only free space turns into seek area. */
+  inset-block: -21px 0;
+}
+@media (pointer: coarse) {
+  .mini-progress-track::before { inset-block: -29px 0; }
 }
 .mini-progress-track:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .mini-progress-track:hover .mini-progress { background: var(--accent-2); }
+/* Scaled, not resized: width would re-layout on every timeupdate. The end cap
+   is dropped because a stretched radius distorts; at 3px tall it was a pixel. */
 .mini-progress {
   block-size: 100%;
-  inline-size: 0;
+  inline-size: 100%;
   background: var(--accent);
-  border-radius: 0 999px 999px 0;
-  transition: width 0.25s linear;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.25s linear;
 }
-[dir="rtl"] .mini-progress { border-radius: 999px 0 0 999px; }
+[dir="rtl"] .mini-progress { transform-origin: 100% 50%; }
 
 .mini-art {
   inline-size: 40px;
@@ -323,8 +346,8 @@ body.is-playing .mini-signal i:nth-child(4n) { animation-delay: -0.85s; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  inline-size: 42px;
-  block-size: 42px;
+  inline-size: 44px;
+  block-size: 44px;
   flex-shrink: 0;
   margin-inline: var(--s-1);
   border: 0;
@@ -338,3 +361,18 @@ body.is-playing .mini-signal i:nth-child(4n) { animation-delay: -0.85s; }
 .mini-play svg { inline-size: 19px; block-size: 19px; }
 .mini-play:hover { filter: brightness(1.06); }
 .mini-play:active { transform: scale(0.92); }
+
+/* ─ Marquee edge fade (ui/marquee.ts animates --fade-s / --fade-e) ─
+   Only the edge that is cutting text off fades: --fade-s is the inline-start
+   edge, so RTL flips the gradient and nothing else. Registered so the
+   Web Animation can interpolate them. */
+@property --fade-s { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --fade-e { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.marquee.marquee-on {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-s), #000 calc(100% - var(--fade-e)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-s), #000 calc(100% - var(--fade-e)), transparent 100%);
+}
+[dir="rtl"] .marquee.marquee-on {
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 var(--fade-s), #000 calc(100% - var(--fade-e)), transparent 100%);
+  mask-image: linear-gradient(to left, transparent 0, #000 var(--fade-s), #000 calc(100% - var(--fade-e)), transparent 100%);
+}
