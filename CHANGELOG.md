@@ -4,6 +4,73 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.14 — 2026-10-30
+
+### Sync resumes where the other device stopped
+
+"Sometimes the other device is wrong" had several causes, all fixed:
+
+- **A device left open never pulled.** A tab or desktop window that sat in the
+  background while the phone played kept the old position until it had
+  something of its own to push. Returning to the app now syncs.
+- **A paused, loaded episode ignored the newer position** and, on play, pushed
+  its older one over it everywhere. It now moves to the other device's
+  position.
+- **Switching episodes saved the old episode's position under the new one,**
+  and a seek or a resume restamped an unchanged position as new, beating the
+  other device's real progress.
+- "Mark unplayed" is no longer undone by the other device's copy of the
+  position; finishing an episode with an empty queue no longer wipes the
+  queue the other device built; a pause syncs in 3 s instead of 30 s; a second
+  tab no longer writes stale positions back on hide.
+- The server's clock is trusted only within ±24 h, a replayed older copy of
+  the row is detected and left alone, and decompression is capped.
+
+### Readability and contrast
+
+- **Every accent colour now reads on its own buttons and on the light theme.**
+  Button text is chosen by measured contrast, and text, links, focus rings and
+  toggles use an accent "ink" that is darkened where the accent is too light
+  for the page — all seven accents reach 4.5:1 in Light, Dark and OLED (unit
+  tested). The pairing code, unreadable in the dark themes, is plain text now.
+- Inputs, selects, buttons and toggles have edges that reach 3:1; green, red
+  and yellow messages are themed for the light page; listened episodes keep
+  readable dates.
+- The smallest text is 12 px (was 10.5), the skip seconds are larger, and
+  `prefers-contrast` and Windows High Contrast are supported.
+
+### Controls, layout and the player
+
+- Touch targets are 44 px across the dock, the sheet, episode rows, Home and
+  Settings, and the mini progress bar is easier to hit.
+- A downloaded episode has its own icon instead of a second green tick, and
+  removing the file asks first. The subscribe star is outlined or filled, and
+  announces its state. "Add to queue" and "open queue" have different icons.
+  Destructive settings sit apart from the frequent ones.
+- **Back closes the Now Playing sheet** instead of leaving the page, and Esc
+  closes it even after a click on its artwork. The sleep and speed controls
+  are labelled. The sheet's first opening no longer stutters (worst frame
+  111 ms → 14 ms, median of headless runs). Long titles in the dock fade at
+  the edge rather than cutting a letter.
+- Landscape notches are respected; Arabic gets mirrored seeking keys and
+  padding.
+
+### Faster, smaller, stricter
+
+- Six of the eight languages load on demand: the main bundle is 199 kB
+  instead of 269 kB (67 kB gzip instead of 87). The first-visit install
+  download halves (1228 → 622 KiB), and the first-paint fonts are preloaded.
+- The Worker's `/v1/parse` no longer parses every episode's show notes to
+  serve a page or one episode's notes.
+- **Trusted Types are enforced**: the rule that `innerHTML` only ever gets
+  constant markup is now checked by the browser. A framed copy of the app only
+  offers a link to open itself.
+- The Worker limits how many sync pairings one address can create (5 an
+  hour), drops copies never updated after 7 days, caps the table, allows only
+  ports 80/443 and pins iTunes redirects, and sends a sandboxing CSP with every
+  proxied response.
+- Dead code removed: unused exports, i18n keys, CSS properties and icons.
+
 ## 4.2.13 — 2026-10-23
 
 ### Security review follow-ups
