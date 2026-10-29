@@ -300,8 +300,34 @@ function intParam(raw: string | undefined): number | undefined {
 interface ParsedDoc {
   meta: { name: string; artist: string; art: string };
   total: number;
+  /** Names the notes chunks this list belongs to; see `notesKey`. */
+  build: string;
+  /** Episodes per notes chunk; see `chunkSize`. */
+  chunk: number;
+  /** Episodes without `description`. */
   episodes: Array<Record<string, unknown>>;
 }
+
+/**
+ * Each chunk is one `cache.put` on a miss, and every cache call is a
+ * subrequest against a per-invocation cap (50 on the free plan). Small chunks
+ * keep a notes lookup cheap; the cap on their number keeps a 20,000-episode
+ * archive from failing on the writes.
+ */
+const NOTES_CHUNK_MIN = 50;
+const NOTES_CHUNKS_MAX = 24;
+const chunkSize = (episodes: number): number =>
+  Math.max(NOTES_CHUNK_MIN, Math.ceil(episodes / NOTES_CHUNKS_MAX));
+const PARSE_TTL = 15 * 60;
+
+const listKey = (href: string): string =>
+  'https://cache.seseri/parse/v2?u=' + encodeURIComponent(href);
+/**
+ * `build` is in the key so a chunk can only ever be read together with the list
+ * that was written alongside it; chunks of an older build just expire unread.
+ */
+const notesKey = (href: string, build: string, chunk: number): string =>
+  `https://cache.seseri/parse-notes/v2?u=${encodeURIComponent(href)}&b=${build}&c=${chunk}`;
 
 app.get('/v1/parse', async (c) => {
   const target = safeTarget(c.req.query('url'));
@@ -325,6 +351,10 @@ app.get('/v1/parse', async (c) => {
   const wantNotes = c.req.query('notes') !== '0';
   const notesFor = c.req.query('notesFor');
 
+  const cacheable = !carriesCredential(target.href);
+  /** Notes chunks of a freshly parsed feed, so this request need not re-read them. */
+  let built: Array<Array<string | null>> | undefined;
+
   const fetchAndParse = async (): Promise<Response> => {
     try {
       const res = await fetchWithTimeout(target.href, 15000, {
@@ -335,11 +365,37 @@ app.get('/v1/parse', async (c) => {
       if (!feedContentType(ct)) return c.json({ error: 'not a feed' }, 415);
       const bytes = await readCapped(res, FEED_MAX_BYTES);
       const parsed = scanRss(decodeFeed(bytes, ct));
+      const kept = parsed.episodes.slice(0, PARSE_DOC_MAX_EPISODES);
+      const build = crypto.randomUUID();
+      const chunk = chunkSize(kept.length);
+      const chunks: Array<Array<string | null>> = [];
+      const episodes = kept.map((e, i) => {
+        const { description, ...rest } = e;
+        const note = typeof description === 'string' ? description : null;
+        (chunks[Math.floor(i / chunk)] ??= []).push(note);
+        return rest;
+      });
+      built = chunks;
+      if (cacheable) {
+        const cache = caches.default;
+        chunks.forEach((chunk, n) =>
+          c.executionCtx.waitUntil(
+            cache.put(
+              new Request(notesKey(target.href, build, n), { method: 'GET' }),
+              Response.json(chunk, {
+                headers: { 'cache-control': `public, max-age=${PARSE_TTL}` },
+              }),
+            ),
+          ),
+        );
+      }
       return Response.json({
         meta: { name: parsed.title, artist: parsed.author, art: parsed.art },
         total: parsed.episodes.length,
-        episodes: parsed.episodes.slice(0, PARSE_DOC_MAX_EPISODES),
-      });
+        build,
+        chunk,
+        episodes,
+      } satisfies ParsedDoc);
     } catch (e) {
       // `invalid rss` is the parser's verdict on something that is not a feed,
       // which is the caller's URL being wrong rather than an upstream fault.
@@ -349,41 +405,69 @@ app.get('/v1/parse', async (c) => {
   };
 
   /**
-   * The whole parsed document is cached once and sliced per request, rather
-   * than caching a separate entry per (offset, limit): the expensive part is
-   * fetching and parsing 20 MB, and re-slicing a cached JSON is nothing.
+   * The cached list carries no show notes, and the notes live in separate
+   * chunk entries. Notes are most of the bytes, and a paged or `notes=0`
+   * request used to JSON.parse all of them (megabytes, on a 20,000-episode
+   * archive) just to slice a few rows — CPU time the Worker does not have.
    */
-  const cacheable = !carriesCredential(target.href);
   const full = cacheable
-    ? await edgeCached(
-        'https://cache.seseri/parse?u=' + encodeURIComponent(target.href),
-        15 * 60,
-        c.executionCtx,
-        fetchAndParse,
-      )
+    ? await edgeCached(listKey(target.href), PARSE_TTL, c.executionCtx, fetchAndParse)
     : await fetchAndParse();
 
   if (full.status !== 200) return full;
 
   const doc = (await full.json()) as ParsedDoc;
 
+  /** Notes for episodes [from, to) of the list, or undefined if a chunk has gone missing. */
+  const readNotes = async (from: number, to: number): Promise<Array<string | null> | undefined> => {
+    const out: Array<string | null> = [];
+    const size = doc.chunk;
+    const first = Math.floor(from / size);
+    const last = Math.floor((to - 1) / size);
+    for (let n = first; n <= last; n++) {
+      let chunk = built?.[n];
+      if (!chunk) {
+        const key = notesKey(target.href, doc.build, n);
+        const hit = await caches.default.match(new Request(key, { method: 'GET' }));
+        if (!hit) return undefined;
+        chunk = (await hit.json()) as Array<string | null>;
+      }
+      const lo = Math.max(from, n * size) - n * size;
+      const hi = Math.min(to, (n + 1) * size) - n * size;
+      out.push(...chunk.slice(lo, hi));
+    }
+    return out;
+  };
+
   /**
-   * One episode by id, notes included. The document is already in the edge
-   * cache, so this is the cheap way to fill in the notes a list was served
-   * without — no second trip to the feed host, and no 20 MB re-parse.
+   * Attach notes to `eps` (which start at list index `from`). If the chunks
+   * were evicted before the list, re-parse once and read them from memory.
+   */
+  const withNotes = async (from: number, eps: Array<Record<string, unknown>>) => {
+    if (eps.length === 0) return eps;
+    let notes = await readNotes(from, from + eps.length);
+    if (!notes) {
+      await fetchAndParse();
+      notes = await readNotes(from, from + eps.length);
+    }
+    return eps.map((e, i) => {
+      const d = notes?.[i];
+      return typeof d === 'string' ? { ...e, description: d } : e;
+    });
+  };
+
+  /**
+   * One episode by id, notes included: a single chunk read, so no re-parse of
+   * the feed and no parse of anyone else's notes.
    */
   let window: Array<Record<string, unknown>>;
   if (notesFor !== undefined) {
-    window = doc.episodes.filter((e) => e['trackId'] === notesFor).slice(0, 1);
+    const at = doc.episodes.findIndex((e) => e['trackId'] === notesFor);
+    const ep = doc.episodes[at];
+    window = ep ? await withNotes(at, [ep]) : [];
   } else {
     window = doc.episodes.slice(offset, offset + limit);
-    if (!wantNotes) {
-      window = window.map((e) => {
-        if (e['description'] === undefined) return e;
-        const { description: _drop, ...rest } = e;
-        return rest;
-      });
-    }
+    if (wantNotes) window = await withNotes(offset, window);
   }
 
   return c.json({ meta: doc.meta, total: doc.total, offset, episodes: window }, 200, {

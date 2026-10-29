@@ -149,6 +149,71 @@ describe('GET /v1/parse', () => {
     expect((body.episodes[0] as Record<string, unknown>)['description']).toContain('xxx');
   });
 
+  it('keeps notes out of the cached list and reads them back per episode', async () => {
+    const items = Array.from(
+      { length: 120 },
+      (_, i) =>
+        `<item><title>Ep ${i}</title><guid>g${i}</guid>` +
+        `<enclosure url="https://cdn.example.com/${i}.mp3" type="audio/mpeg"/>` +
+        (i % 7 === 0 ? '' : `<description>notes ${i}</description>`) +
+        `</item>`,
+    ).join('');
+    serve('/chunks.xml', `<rss><channel><title>T</title>${items}</channel></rss>`);
+
+    const listKey = 'https://cache.seseri/parse/v2?u=' + encodeURIComponent(HOST + '/chunks.xml');
+    // Spans the 50-episode chunk boundary.
+    const page = (await (
+      await call(parseUrl('/chunks.xml', '&offset=45&limit=10'))
+    ).json()) as ParsedBody;
+    expect(page.episodes.map((e) => (e as Record<string, unknown>)['description'])).toEqual(
+      [45, 46, 47, 48, 49, 50, 51, 52, 53, 54].map((i) => (i % 7 === 0 ? undefined : `notes ${i}`)),
+    );
+
+    const cached = await caches.default.match(new Request(listKey));
+    expect(cached).toBeTruthy();
+    expect(await cached?.text()).not.toContain('notes 1');
+
+    const one = (await (
+      await call(parseUrl('/chunks.xml', '&notesFor=g110'))
+    ).json()) as ParsedBody;
+    expect((one.episodes[0] as Record<string, unknown>)['description']).toBe('notes 110');
+    const none = (await (await call(parseUrl('/chunks.xml', '&notesFor=g7'))).json()) as ParsedBody;
+    expect(none.episodes).toHaveLength(1);
+    expect((none.episodes[0] as Record<string, unknown>)['description']).toBeUndefined();
+  });
+
+  it('caps the number of notes chunks, so a large archive stays within the subrequest limit', async () => {
+    serve('/big.xml', feed(2000, { notesChars: 5 }));
+    await call(parseUrl('/big.xml', '&notes=0'));
+    const u = encodeURIComponent(HOST + '/big.xml');
+    const doc = (await (
+      await caches.default.match(new Request('https://cache.seseri/parse/v2?u=' + u))
+    )?.json()) as { build: string; chunk: number };
+    const chunkAt = (c: number): Request =>
+      new Request(`https://cache.seseri/parse-notes/v2?u=${u}&b=${doc.build}&c=${c}`);
+    expect(await caches.default.match(chunkAt(23))).toBeTruthy();
+    expect(await caches.default.match(chunkAt(24))).toBeUndefined();
+  });
+
+  it('re-parses once when a notes chunk was evicted before its list', async () => {
+    serve('/evict.xml', feed(3, { notesChars: 20 }));
+    const first = await call(parseUrl('/evict.xml', '&notes=0'));
+    expect(first.headers.get('x-seseri-cache')).toBe('miss');
+
+    const doc = (await (await caches.default.match(
+      new Request('https://cache.seseri/parse/v2?u=' + encodeURIComponent(HOST + '/evict.xml')),
+    ))?.json()) as { build: string };
+    const chunkKey =
+      'https://cache.seseri/parse-notes/v2?u=' +
+      `${encodeURIComponent(HOST + '/evict.xml')}&b=${doc.build}&c=0`;
+    expect(await caches.default.delete(new Request(chunkKey))).toBe(true);
+
+    serve('/evict.xml', feed(3, { notesChars: 20 }));
+    const res = await call(parseUrl('/evict.xml', '&notesFor=g2'));
+    const body = (await res.json()) as ParsedBody;
+    expect((body.episodes[0] as Record<string, unknown>)['description']).toContain('xxx');
+  });
+
   it('answers an unknown episode id with an empty list, not an error', async () => {
     serve('/notes.xml', feed(2, { notesChars: 10 }));
     const res = await call(parseUrl('/notes.xml', '&notesFor=nope'));
