@@ -92,21 +92,28 @@ sw.addEventListener('fetch', (event) => {
         .then((res) => {
           // An error page stored here would be what this URL opens to offline,
           // in place of the app shell the fallback below serves.
+          // Keyed without the query: every feed deep link carries its own
+          // `?rss=…`, and storing each one grew this cache by one full page per
+          // feed ever opened, until the next build. The page is the same.
           if (res.ok) {
             const copy = res.clone();
-            void caches.open(CACHE).then((c) => c.put(req, copy));
+            void caches.open(CACHE).then((c) => c.put(url.origin + url.pathname, copy));
           }
           return res;
         })
         .catch(
-          async () => (await caches.match(req)) ?? (await caches.match(SHELL)) ?? Response.error(),
+          async () =>
+            (await caches.match(req, { ignoreSearch: true })) ??
+            (await caches.match(SHELL)) ??
+            Response.error(),
         ),
     );
     return;
   }
 
   const store = (res: Response): Response => {
-    if (res.ok && res.type === 'basic') {
+    // 200 only: `cache.put` rejects a 206 from a range request.
+    if (res.status === 200 && res.type === 'basic') {
       const copy = res.clone();
       void caches.open(CACHE).then((c) => c.put(req, copy));
     }
