@@ -230,11 +230,6 @@ export const ITUNES_BYPASS_MS = 30 * 60 * 1000;
 /** Until when iTunes calls skip the Worker; 0 while they go through it. */
 let itunesBypassUntil = 0;
 
-/** Test seam: forget a remembered refusal. */
-export function resetItunesBypass(): void {
-  itunesBypassUntil = 0;
-}
-
 /**
  * True when the Worker's answer means Apple will not talk to the Worker, as
  * opposed to anything being wrong with this request.
