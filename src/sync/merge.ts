@@ -353,6 +353,10 @@ export function isSyncPayload(x: unknown): x is SyncPayload {
       if (!isRecord(v) || typeof v['at'] !== 'number') return false;
     }
   }
+  const seq = x['seq'];
+  if (seq !== undefined && (typeof seq !== 'number' || !Number.isSafeInteger(seq) || seq < 0)) {
+    return false;
+  }
   const q = x['queue'];
   if (!isRecord(q) || !Array.isArray(q['list']) || typeof q['at'] !== 'number') return false;
   for (const item of q['list']) {

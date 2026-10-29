@@ -31,6 +31,15 @@ const KEEPALIVE_MAX_BYTES = 32 * 1024;
 /** Below this, the reading is network jitter and would churn on every call. */
 const SKEW_FLOOR_MS = 2000;
 
+/**
+ * Beyond this, the server's clock is not a correction but an attack or a fault.
+ * The skew shifts every timestamp this device writes and reads, and a hostile
+ * or broken `x-sync-time` of a year would make every local edit look ancient
+ * (losing each merge) or every remote one look newer than anything local. No
+ * real device is a day off: even a wrong time zone is under 24 hours.
+ */
+export const MAX_SKEW_MS = 24 * 60 * 60 * 1000;
+
 export type PullResult =
   | { kind: 'ok'; blob: Uint8Array; rev: number }
   | { kind: 'empty' }
@@ -50,8 +59,12 @@ export function getSkewMs(): number {
   return skewMs;
 }
 
+/**
+ * Also the gate for a skew read back from storage, which is no more trustworthy
+ * than the header it came from: anything unusable becomes "no skew".
+ */
 export function setSkewMs(value: number): void {
-  skewMs = Number.isFinite(value) ? value : 0;
+  skewMs = Number.isFinite(value) && Math.abs(value) <= MAX_SKEW_MS ? value : 0;
 }
 
 /** Round-trip compensated: the server's clock is read at the midpoint. */
@@ -59,6 +72,9 @@ function noteServerTime(res: Response, t0: number, t1: number): void {
   const stamp = Number(res.headers.get('x-sync-time'));
   if (!Number.isFinite(stamp) || stamp <= 0) return;
   const measured = stamp - (t0 + t1) / 2;
+  // Out of range: keep what we had rather than adopt it or reset to zero, so a
+  // single bad response neither shifts the clock nor erases a good reading.
+  if (Math.abs(measured) > MAX_SKEW_MS) return;
   skewMs = Math.abs(measured) < SKEW_FLOOR_MS ? 0 : measured;
 }
 

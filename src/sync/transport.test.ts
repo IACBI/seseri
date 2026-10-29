@@ -92,6 +92,46 @@ describe('pullBlob', () => {
     expect(getSkewMs()).toBe(0);
   });
 
+  it('ignores a server clock more than a day away and keeps the reading it had', async () => {
+    const { pullBlob, getSkewMs, MAX_SKEW_MS } = await loadTransport();
+    vi.spyOn(Date, 'now').mockReturnValue(1000);
+    stubFetch(
+      res(404, { headers: { 'x-sync-time': String(1000 + 3_600_000) } }),
+      res(404, { headers: { 'x-sync-time': String(1000 + MAX_SKEW_MS + 1) } }),
+      res(404, { headers: { 'x-sync-time': String(1000 - 400 * 24 * 3_600_000) } }),
+    );
+
+    await pullBlob(SYNC_ID);
+    expect(getSkewMs()).toBe(3_600_000);
+    await pullBlob(SYNC_ID);
+    await pullBlob(SYNC_ID);
+
+    expect(getSkewMs()).toBe(3_600_000);
+  });
+
+  it('accepts a skew right at the limit', async () => {
+    const { pullBlob, getSkewMs, MAX_SKEW_MS } = await loadTransport();
+    vi.spyOn(Date, 'now').mockReturnValue(1000);
+    stubFetch(res(404, { headers: { 'x-sync-time': String(1000 + MAX_SKEW_MS) } }));
+
+    await pullBlob(SYNC_ID);
+
+    expect(getSkewMs()).toBe(MAX_SKEW_MS);
+  });
+
+  it('applies the same limit to a skew restored from storage', async () => {
+    const { setSkewMs, getSkewMs, MAX_SKEW_MS } = await loadTransport();
+
+    setSkewMs(5 * 3_600_000);
+    expect(getSkewMs()).toBe(5 * 3_600_000);
+    setSkewMs(MAX_SKEW_MS + 1);
+    expect(getSkewMs()).toBe(0);
+    setSkewMs(-1e12);
+    expect(getSkewMs()).toBe(0);
+    setSkewMs(Number.NaN);
+    expect(getSkewMs()).toBe(0);
+  });
+
   it('reports a disabled server as unavailable', async () => {
     const { pullBlob } = await loadTransport();
     stubFetch(res(503));

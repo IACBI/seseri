@@ -79,10 +79,18 @@ interface Stored {
   code: string;
   rev: number;
   skewMs: number;
+  /** Highest payload `seq` this device has seen; see `seen`. */
+  seq?: number;
 }
 
 let keys: SyncKeys | null = null;
 let rev = 0;
+/**
+ * Highest `seq` seen in, or pushed to, the server. A pulled payload below it is
+ * an older copy of the row than one this device already knew (see
+ * `SyncPayload.seq`), and is neither applied nor overwritten.
+ */
+let seen = 0;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
 let again = false;
@@ -94,7 +102,7 @@ let lastAttemptAt = 0;
 function store(): void {
   const code = syncState().code;
   if (!code) return;
-  local.set(STATE_KEY, { code, rev, skewMs: getSkewMs() } satisfies Stored);
+  local.set(STATE_KEY, { code, rev, skewMs: getSkewMs(), seq: seen } satisfies Stored);
 }
 
 function setStatus(status: SyncStatus, touched = false): void {
@@ -155,6 +163,7 @@ async function adopt(codeText: string): Promise<boolean> {
   if (!bytes) return false;
   keys = await deriveKeys(bytes);
   rev = 0;
+  seen = 0;
   syncState.set({ linked: true, code: codeText, status: 'idle', lastSyncAt: 0 });
   return true;
 }
@@ -185,6 +194,7 @@ export function unlinkSync(): void {
   timer = null;
   keys = null;
   rev = 0;
+  seen = 0;
   local.remove(STATE_KEY);
   syncState.set({ linked: false, code: null, status: 'idle', lastSyncAt: 0 });
 }
@@ -228,17 +238,34 @@ async function readRemote(blob: Uint8Array): Promise<SyncPayload | null> {
   return keys ? openPayload(keys, blob) : null;
 }
 
+/**
+ * True when `p` is older than something this device has already seen. A payload
+ * without a `seq` comes from a build that predates the counter and is accepted.
+ * Otherwise advances the high-water mark.
+ */
+function rolledBack(p: SyncPayload): boolean {
+  if (p.seq === undefined) return false;
+  if (p.seq < seen) return true;
+  seen = p.seq;
+  return false;
+}
+
 async function pushMerged(merged: SyncPayload): Promise<boolean> {
   if (!keys) return false;
   let payload = merged;
   let attempt = 0;
 
   for (;;) {
-    const sealed = await sealPayload(keys, capPayload(payload, MAX_PROGRESS_ENTRIES));
+    const next = seen + 1;
+    const sealed = await sealPayload(keys, {
+      ...capPayload(payload, MAX_PROGRESS_ENTRIES),
+      seq: next,
+    });
     const res = await pushBlob(keys.syncId, sealed, rev);
 
     if (res.kind === 'ok') {
       rev = res.rev;
+      seen = next;
       store();
       return true;
     }
@@ -248,6 +275,10 @@ async function pushMerged(merged: SyncPayload): Promise<boolean> {
       const theirs = await readRemote(res.blob);
       if (!theirs) {
         setStatus('unreadable');
+        return false;
+      }
+      if (rolledBack(theirs)) {
+        setStatus('error');
         return false;
       }
       payload = applyLocally(mergePayload(payload, theirs, nowServer()));
@@ -270,6 +301,13 @@ function canonical(x: unknown): unknown {
 
 function sameContent(a: SyncPayload, b: SyncPayload): boolean {
   return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+}
+
+/** The counter differs between a merged payload and the stored one; content is what counts. */
+function withoutSeq(p: SyncPayload): SyncPayload {
+  const copy = { ...p };
+  delete copy.seq;
+  return copy;
 }
 
 /** One full cycle. Safe to call at any time; overlapping calls are serialised. */
@@ -308,8 +346,17 @@ export async function syncNow(): Promise<void> {
         setStatus('unreadable');
         return;
       }
+      if (rolledBack(opened)) {
+        // The server handed back a row older than one this device has seen.
+        // Applying it would drag local state backwards and pushing would
+        // entrench it, so leave both alone; the next push from any device
+        // with a higher `seq` repairs the row.
+        setStatus('error');
+        return;
+      }
       remote = opened;
       rev = pulled.rev;
+      store();
     } else {
       rev = 0;
     }
@@ -318,7 +365,8 @@ export async function syncNow(): Promise<void> {
 
     // Every return to the foreground pulls now; most of those find nothing
     // new, and re-sealing and rewriting an identical row is wasted work.
-    if (pulled.kind === 'ok' && sameContent(capPayload(merged, MAX_PROGRESS_ENTRIES), remote)) {
+    const capped = withoutSeq(capPayload(merged, MAX_PROGRESS_ENTRIES));
+    if (pulled.kind === 'ok' && sameContent(capped, withoutSeq(remote))) {
       setStatus('ok', true);
       return;
     }
@@ -367,7 +415,10 @@ export function syncFlush(): void {
     timer = null;
   }
   saveProgressNow();
-  const snapshot = capPayload(readLocalPayload(getSkewMs()), MAX_PROGRESS_ENTRIES);
+  const snapshot = {
+    ...capPayload(readLocalPayload(getSkewMs()), MAX_PROGRESS_ENTRIES),
+    seq: seen + 1,
+  };
   const active = keys;
   void sealPayload(active, snapshot).then((sealed) =>
     pushBlob(active.syncId, sealed, rev, { keepalive: true }),
@@ -426,6 +477,10 @@ export function initSync(): void {
       return;
     }
     rev = typeof saved.rev === 'number' ? saved.rev : 0;
+    seen =
+      typeof saved.seq === 'number' && Number.isSafeInteger(saved.seq) && saved.seq > 0
+        ? saved.seq
+        : 0;
     await syncNow();
   })();
 }

@@ -37,7 +37,7 @@ vi.mock('./transport', () => ({
 
 import { initSync, startSync, syncNow, syncState, unlinkSync } from './index';
 import { decodeCode } from './code';
-import { deriveKeys, sealPayload } from './crypto';
+import { deriveKeys, openPayload, sealPayload } from './crypto';
 import { emptyPayload } from './merge';
 import { isPlayed, loadPlayed, markPlayed } from '../storage/played';
 
@@ -138,6 +138,74 @@ describe('returning to the app', () => {
     window.dispatchEvent(new Event('focus'));
     await idle();
     expect(transport.pulls).toBe(0);
+  });
+});
+
+describe('a row older than one this device has seen', () => {
+  async function sealForThisPairing(seq: number | undefined, mark: string): Promise<Uint8Array> {
+    const keys = await deriveKeys(decodeCode(syncState().code ?? '') as Uint8Array);
+    const payload = { ...emptyPayload(), played: { [mark]: { at: Date.now() } } };
+    return sealPayload(keys, seq === undefined ? payload : { ...payload, seq });
+  }
+
+  async function lastPushedSeq(): Promise<number | undefined> {
+    const keys = await deriveKeys(decodeCode(syncState().code ?? '') as Uint8Array);
+    return (await openPayload(keys, transport.last as Uint8Array))?.seq;
+  }
+
+  it('numbers each push one above the last', async () => {
+    expect(await lastPushedSeq()).toBe(1);
+
+    markPlayed('ep-seq');
+    await syncNow();
+    await idle();
+
+    expect(await lastPushedSeq()).toBe(2);
+  });
+
+  it('is neither applied nor overwritten', async () => {
+    transport.remote = await sealForThisPairing(0, 'ep-replayed');
+    const pushesBefore = transport.pushes;
+
+    await syncNow();
+    await idle();
+
+    expect(isPlayed('ep-replayed')).toBe(false);
+    expect(transport.pushes).toBe(pushesBefore);
+    expect(syncState().status).toBe('error');
+  });
+
+  it('takes a row from a build that predates the counter', async () => {
+    transport.remote = await sealForThisPairing(undefined, 'ep-legacy');
+
+    await syncNow();
+    await idle();
+
+    expect(isPlayed('ep-legacy')).toBe(true);
+    expect(syncState().status).toBe('ok');
+  });
+
+  it('continues numbering from the highest it has seen from another device', async () => {
+    transport.remote = await sealForThisPairing(9, 'ep-ahead');
+
+    await syncNow();
+    await idle();
+
+    expect(isPlayed('ep-ahead')).toBe(true);
+    expect(await lastPushedSeq()).toBe(10);
+  });
+
+  it('forgets the mark on unlink, so a new pairing starts from zero', async () => {
+    transport.remote = await sealForThisPairing(9, 'ep-before');
+    await syncNow();
+    await idle();
+    unlinkSync();
+    transport.remote = null; // sealed with the pairing just dropped
+
+    await startSync();
+    await until(() => syncState().status === 'ok', 'the new pairing to sync');
+
+    expect(await lastPushedSeq()).toBe(1);
   });
 });
 

@@ -131,6 +131,53 @@ describe('sealPayload / openPayload', () => {
   });
 });
 
+describe('payload counter and size', () => {
+  it('carries the sequence number through a seal and open', async () => {
+    const keys = await deriveKeys(codeBytes(20));
+
+    const blob = await sealPayload(keys, { ...samplePayload(), seq: 42 });
+
+    expect((await openPayload(keys, blob))?.seq).toBe(42);
+  });
+
+  it('opens a payload from a build that predates the counter', async () => {
+    const keys = await deriveKeys(codeBytes(21));
+    const payload = samplePayload();
+    expect(payload.seq).toBeUndefined();
+
+    const opened = await openPayload(keys, await sealPayload(keys, payload));
+
+    expect(opened).toEqual(payload);
+    expect(opened?.seq).toBeUndefined();
+  });
+
+  it.each([-1, 1.5, '3', null])('rejects a payload whose seq is %j', async (seq) => {
+    const keys = await deriveKeys(codeBytes(22));
+    const blob = await sealPayload(keys, { ...samplePayload(), seq } as unknown as SyncPayload);
+
+    await expect(openPayload(keys, blob)).resolves.toBeNull();
+  });
+
+  it('opens a large payload that is under the decompressed cap', async () => {
+    const keys = await deriveKeys(codeBytes(23));
+    const payload = { ...samplePayload(), pad: 'a'.repeat(900 * 1024) } as SyncPayload;
+
+    const opened = await openPayload(keys, await sealPayload(keys, payload));
+
+    expect(opened).not.toBeNull();
+  });
+
+  it('refuses a payload that is tiny on the wire and huge once decompressed', async () => {
+    const keys = await deriveKeys(codeBytes(24));
+    const bomb = { ...samplePayload(), pad: 'a'.repeat(8 * 1024 * 1024) } as SyncPayload;
+
+    const blob = await sealPayload(keys, bomb);
+
+    expect(blob.length).toBeLessThan(128 * 1024);
+    await expect(openPayload(keys, blob)).resolves.toBeNull();
+  });
+});
+
 describe('deriveKeys', () => {
   it('produces a 43-character base64url id, matching what the worker validates', async () => {
     const { syncId } = await deriveKeys(codeBytes(12));

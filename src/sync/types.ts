@@ -77,4 +77,12 @@ export interface SyncPayload {
    * payload this build cannot apply.
    */
   played?: Record<string, PlayedEntry>;
+  /**
+   * Counts pushes, across all devices: each device writes one more than the
+   * highest it has seen. Lets a device notice the server handing back a blob
+   * older than one it already saw (a replayed or restored row), which AES-GCM
+   * alone cannot, since an old blob authenticates perfectly. Absent on payloads
+   * from builds that predate it, which are accepted.
+   */
+  seq?: number;
 }

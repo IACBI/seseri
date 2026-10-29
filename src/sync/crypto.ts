@@ -71,9 +71,36 @@ async function gzip(bytes: Uint8Array): Promise<Uint8Array | null> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
+/**
+ * Ceiling on a decompressed payload. The ciphertext is at most 128 KiB, but
+ * gzip expands repetitive input about a thousandfold, and whoever holds the
+ * code controls what is inside. A real payload is a few hundred kilobytes of
+ * JSON at the very most.
+ */
+export const MAX_PLAINTEXT_BYTES = 1024 * 1024;
+
 async function gunzip(bytes: Uint8Array): Promise<Uint8Array> {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_PLAINTEXT_BYTES) {
+      void reader.cancel().catch(() => {});
+      throw new Error('payload too large');
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.byteLength;
+  }
+  return out;
 }
 
 /**
@@ -125,10 +152,12 @@ export async function openPayload(keys: SyncKeys, blob: Uint8Array): Promise<Syn
         blob.subarray(1 + IV_BYTES),
       ),
     );
+    // The plain path needs no cap: it is bounded by the ciphertext, which the
+    // server limits to 128 KiB.
     const json = version === V_GZIP ? await gunzip(plain) : plain;
     const parsed: unknown = JSON.parse(dec.decode(json));
     return isSyncPayload(parsed) ? parsed : null;
   } catch {
-    return null; // authentication failure, bad gzip, or malformed JSON
+    return null; // authentication failure, bad or oversized gzip, or malformed JSON
   }
 }
