@@ -2,6 +2,25 @@
    view container, mini-player dock placement, safe areas.
    Logical properties only — RTL comes for free. */
 
+/* Notch insets are physical; the layout is logical. In RTL the inline start is
+   the right edge, so the two swap. */
+:root {
+  --safe-start: env(safe-area-inset-left, 0px);
+  --safe-end: env(safe-area-inset-right, 0px);
+}
+:root[dir="rtl"] {
+  --safe-start: env(safe-area-inset-right, 0px);
+  --safe-end: env(safe-area-inset-left, 0px);
+}
+
+/* One stroke weight at every icon size. The sprite is drawn on a 24px grid and
+   rendered from 12 to 28px, so a scaling stroke made the same icon family look
+   thin in one place and heavy in another. */
+symbol * {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1.75;
+}
+
 .app-frame {
   position: relative;
   display: flex;
@@ -35,6 +54,7 @@
   max-width: 720px;
   margin-inline: auto;
   padding: var(--s-5) var(--s-4);
+  padding-inline: max(var(--s-4), var(--safe-start)) max(var(--s-4), var(--safe-end));
 }
 
 /* View headline convention */
@@ -104,6 +124,7 @@
     inset-block-end: 0;
     border-block-start: 1px solid var(--hairline);
     padding-block-end: env(safe-area-inset-bottom, 0px);
+    padding-inline: var(--safe-start) var(--safe-end);
   }
   .nav-items { justify-content: space-around; block-size: var(--tabbar-h); }
   /* One equal column per tab. `flex: 1` on the button did nothing while its
@@ -265,7 +286,7 @@
    overlays. Shown while a track is loaded (body.has-track). */
 .mini-player {
   position: fixed;
-  inset-inline: var(--s-2);
+  inset-inline: max(var(--s-2), var(--safe-start)) max(var(--s-2), var(--safe-end));
   inset-block-end: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--s-2));
   block-size: var(--mini-h);
   z-index: var(--z-mini);

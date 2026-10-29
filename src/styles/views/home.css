@@ -63,12 +63,19 @@
   margin: 3px var(--s-3) 0;
   overflow: hidden;
 }
+/* Scaled, not resized: width animates on the main thread and re-lays-out.
+   --p is 0..1; the floor keeps a sliver visible at ~0%. */
 .home-progress-fill {
   block-size: 100%;
-  min-inline-size: 3px;
+  inline-size: 100%;
   background: var(--accent);
   border-radius: 2px;
-  transition: inline-size var(--d-base) var(--ease-out);
+  transform: scaleX(max(var(--p, 0), 0.01));
+  transform-origin: left center;
+  transition: transform var(--d-base) var(--ease-out);
+}
+[dir="rtl"] .home-progress-fill {
+  transform-origin: right center;
 }
 
 /* ── "Aboneliklerim" — artwork tile grid ───────────────────────────── */
@@ -140,7 +147,7 @@
 }
 .home-new-clear,
 .home-check {
-  min-height: 32px;
+  min-height: 44px;
   padding-inline: var(--s-3);
   font-size: var(--fs-sm);
   color: var(--text3);
@@ -153,9 +160,9 @@
    only firms up on hover/focus — otherwise every row carries a second, equally
    loud control. */
 .home-new-x {
-  min-width: 36px;
-  min-height: 36px;
-  opacity: 0.45;
+  min-width: 44px;
+  min-height: 44px;
+  opacity: 0.7;
   transition: opacity var(--d-fast) var(--ease-smooth);
 }
 .home-new-row:hover .home-new-x,

@@ -176,7 +176,7 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
     const bar = h(
       'div',
       { className: 'home-progress' },
-      h('div', { className: 'home-progress-fill', style: `inline-size:${item.percent}%` }),
+      h('div', { className: 'home-progress-fill', style: `--p:${(item.percent / 100).toFixed(4)}` }),
     );
     return h('div', { className: 'home-continue-item' }, row, bar);
   }

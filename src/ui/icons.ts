@@ -19,11 +19,10 @@ export const ICON_SPRITE = `
   <symbol id="ic-rewind" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
   <symbol id="ic-forward" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
   <symbol id="ic-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="ic-download-done" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7.5 8.5 11 12 16.5 5.5"/></symbol>
   <symbol id="ic-sort" viewBox="0 0 24 24"><polyline points="21 16 17 20 13 16"/><line x1="17" y1="20" x2="17" y2="4"/><polyline points="3 8 7 4 11 8"/><line x1="7" y1="4" x2="7" y2="20"/></symbol>
   <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
-  <symbol id="ic-arrow-right" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
   <symbol id="ic-back" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
-  <symbol id="ic-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
   <symbol id="ic-chevron-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
   <symbol id="ic-queue" viewBox="0 0 24 24"><line x1="3" y1="6" x2="13" y2="6"/><line x1="3" y1="12" x2="13" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/><line x1="18" y1="9" x2="18" y2="15"/><line x1="15" y1="12" x2="21" y2="12"/></symbol>
   <symbol id="ic-up" viewBox="0 0 24 24"><polyline points="6 14 12 8 18 14"/></symbol>
