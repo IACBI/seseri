@@ -68,7 +68,7 @@
 .home-progress-fill {
   block-size: 100%;
   inline-size: 100%;
-  background: var(--accent);
+  background: var(--accent-ink);
   border-radius: 2px;
   transform: scaleX(max(var(--p, 0), 0.01));
   transform-origin: left center;
@@ -98,7 +98,7 @@
 .home-sub:hover { background: var(--surface); }
 .home-sub:focus-visible {
   background: var(--surface);
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
 }
 .home-sub-art {

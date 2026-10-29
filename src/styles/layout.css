@@ -104,13 +104,13 @@ symbol * {
 }
 .nav-item .icon { width: 22px; height: 22px; }
 .nav-item:hover { color: var(--text); }
-.nav-item.active { color: var(--accent); }
+.nav-item.active { color: var(--accent-ink); }
 .nav-item.active .nav-dot { opacity: 1; transform: none; }
 /* active marker — a tiny signal tick */
 .nav-dot {
   width: 14px; height: 2px;
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--accent-ink);
   opacity: 0;
   transform: scaleX(0.3);
   transition: opacity var(--d-base) var(--ease-out), transform var(--d-base) var(--ease-out);

@@ -52,7 +52,8 @@
 .s-color-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-3);
+  /* 16px apart, so the 44px targets below meet rather than overlap. */
+  gap: var(--s-4);
   padding-block: var(--s-2) var(--s-4);
 }
 .s-color-swatch {
@@ -63,6 +64,9 @@
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid transparent;
+  /* Amber and Lilac are under 3:1 on the light page; the ring gives every
+     swatch an edge whatever its colour. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent);
   transition: transform var(--d-fast) var(--ease-smooth), box-shadow var(--d-fast) var(--ease-smooth);
 }
 .s-color-swatch:hover {
@@ -80,7 +84,9 @@
 }
 .s-color-swatch.active {
   border-color: var(--bg);
-  box-shadow: 0 0 0 2px var(--accent-ink);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent),
+    0 0 0 2px var(--accent-ink);
 }
 
 /* Data section: frequent actions first; the destructive ones sit behind a rule

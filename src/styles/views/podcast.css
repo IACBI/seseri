@@ -55,7 +55,7 @@
   overflow: hidden;
 }
 .p-title:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 3px;
   border-radius: var(--r-xs);
 }
@@ -82,7 +82,7 @@
   align-self: start;
 }
 .p-fav.faved {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* ── status strip ───────────────────────────────────────────────── */
@@ -139,7 +139,7 @@
   gap: var(--s-2);
   min-block-size: 40px;
   padding-inline: var(--s-3);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border-ui);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text2);
@@ -225,7 +225,7 @@
   outline: none;
 }
 .ep-item:has(.ep-open:focus-visible) {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: -2px;
 }
 
@@ -235,7 +235,7 @@
   outline: none;
 }
 .ep-item:focus-visible {
-  box-shadow: inset 0 0 0 1px var(--border2);
+  box-shadow: inset 0 0 0 2px var(--accent-ink);
 }
 .ep-item.active {
   background: var(--accent-soft);
@@ -302,7 +302,7 @@ body:not(.is-playing) .ep-eq i {
   overflow-wrap: anywhere;
 }
 .ep-item.active .ep-name {
-  color: var(--accent-2);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 /* Wraps rather than clipping: on a phone the date, the duration and a badge
@@ -344,7 +344,7 @@ body:not(.is-playing) .ep-eq i {
   color: var(--text);
 }
 .ep-q-btn.queued {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .ep-q-pos {
   display: inline-flex;
@@ -387,7 +387,7 @@ body:not(.is-playing) .ep-eq i {
   display: block;
   block-size: 100%;
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--accent-ink);
 }
 
 /* ── desktop ────────────────────────────────────────────────────── */
@@ -470,7 +470,7 @@ body:not(.is-playing) .ep-eq i {
 .p-mode.active {
   background: var(--accent-soft);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .p-mode-note {
   flex: 0 0 auto;
@@ -497,7 +497,7 @@ body:not(.is-playing) .ep-eq i {
    so "in progress" is visibly a third state rather than a variation of the
    other two. */
 .ep-dl-btn.working {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .ep-dl-pct {
   font-family: var(--font-mono);

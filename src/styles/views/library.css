@@ -11,7 +11,7 @@
 
 /* Subscription rows are activatable — give keyboard focus a clear ring. */
 #view-library .row[role='button']:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: -2px;
 }
 
