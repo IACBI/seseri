@@ -1,5 +1,6 @@
 import './styles/index.css';
 import { boot } from './app';
+import { isLangCode, loadLang } from './i18n';
 import { showFatal } from './ui/fatal';
 
 /**
@@ -8,10 +9,35 @@ import { showFatal } from './ui/fatal';
  * could not survive (`"junk"` in `pp_settings`, a `null` inside `pp_favs`) —
  * the exact failure the recovery screen can undo.
  */
-try {
-  boot();
-} catch (err) {
-  showFatal(err);
+function start(): void {
+  try {
+    boot();
+  } catch (err) {
+    showFatal(err);
+  }
+}
+
+/**
+ * A saved language outside the main chunk is fetched before the first paint,
+ * or the shell would flash in the fallback and then re-render. Read raw: the
+ * settings loader runs inside `boot`, and a bad value here only means no
+ * preload.
+ */
+function savedLang(): string | null {
+  try {
+    const lang = (JSON.parse(localStorage.getItem('pp_settings') ?? 'null') as { lang?: unknown })
+      ?.lang;
+    return typeof lang === 'string' ? lang : null;
+  } catch {
+    return null;
+  }
+}
+
+const lang = savedLang();
+if (lang && isLangCode(lang)) {
+  void loadLang(lang).then(start, start);
+} else {
+  start();
 }
 
 // SW yalnızca production build'de: dev'de HMR ile çakışmasın.

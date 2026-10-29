@@ -74,7 +74,7 @@ export function boot(): void {
   const S = settings();
   applyTheme(S.theme);
   applyAccent(S.accentColor);
-  applyLang(S.lang);
+  void applyLang(S.lang);
   document.documentElement.style.setProperty('--player-font-size', S.fontSize);
   document.documentElement.style.setProperty('--list-row-height', S.rowHeight);
   // One place writes the element's level, so the two volume controls never

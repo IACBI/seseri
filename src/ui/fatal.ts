@@ -144,7 +144,7 @@ export function showFatal(err: unknown): void {
   // default language rather than the user's.
   if (!langApplied()) {
     try {
-      applyLang(detectLang());
+      void applyLang(detectLang());
     } catch {
       /* i18n itself is unusable — the fallback strings still render */
     }

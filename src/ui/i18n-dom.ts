@@ -1,5 +1,5 @@
 import { effect } from '../state/signals';
-import { currentLang, t, LANGS } from '../i18n';
+import { currentLang, langDict, t } from '../i18n';
 import type { LangKey } from '../i18n/types';
 
 /**
@@ -9,7 +9,7 @@ import type { LangKey } from '../i18n/types';
  */
 export function bindI18nDom(root: ParentNode = document): void {
   effect(() => {
-    const dict = LANGS[currentLang()];
+    const dict = langDict(currentLang());
     root.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
       const key = el.dataset.i18n as LangKey | undefined;
       if (!key) return;

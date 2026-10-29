@@ -59,7 +59,7 @@ export function createLangMenu(opts: { compact?: boolean } = {}): HTMLElement {
     );
     row.addEventListener('click', () => {
       setSetting('lang', code);
-      applyLang(code);
+      void applyLang(code);
       close();
       trigger.focus();
     });
