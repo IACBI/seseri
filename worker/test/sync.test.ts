@@ -7,6 +7,7 @@ import {
 import { fetchMock } from './upstream';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import worker from '../src/index';
+import { resetCapacityCache } from '../src/sync';
 import type { Env, RateLimiter } from '../src/env';
 
 /**
@@ -88,6 +89,7 @@ beforeAll(() => {
 });
 beforeEach(async () => {
   await env.DB.prepare('DELETE FROM sync').run();
+  resetCapacityCache();
 });
 afterEach(() => fetchMock.assertNoPendingInterceptors());
 
@@ -483,7 +485,7 @@ describe('retention sweep', () => {
     const now = Date.now();
     const old = freshId();
     const recent = freshId();
-    const insert = 'INSERT INTO sync (id, rev, blob, size, updated_at) VALUES (?, 1, ?, 1, ?)';
+    const insert = 'INSERT INTO sync (id, rev, blob, size, updated_at) VALUES (?, 5, ?, 1, ?)';
     await env.DB.prepare(insert)
       .bind(old, blob(1), now - 181 * 24 * 60 * 60 * 1000)
       .run();
@@ -497,5 +499,119 @@ describe('retention sweep', () => {
 
     const left = await env.DB.prepare('SELECT id FROM sync').all<{ id: string }>();
     expect(left.results.map((r) => r.id)).toEqual([recent]);
+  });
+
+  it('drops a rev-1 row after a week but keeps an updated row of the same age', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const stale = freshId();
+    const active = freshId();
+    const fresh = freshId();
+    const insert = 'INSERT INTO sync (id, rev, blob, size, updated_at) VALUES (?, ?, ?, 1, ?)';
+    await env.DB.prepare(insert).bind(stale, 1, blob(1), now - 8 * day).run();
+    await env.DB.prepare(insert).bind(active, 2, blob(1), now - 8 * day).run();
+    await env.DB.prepare(insert).bind(fresh, 1, blob(1), now - 6 * day).run();
+
+    const ctx = createExecutionContext();
+    await worker.scheduled(createScheduledController({ cron: '17 4 * * *' }), env, ctx);
+    await waitOnExecutionContext(ctx);
+
+    const left = await env.DB.prepare('SELECT id FROM sync').all<{ id: string }>();
+    expect(left.results.map((r) => r.id).sort()).toEqual([active, fresh].sort());
+  });
+});
+
+describe('creation limits', () => {
+  it('allows a handful of creations an hour per address, then refuses', async () => {
+    const ip = '203.0.113.50';
+    const codes: number[] = [];
+    let last: Response | undefined;
+
+    for (let i = 0; i < 7; i++) {
+      last = await syncCall('PUT', { ip, ifMatch: '"0"', body: blob(1) });
+      codes.push(last.status);
+    }
+
+    expect(codes).toEqual([204, 204, 204, 204, 204, 429, 429]);
+    expect(last?.headers.get('retry-after')).toBe('3600');
+    expect(await rowCount()).toBe(5);
+  });
+
+  it('does not count updates of an existing row against the creation budget', async () => {
+    const ip = '203.0.113.51';
+    const id = freshId();
+    await syncCall('PUT', { id, ip, ifMatch: '"0"', body: blob(1) });
+
+    // 20 updates would blow the creation budget if they counted; the per-minute
+    // budgets (60 and 120) have room.
+    for (let i = 1; i <= 20; i++) {
+      const res = await syncCall('PUT', { id, ip, ifMatch: '"' + i + '"', body: blob(i) });
+      expect(res.status).toBe(204);
+    }
+  });
+
+  it('keeps a separate creation budget per address', async () => {
+    for (let i = 0; i < 6; i++) {
+      await syncCall('PUT', { ip: '203.0.113.52', ifMatch: '"0"', body: blob(1) });
+    }
+
+    const other = await syncCall('PUT', { ip: '203.0.113.53', ifMatch: '"0"', body: blob(1) });
+
+    expect(other.status).toBe(204);
+  });
+
+  it('refuses creation, rather than allowing it, when the limiter cannot be reached', async () => {
+    const broken = {
+      idFromName: () => {
+        throw new Error('no limiters here');
+      },
+    } as unknown as Env['LIMITERS'];
+    const open: RateLimiter = { limit: async () => ({ success: true }) };
+
+    const res = await syncCall('PUT', {
+      ip: '203.0.113.54',
+      ifMatch: '"0"',
+      body: blob(1),
+      env: { LIMITERS: broken, SYNC_IP: open, SYNC_ID: open },
+    });
+
+    expect(res.status).toBe(429);
+    expect(await rowCount()).toBe(0);
+  });
+
+  it('refuses a creation once the table holds its row cap, but still accepts updates', async () => {
+    const id = freshId();
+    await syncCall('PUT', { id, ifMatch: '"0"', body: blob(1) });
+    resetCapacityCache();
+
+    const created = await syncCall('PUT', {
+      ifMatch: '"0"',
+      body: blob(1),
+      env: { SYNC_MAX_ROWS: '1' },
+    });
+    const updated = await syncCall('PUT', {
+      id,
+      ifMatch: '"1"',
+      body: blob(2),
+      env: { SYNC_MAX_ROWS: '1' },
+    });
+
+    expect(created.status).toBe(503);
+    expect(created.headers.get('retry-after')).toBe('3600');
+    expect(updated.status).toBe(204);
+    expect(await rowCount()).toBe(1);
+  });
+
+  it('refuses a creation once the table holds its byte cap', async () => {
+    await syncCall('PUT', { ifMatch: '"0"', body: filledBlob(1000) });
+    resetCapacityCache();
+
+    const res = await syncCall('PUT', {
+      ifMatch: '"0"',
+      body: blob(1),
+      env: { SYNC_MAX_BYTES: '1000' },
+    });
+
+    expect(res.status).toBe(503);
   });
 });

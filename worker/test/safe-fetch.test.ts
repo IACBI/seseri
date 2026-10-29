@@ -87,7 +87,59 @@ describe('safeTarget', () => {
   });
 });
 
+describe('safeTarget ports and platform hosts', () => {
+  it.each([
+    'https://example.com:8443/x',
+    'http://example.com:22/x',
+    'https://example.com:6379/x',
+    'http://example.com:8080/x',
+  ])('rejects the non-default port in %s', (raw) => {
+    expect(safeTarget(raw)).toBeNull();
+  });
+
+  it.each(['https://example.com:443/x', 'http://example.com:80/x', 'https://example.com:80/x'])(
+    'allows the explicit default port in %s',
+    (raw) => {
+      expect(safeTarget(raw)).not.toBeNull();
+    },
+  );
+
+  it.each([
+    'https://seseri-api.someone.workers.dev/v1/feed',
+    'https://workers.dev/',
+    'https://A.B.WORKERS.DEV/x',
+  ])('rejects a workers.dev target: %s', (raw) => {
+    expect(safeTarget(raw)).toBeNull();
+  });
+
+  it('does not mistake a lookalike host for workers.dev', () => {
+    expect(safeTarget('https://notworkers.dev/x')).not.toBeNull();
+  });
+});
+
 describe('fetchWithTimeout redirect handling', () => {
+  it('rejects a redirect to a non-default port', async () => {
+    fetchMock
+      .get('https://redir.example.com')
+      .intercept({ path: '/port' })
+      .reply(302, '', { headers: { location: 'https://final.example.com:8443/x' } });
+    await expect(fetchWithTimeout('https://redir.example.com/port', 5000)).rejects.toThrow(
+      'unsafe redirect',
+    );
+  });
+
+  it('applies a host pin to every hop, not only the first request', async () => {
+    fetchMock
+      .get('https://itunes.apple.com')
+      .intercept({ path: '/hop' })
+      .reply(302, '', { headers: { location: 'https://elsewhere.example.com/x' } });
+    await expect(
+      fetchWithTimeout('https://itunes.apple.com/hop', 5000, undefined, (u) =>
+        u.hostname.endsWith('apple.com'),
+      ),
+    ).rejects.toThrow('unsafe redirect');
+  });
+
   it('rejects a 302 that points at a private target', async () => {
     fetchMock
       .get('https://redir.example.com')

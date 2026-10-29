@@ -103,6 +103,25 @@ function proxyError(c: Context<AppContext>, e: unknown): Response {
 const NOSNIFF = { 'x-content-type-options': 'nosniff' } as const;
 
 /**
+ * Nothing the proxies return is a page, so nothing it returns should ever be
+ * allowed to act like one: `default-src 'none'` forbids every subresource and
+ * script, `sandbox` strips the same-origin privileges a document would have.
+ * It is set on the way out for every proxy route, error bodies and cached hits
+ * included — an entry stored before this existed carries no header of its own.
+ * CORS is unaffected: the page reads these as fetch responses, which CSP does
+ * not govern.
+ */
+const PROXY_PATH = /^\/v1\/(feed|itunes|parse)$/;
+app.use('*', async (c, next) => {
+  await next();
+  if (!PROXY_PATH.test(c.req.path)) return;
+  c.res.headers.set('content-security-policy', "default-src 'none'; sandbox");
+  c.res.headers.set('x-content-type-options', 'nosniff');
+});
+
+const isItunesHost = (u: URL): boolean => /(^|\.)itunes\.apple\.com$/.test(u.hostname);
+
+/**
  * Content types a feed may legitimately arrive as.
  *
  * Only `text/html` used to be refused, which left every other document type
@@ -214,7 +233,7 @@ app.get('/v1/feed', async (c) => {
 // ── iTunes API proxy (fixes their Origin-blind CDN caching) ─────────
 app.get('/v1/itunes', async (c) => {
   const target = safeTarget(c.req.query('url'));
-  if (!target || !/(^|\.)itunes\.apple\.com$/.test(target.hostname)) {
+  if (!target || !isItunesHost(target)) {
     return c.json({ error: 'invalid url' }, 400);
   }
   return edgeCached(
@@ -223,7 +242,7 @@ app.get('/v1/itunes', async (c) => {
     c.executionCtx,
     async () => {
       try {
-        const res = await fetchWithTimeout(target.href, 10000);
+        const res = await fetchWithTimeout(target.href, 10000, undefined, isItunesHost);
         if (!res.ok) return c.json({ error: 'upstream ' + res.status }, 502);
         const body = await readCapped(res, FEED_MAX_BYTES);
         return new Response(body, {

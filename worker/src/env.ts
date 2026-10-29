@@ -22,6 +22,9 @@ export interface Env {
   SYNC_ID: RateLimiter;
   /** "1" makes every sync route answer 503 without a client deploy. */
   SYNC_DISABLED?: string;
+  /** Optional overrides for the table-wide creation cap (see sync.ts). */
+  SYNC_MAX_ROWS?: string;
+  SYNC_MAX_BYTES?: string;
 }
 
 export type AppContext = { Bindings: Env };

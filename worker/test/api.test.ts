@@ -165,6 +165,55 @@ describe('/v1/itunes proxy', () => {
   });
 });
 
+describe('defensive headers on proxy responses', () => {
+  const CSP = "default-src 'none'; sandbox";
+
+  it('marks a feed, a cached feed, an iTunes answer and an error as inert', async () => {
+    fetchMock
+      .get('https://feeds.example.com')
+      .intercept({ path: '/csp.xml' })
+      .reply(200, '<rss><channel><title>T</title></channel></rss>', {
+        headers: { 'content-type': 'application/rss+xml' },
+      });
+    fetchMock
+      .get('https://itunes.apple.com')
+      .intercept({ path: /\/lookup.*/ })
+      .reply(200, JSON.stringify({ resultCount: 0, results: [] }));
+    const feedUrl = '/v1/feed?url=' + encodeURIComponent('https://feeds.example.com/csp.xml');
+
+    const miss = await call(feedUrl);
+    const hit = await call(feedUrl);
+    const itunes = await call(
+      '/v1/itunes?url=' + encodeURIComponent('https://itunes.apple.com/lookup?id=2'),
+    );
+    const bad = await call('/v1/feed?url=http://127.0.0.1/x');
+
+    expect(hit.headers.get('x-seseri-cache')).toBe('hit');
+    for (const res of [miss, hit, itunes, bad]) {
+      expect(res.headers.get('content-security-policy')).toBe(CSP);
+      expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+      expect(res.headers.get('access-control-allow-origin')).toBe(APP_ORIGIN);
+    }
+  });
+
+  it('leaves the health check alone', async () => {
+    expect((await call('/')).headers.get('content-security-policy')).toBeNull();
+  });
+});
+
+describe('/v1/itunes redirects', () => {
+  it('refuses a redirect off the iTunes host', async () => {
+    fetchMock
+      .get('https://itunes.apple.com')
+      .intercept({ path: /\/lookup.*/ })
+      .reply(302, '', { headers: { location: 'https://feeds.example.com/steal' } });
+    const res = await call(
+      '/v1/itunes?url=' + encodeURIComponent('https://itunes.apple.com/lookup?id=3'),
+    );
+    expect(res.status).toBe(502);
+  });
+});
+
 describe('open-proxy protection', () => {
   it('rejects a proxy call with no Origin', async () => {
     const url = encodeURIComponent('https://feeds.example.com/pod.xml');

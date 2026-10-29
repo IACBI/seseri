@@ -104,6 +104,14 @@ export function safeTarget(raw: string | undefined): URL | null {
   if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
   if (isPrivateHost(u.hostname)) return null;
   if (u.username || u.password) return null;
+  // The URL parser drops a scheme's own default port, so '' is the usual case;
+  // an explicit :80 or :443 on the other scheme is harmless and allowed. Any
+  // other port turns the proxy into a scanner for whatever a public host runs
+  // besides its web server.
+  if (u.port !== '' && u.port !== '80' && u.port !== '443') return null;
+  // This worker's own platform: proxying it back to itself (or to another
+  // worker that proxies here) is a loop that multiplies every request.
+  if (/(^|\.)workers\.dev$/i.test(u.hostname)) return null;
   return u;
 }
 
@@ -120,6 +128,12 @@ export async function fetchWithTimeout(
   url: string,
   ms: number,
   init?: RequestInit,
+  /**
+   * Extra constraint every redirect hop must satisfy. A route that is pinned to
+   * one host (iTunes) would otherwise only be pinned on the first request, and
+   * a redirect could carry it anywhere `safeTarget` allows.
+   */
+  hopAllowed?: (u: URL) => boolean,
 ): Promise<Response> {
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), ms);
@@ -141,7 +155,8 @@ export async function fetchWithTimeout(
       if (hop >= MAX_REDIRECTS) throw new Error('too many redirects');
 
       const resolved = new URL(loc, currentUrl);
-      if (!safeTarget(resolved.href)) throw new Error('unsafe redirect');
+      const next = safeTarget(resolved.href);
+      if (!next || (hopAllowed && !hopAllowed(next))) throw new Error('unsafe redirect');
 
       // Per fetch spec: 303, and 301/302 on POST, become GET with no body.
       const method = (currentInit.method || 'GET').toUpperCase();

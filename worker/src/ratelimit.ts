@@ -80,6 +80,30 @@ export class RateLimiterDO extends DurableObject {
     this.#cur++;
     return 0;
   }
+
+  /**
+   * A budget over a long window (an hour, a day), counted in storage.
+   *
+   * `take` keeps its count in memory, which is right for a per-minute budget —
+   * an instance only goes idle once the traffic has stopped — but an hour-long
+   * budget outlives the ~10 s an idle instance is kept, so an in-memory count
+   * would quietly reset between a caller's attempts. Only an allowed request
+   * writes; a refusal never does, so a flood costs the object nothing.
+   *
+   * A fixed window: at the boundary a caller can spend this window's budget and
+   * the next one's back to back. For a budget of a handful an hour that is the
+   * accepted slack, in exchange for one small record rather than a log.
+   */
+  async takeWindow(limit: number, windowMs: number): Promise<number> {
+    const now = Date.now();
+    const rec = await this.ctx.storage.get<{ start: number; n: number }>('w');
+    const fresh = !rec || now - rec.start >= windowMs;
+    const start = fresh ? now : rec.start;
+    const n = fresh ? 0 : rec.n;
+    if (n >= limit) return start + windowMs - now;
+    await this.ctx.storage.put('w', { start, n: n + 1 });
+    return 0;
+  }
 }
 
 /**
@@ -126,7 +150,8 @@ function remember(key: string, until: number): void {
 /**
  * True when `key` has spent its budget. `name` separates the budgets: the
  * proxies, sync's per-address budget and sync's per-code budget each count in
- * their own instance.
+ * their own instance. `long` selects the stored, long-window counter and fails
+ * closed when the object is unreachable.
  */
 export async function rateLimited(
   limiters: DurableObjectNamespace<RateLimiterDO>,
@@ -134,6 +159,7 @@ export async function rateLimited(
   name: string,
   key: string,
   limit: number,
+  long?: { windowMs: number },
 ): Promise<boolean> {
   const id = `${name}:${key}`;
   const now = Date.now();
@@ -145,7 +171,9 @@ export async function rateLimited(
 
   try {
     const stub = limiters.get(limiters.idFromName(id));
-    const retryAfterMs = await stub.take(limit);
+    const retryAfterMs = long
+      ? await stub.takeWindow(limit, long.windowMs)
+      : await stub.take(limit);
     if (retryAfterMs <= 0) return false;
     remember(id, now + retryAfterMs);
     return true;
@@ -153,6 +181,10 @@ export async function rateLimited(
     // Reaching the object is the one thing here that can fail, and it must not
     // fail open the way the KV counter did.
     console.error('rate limiter unreachable:', (e as Error).message);
+    // The platform limiter counts per minute and per machine; it cannot hold an
+    // hour-long budget, and creating storage is the thing that budget exists to
+    // stop. Refusing while the object is down costs a new pairing a retry.
+    if (long) return true;
     const verdict = await fallback.limit({ key: id }).catch(() => ({ success: true }));
     return !verdict.success;
   }

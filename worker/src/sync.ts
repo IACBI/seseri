@@ -28,11 +28,64 @@ const SYNC_ID = /^[A-Za-z0-9_-]{43}$/;
 /** A row nobody has touched in this long is an abandoned pairing. */
 export const RETENTION_MS = 180 * 24 * 60 * 60 * 1000;
 
+/**
+ * A row that was created and never written again (rev 1) is either a pairing
+ * whose second device never showed up or somebody filling the table: a device
+ * in real use pushes on every change, so its rev climbs within minutes. Seven
+ * days is generous for the first, and cuts the lifetime of the second from 180
+ * days to one week.
+ */
+export const UNTOUCHED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
 const RATE_LIMITED = { error: 'rate limited' } as const;
 
 /** Per client prefix, and per code so one leaked code cannot be hammered. */
 const SYNC_IP_PER_MIN = 60;
 const SYNC_ID_PER_MIN = 120;
+
+/**
+ * Creating a row is the one unauthenticated way to make the server store
+ * something: the id is whatever the caller invents. A person pairs a handful of
+ * devices in a lifetime, so the per-address allowance is small and long — the
+ * per-minute budget above would let one address mint 60 rows a minute.
+ */
+const CREATE_PER_WINDOW = 5;
+const CREATE_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * Ceiling on the whole table, a backstop for what the per-address budget cannot
+ * see (many addresses). Well under D1's per-database size limit, so a flood
+ * meets this refusal long before the database does. Overridable per deployment
+ * with `SYNC_MAX_ROWS` / `SYNC_MAX_BYTES`.
+ */
+const MAX_ROWS = 50_000;
+const MAX_TOTAL_BYTES = 1024 * 1024 * 1024;
+
+/**
+ * The answer to "is the table full" is cached per isolate. Counting means
+ * scanning every row, and D1 bills rows read; creations are already rare, so a
+ * short cache holds the cost to a scan per isolate per half-minute at most. It
+ * is a soft cap by design: a burst inside the window can overshoot by what one
+ * window of creations allows.
+ */
+const FULL_CACHE_MS = 30_000;
+let fullCache: { at: number; full: boolean } | null = null;
+
+/** Forget the cached verdict. For tests. */
+export function resetCapacityCache(): void {
+  fullCache = null;
+}
+
+async function tableFull(env: Env, now: number): Promise<boolean> {
+  if (fullCache && now - fullCache.at < FULL_CACHE_MS) return fullCache.full;
+  const maxRows = Number(env.SYNC_MAX_ROWS) || MAX_ROWS;
+  const maxBytes = Number(env.SYNC_MAX_BYTES) || MAX_TOTAL_BYTES;
+  const t = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM sync')
+    .first<{ n: number; bytes: number }>();
+  const full = !!t && (t.n >= maxRows || t.bytes >= maxBytes);
+  fullCache = { at: now, full };
+  return full;
+}
 
 type SyncApp = { Bindings: Env; Variables: { syncId: string } };
 
@@ -149,6 +202,29 @@ syncRoutes.put('/', async (c) => {
   if (body.byteLength === 0) return c.json({ error: 'empty payload' }, 400, headers());
 
   const now = Date.now();
+
+  if (rev === 0) {
+    // Counted before the write, so a refused creation never reaches D1. An
+    // empty address is `wrangler dev` or a test, as in the middleware.
+    const ip = c.req.header('cf-connecting-ip') ?? '';
+    if (
+      ip &&
+      (await rateLimited(
+        c.env.LIMITERS,
+        c.env.SYNC_IP,
+        'sync-create',
+        clientKey(ip),
+        CREATE_PER_WINDOW,
+        { windowMs: CREATE_WINDOW_MS },
+      ))
+    ) {
+      return c.json(RATE_LIMITED, 429, headers({ 'retry-after': '3600' }));
+    }
+    if (await tableFull(c.env, now)) {
+      return c.json({ error: 'sync is full' }, 503, headers({ 'retry-after': '3600' }));
+    }
+  }
+
   const write =
     rev === 0
       ? c.env.DB.prepare(
@@ -177,11 +253,15 @@ syncRoutes.delete('/', async (c) => {
   return c.body(null, 204, headers());
 });
 
-/** Daily cron. D1 has no TTL, and an abandoned pairing would sit there forever. */
+/**
+ * Daily cron. D1 has no TTL, and an abandoned pairing would sit there forever.
+ * Rows never written after creation go on the short clock; both predicates ride
+ * the `updated_at` index.
+ */
 export async function sweepSync(db: D1Database, now: number = Date.now()): Promise<number> {
   const res = await db
-    .prepare('DELETE FROM sync WHERE updated_at < ?')
-    .bind(now - RETENTION_MS)
+    .prepare('DELETE FROM sync WHERE updated_at < ? OR (rev <= 1 AND updated_at < ?)')
+    .bind(now - RETENTION_MS, now - UNTOUCHED_RETENTION_MS)
     .run();
   return res.meta.changes ?? 0;
 }
