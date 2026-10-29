@@ -21,6 +21,7 @@ let lastAt: Record<string, number> = {};
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let onQuotaPruned: (() => void) | null = null;
+let watchingOtherTabs = false;
 
 const LAST_PREFIX = 'pp_last_';
 
@@ -46,6 +47,36 @@ export function loadProgress(): void {
     const feedId = key.slice(LAST_PREFIX.length);
     if (!(feedId in lastAt)) lastAt[feedId] = 0;
   }
+
+  if (!watchingOtherTabs && typeof window !== 'undefined') {
+    watchingOtherTabs = true;
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'pp_prog_at') adoptOtherTabWrites();
+    });
+  }
+}
+
+/**
+ * Every write replaces the whole map, so a second tab or the installed window
+ * left open with an old copy would put its stale positions back over this
+ * one's the moment it is hidden — and sync would carry them to every device.
+ * Taking the other tab's newer entries keeps both copies current. `pp_prog_at`
+ * is written after `pp_prog`, so by its event both are in storage.
+ */
+function adoptOtherTabWrites(): void {
+  const theirs = local.get<Record<string, number>>('pp_prog', {});
+  const theirAt = asRecord(local.get<unknown>('pp_prog_at', {}));
+  for (const [id, at] of Object.entries(theirAt)) {
+    const t = theirs?.[id];
+    if (typeof t === 'number' && at > (progAt[id] ?? 0)) {
+      prog[id] = t;
+      progAt[id] = at;
+    }
+  }
+  const theirLast = asRecord(local.get<unknown>('pp_last_at', {}));
+  for (const [feedId, at] of Object.entries(theirLast)) {
+    if (at > (lastAt[feedId] ?? 0)) lastAt[feedId] = at;
+  }
 }
 
 export function getProgress(id: string): number {
@@ -53,6 +84,12 @@ export function getProgress(id: string): number {
 }
 
 export function setProgress(id: string, seconds: number): void {
+  // A seek on a paused element fires `timeupdate` at the position it already
+  // holds — including the seek sync makes to adopt another device's position.
+  // Restamping that with this device's `now` would claim the other device's
+  // write as a newer local one and win every later conflict with it.
+  const cur = prog[id];
+  if (cur !== undefined && Math.abs(cur - seconds) < 1) return;
   prog[id] = seconds;
   progAt[id] = Date.now();
   scheduleSave();
@@ -76,9 +113,11 @@ export function clearProgress(): void {
   saveProgressNow();
 }
 
-/** Quota recovery: drop the oldest half of saved positions (legacy behavior). */
+/** Quota recovery: drop the least recently written half of saved positions. */
 function pruneProgress(): void {
-  const keys = Object.keys(prog);
+  // By stamp, not insertion order: merges and remaps insert in arbitrary order,
+  // which would throw away positions the listener is in the middle of.
+  const keys = Object.keys(prog).sort((a, b) => (progAt[a] ?? 0) - (progAt[b] ?? 0));
   for (const k of keys.slice(0, Math.ceil(keys.length / 2))) {
     delete prog[k];
     delete progAt[k];
@@ -194,17 +233,25 @@ export function progressSnapshot(): {
 /**
  * Apply a merged set from another device in one write.
  *
- * Additive on purpose: entries the merge did not mention are left alone, and
- * nothing here ever deletes a position. A remote payload that failed to decrypt
- * must never be able to empty local history.
+ * Additive on purpose: entries the merge did not mention are left alone. The
+ * one deletion is `forget` — positions an explicit "mark unplayed" on some
+ * device made obsolete — and only where the local stamp is no newer than that
+ * mark, so a remote payload can never empty history it has nothing to say about.
  */
 export function mergeProgress(
   entries: Record<string, { t: number; at: number }>,
   lastPlayed: Record<string, { ep: string; at: number }>,
+  forget: Record<string, number> = {},
 ): void {
   for (const [id, entry] of Object.entries(entries)) {
     prog[id] = entry.t;
     progAt[id] = entry.at;
+  }
+  for (const [id, markedAt] of Object.entries(forget)) {
+    if (prog[id] !== undefined && (progAt[id] ?? 0) <= markedAt) {
+      delete prog[id];
+      delete progAt[id];
+    }
   }
   for (const [feedId, entry] of Object.entries(lastPlayed)) {
     if (local.rawGet(LAST_PREFIX + feedId) !== entry.ep) {

@@ -14,6 +14,8 @@ const transport = vi.hoisted(() => ({
   rev: 0,
   /** What the next pull hands back; null means "nothing stored yet". */
   remote: null as Uint8Array | null,
+  /** The blob the last push sent. */
+  last: null as Uint8Array | null,
 }));
 vi.mock('./transport', () => ({
   SYNC_AVAILABLE: true,
@@ -25,8 +27,9 @@ vi.mock('./transport', () => ({
       ? { kind: 'ok', blob: transport.remote, rev: transport.rev }
       : { kind: 'empty' };
   },
-  pushBlob: async () => {
+  pushBlob: async (_id: string, blob: Uint8Array) => {
     transport.pushes++;
+    transport.last = blob;
     return { kind: 'ok', rev: ++transport.rev };
   },
   deleteBlob: async () => true,
@@ -80,6 +83,9 @@ beforeEach(async () => {
 afterEach(() => {
   vi.useRealTimers();
   unlinkSync();
+  // Sealed with the pairing just dropped; the next test's fresh code could
+  // not open it, and its first sync would stop at "unreadable".
+  transport.remote = null;
 });
 
 describe('a played mark schedules a sync', () => {
@@ -116,5 +122,31 @@ describe('a played mark schedules a sync', () => {
     vi.advanceTimersByTime(DEBOUNCE_MS * 2);
     await idle();
     expect(transport.pushes).toBe(afterCycle);
+  });
+});
+
+describe('returning to the app', () => {
+  it('pulls when the window regains focus, so a device left open sees the other one’s progress', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.setSystemTime(Date.now() + 11_000);
+    window.dispatchEvent(new Event('focus'));
+    await until(() => transport.pulls === 1, 'the pull');
+    await idle();
+  });
+
+  it('does not pull again for a focus right after a sync', async () => {
+    window.dispatchEvent(new Event('focus'));
+    await idle();
+    expect(transport.pulls).toBe(0);
+  });
+});
+
+describe('a cycle that changes nothing', () => {
+  it('does not rewrite a row that already holds exactly what this device has', async () => {
+    transport.remote = transport.last;
+    await syncNow();
+    await idle();
+    expect(transport.pulls).toBe(1);
+    expect(transport.pushes).toBe(0);
   });
 });

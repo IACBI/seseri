@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearQueue,
   dequeueNext,
@@ -8,6 +8,7 @@ import {
   queue,
   queuePosition,
   queuePositions,
+  queueSnapshot,
   removeFromQueue,
   type QueueItem,
 } from './queue';
@@ -119,6 +120,18 @@ describe('dequeueNext', () => {
   it('returns undefined on an empty queue', () => {
     expect(dequeueNext()).toBeUndefined();
     expect(ids()).toEqual([]);
+  });
+
+  it('does not restamp an empty queue, which would wipe the other device’s on sync', () => {
+    const before = queueSnapshot().at;
+    vi.useFakeTimers();
+    vi.setSystemTime(before + 60_000);
+    try {
+      expect(dequeueNext({ feedId: 'f1', trackId: 'x' })).toBeUndefined();
+      expect(queueSnapshot().at).toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('skips the just-ended episode before popping the next', () => {

@@ -449,3 +449,24 @@ describe('isSyncPayload', () => {
     expect(isSyncPayload(p)).toBe(true);
   });
 });
+
+describe('mergePayload — an unplayed mark forgets the position', () => {
+  it('drops the other device’s older position for an episode marked unplayed', () => {
+    const phone = payload({ progress: { e1: prog(2400, T0) } });
+    const pc = payload({ played: { e1: { at: T0 + HOUR, unplayed: true } } });
+    expect(mergePayload(phone, pc, NOW).progress['e1']).toBeUndefined();
+    expect(mergePayload(pc, phone, NOW).progress['e1']).toBeUndefined();
+  });
+
+  it('keeps a position written after the mark — the episode was played again', () => {
+    const phone = payload({ progress: { e1: prog(120, T0 + 2 * HOUR) } });
+    const pc = payload({ played: { e1: { at: T0 + HOUR, unplayed: true } } });
+    expect(mergePayload(phone, pc, NOW).progress['e1']).toEqual(prog(120, T0 + 2 * HOUR));
+  });
+
+  it('keeps the position when the mark is "played"', () => {
+    const phone = payload({ progress: { e1: prog(2400, T0) } });
+    const pc = payload({ played: { e1: { at: T0 + HOUR } } });
+    expect(mergePayload(phone, pc, NOW).progress['e1']).toEqual(prog(2400, T0));
+  });
+});

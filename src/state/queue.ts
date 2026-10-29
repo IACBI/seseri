@@ -119,6 +119,10 @@ export function queuePositions(feedId: string): Map<string, number> {
 export function dequeueNext(justEnded?: { feedId: string; trackId: string }): QueueItem | undefined {
   const rest = justEnded ? queue().filter((x) => !sameItem(x, justEnded)) : queue().slice();
   const next = rest[0];
+  // An unchanged queue must not be restamped: the queue syncs whole, by stamp,
+  // so finishing an episode with nothing queued here would wipe the queue the
+  // other device built.
+  if (next === undefined && rest.length === queue().length) return undefined;
   persist(rest.slice(1));
   return next;
 }

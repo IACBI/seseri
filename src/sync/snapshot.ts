@@ -105,10 +105,10 @@ function orderSubs(entries: Record<string, SubEntry>): Subscription[] {
 /**
  * Write a merged payload back to storage.
  *
- * Two things it deliberately does not do. It never seeks the audio element — a
- * pull that lands mid-playback must not move the playhead; `applyPrefs` picks
- * the merged position up the next time that episode starts. And it skips the
- * episode currently playing (`exclude`), because a stale remote value would
+ * Two things it deliberately does not do. It never touches the audio element —
+ * adopting a newer position for a loaded, paused episode is the orchestrator's
+ * call (`src/sync/index.ts`). And it skips the episode actively playing
+ * (`exclude`), because a stale remote value would
  * land and then be overwritten by the next `timeupdate` a second later, which
  * is a write storm and a visible flicker on the mini scrub.
  */
@@ -124,7 +124,14 @@ export function applyPayload(payload: SyncPayload, skewMs: number, exclude: Set<
     lastPlayed[feedId] = { ep: entry.ep, at: toLocal(entry.at, skewMs) };
   }
 
-  mergeProgress(progress, lastPlayed);
+  // The merge already dropped positions an unplayed mark superseded; this
+  // removes this device's own copy of them, which an additive apply would keep.
+  const forget: Record<string, number> = {};
+  for (const [id, entry] of Object.entries(payload.played ?? {})) {
+    if (entry.unplayed && !exclude.has(id)) forget[id] = toLocal(entry.at, skewMs);
+  }
+
+  mergeProgress(progress, lastPlayed, forget);
 
   const at: Record<string, number> = {};
   const removed: Record<string, number> = {};

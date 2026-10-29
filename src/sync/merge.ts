@@ -225,11 +225,38 @@ function gcTombstones(subs: Record<string, SubEntry>, now: number): Record<strin
   return out;
 }
 
+/**
+ * "Mark unplayed" forgets the position on the device where it was tapped, but
+ * the other device still holds it, and the union would bring it straight back:
+ * the episode reads as unheard yet resumes from the middle. A position no newer
+ * than the mark is the one the mark meant to discard.
+ */
+function dropUnplayedPositions(
+  progress: Record<string, ProgressEntry>,
+  played: Record<string, PlayedEntry>,
+): Record<string, ProgressEntry> {
+  const out: Record<string, ProgressEntry> = {};
+  for (const [k, v] of Object.entries(progress)) {
+    const mark = played[k];
+    if (mark?.unplayed && v.at <= mark.at) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 export function mergePayload(local: SyncPayload, remote: SyncPayload, now: number): SyncPayload {
-  const progress = unionMerge(
-    normProgress(local.progress, now),
-    normProgress(remote.progress, now),
-    mergeProgressEntry,
+  const played = unionMerge(
+    normPlayed(local.played, now),
+    normPlayed(remote.played, now),
+    mergePlayedEntry,
+  );
+  const progress = dropUnplayedPositions(
+    unionMerge(
+      normProgress(local.progress, now),
+      normProgress(remote.progress, now),
+      mergeProgressEntry,
+    ),
+    played,
   );
   const lastPlayed = unionMerge(
     normLastPlayed(local.lastPlayed, now),
@@ -243,11 +270,6 @@ export function mergePayload(local: SyncPayload, remote: SyncPayload, now: numbe
   const queue = mergeQueue(
     { list: local.queue.list, at: clampAt(local.queue.at, now) },
     { list: remote.queue.list, at: clampAt(remote.queue.at, now) },
-  );
-  const played = unionMerge(
-    normPlayed(local.played, now),
-    normPlayed(remote.played, now),
-    mergePlayedEntry,
   );
   return { v: PAYLOAD_VERSION, progress, lastPlayed, subs, queue, played };
 }

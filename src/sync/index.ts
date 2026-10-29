@@ -1,4 +1,4 @@
-import { onEngine } from '../player/engine';
+import { onEngine, pbCurrent, pbPaused, pbSeekTo } from '../player/engine';
 import { playing } from '../player/session';
 import { queue } from '../state/queue';
 import { signal } from '../state/signals';
@@ -43,6 +43,16 @@ const STATE_KEY = 'pp_sync';
  */
 const DEBOUNCE_MS = 30_000;
 
+/**
+ * A pause is the moment a listener walks to the other device, so it does not
+ * wait the full debounce: a pause followed by an idle, still-visible screen
+ * would otherwise never push until the tab is hidden.
+ */
+const PAUSE_DEBOUNCE_MS = 3_000;
+
+/** Returning to the app pulls, but a quick alt-tab burst costs one cycle. */
+const FOREGROUND_MIN_GAP_MS = 10_000;
+
 /** Beyond this the payload is capped rather than rejected by the server. */
 const MAX_PROGRESS_ENTRIES = 1500;
 
@@ -79,6 +89,7 @@ let again = false;
 let wired = false;
 /** True while a pull is being written, so its own writes do not queue a sync. */
 let applying = false;
+let lastAttemptAt = 0;
 
 function store(): void {
   const code = syncState().code;
@@ -103,10 +114,30 @@ function nowServer(): number {
  * The episode playing right now is left out of an inbound merge: a stale remote
  * value would land and be overwritten by the next `timeupdate` a second later,
  * which is a write storm and a visible flicker on the mini scrub.
+ *
+ * Only while it is actually playing. A loaded but paused episode used to be
+ * excluded too, so the other device's newer position never reached it: play
+ * resumed from where the element had stopped and the next `timeupdate` pushed
+ * that older position over the newer one everywhere.
  */
 function excluded(): Set<string> {
   const id = playing()?.trackId;
-  return id ? new Set([id]) : new Set<string>();
+  return id && !pbPaused() ? new Set([id]) : new Set<string>();
+}
+
+/**
+ * Move a loaded, paused episode to a strictly newer position from another
+ * device, so pressing play here continues from there. Never while playing,
+ * and never to a value this device wrote itself.
+ */
+function adoptHeldPosition(local: SyncPayload, merged: SyncPayload): void {
+  const id = playing()?.trackId;
+  if (!id || !pbPaused()) return;
+  const next = merged.progress[id];
+  if (!next) return;
+  const before = local.progress[id];
+  if (before && next.at <= before.at) return;
+  if (Math.abs(pbCurrent() - next.t) > 2) pbSeekTo(next.t);
 }
 
 /**
@@ -183,8 +214,10 @@ export async function forgetRemote(): Promise<boolean> {
 function applyLocally(payload: SyncPayload): SyncPayload {
   applying = true;
   try {
-    const fresh = mergePayload(readLocalPayload(getSkewMs()), payload, nowServer());
+    const mine = readLocalPayload(getSkewMs());
+    const fresh = mergePayload(mine, payload, nowServer());
     applyPayload(fresh, getSkewMs(), excluded());
+    adoptHeldPosition(mine, fresh);
     return fresh;
   } finally {
     applying = false;
@@ -226,6 +259,19 @@ async function pushMerged(merged: SyncPayload): Promise<boolean> {
   }
 }
 
+/** Key order differs between a merged and a decoded payload; content is what counts. */
+function canonical(x: unknown): unknown {
+  if (Array.isArray(x)) return x.map(canonical);
+  if (!x || typeof x !== 'object') return x;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(x).sort()) out[k] = canonical((x as Record<string, unknown>)[k]);
+  return out;
+}
+
+function sameContent(a: SyncPayload, b: SyncPayload): boolean {
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+}
+
 /** One full cycle. Safe to call at any time; overlapping calls are serialised. */
 export async function syncNow(): Promise<void> {
   if (!SYNC_AVAILABLE || !keys) return;
@@ -234,6 +280,7 @@ export async function syncNow(): Promise<void> {
     return;
   }
   running = true;
+  lastAttemptAt = Date.now();
   setStatus('syncing');
 
   try {
@@ -269,6 +316,12 @@ export async function syncNow(): Promise<void> {
 
     const merged = applyLocally(mergePayload(readLocalPayload(getSkewMs()), remote, nowServer()));
 
+    // Every return to the foreground pulls now; most of those find nothing
+    // new, and re-sealing and rewriting an identical row is wasted work.
+    if (pulled.kind === 'ok' && sameContent(capPayload(merged, MAX_PROGRESS_ENTRIES), remote)) {
+      setStatus('ok', true);
+      return;
+    }
     if (await pushMerged(merged)) setStatus('ok', true);
   } finally {
     running = false;
@@ -279,13 +332,27 @@ export async function syncNow(): Promise<void> {
   }
 }
 
-/** Coalesce bursts of activity into one sync. */
-export function syncSoon(): void {
-  if (!SYNC_AVAILABLE || !keys || timer) return;
+let timerDue = 0;
+
+/** Coalesce bursts of activity into one sync; a sooner request pulls it forward. */
+export function syncSoon(delayMs = DEBOUNCE_MS): void {
+  if (!SYNC_AVAILABLE || !keys) return;
+  const due = Date.now() + delayMs;
+  if (timer) {
+    if (due >= timerDue) return;
+    clearTimeout(timer);
+  }
+  timerDue = due;
   timer = setTimeout(() => {
     timer = null;
     void syncNow();
-  }, DEBOUNCE_MS);
+  }, delayMs);
+}
+
+/** Pull what the other device did while this one was in the background. */
+function syncOnReturn(): void {
+  if (!keys || Date.now() - lastAttemptAt < FOREGROUND_MIN_GAP_MS) return;
+  void syncNow();
 }
 
 /**
@@ -313,8 +380,18 @@ function wire(): void {
   onEngine((e) => {
     // Pause and end are the moments a listener is most likely to walk to the
     // other device; everything else rides the debounce.
-    if (e.type === 'pause' || e.type === 'ended') syncSoon();
+    if (e.type === 'pause' || e.type === 'ended') syncSoon(PAUSE_DEBOUNCE_MS);
   });
+  // Nothing else ever pulls on a device left open: a tab or desktop window
+  // that sat in the background while the phone played kept offering the old
+  // position until it next had something of its own to push.
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) syncOnReturn();
+    });
+    window.addEventListener('focus', syncOnReturn);
+    window.addEventListener('online', syncOnReturn);
+  }
   // Subscribing or reordering the queue is worth carrying over promptly. The
   // `applying` guard is load-bearing: a pull writes these same signals, and
   // without it every sync would schedule the next one, forever.
