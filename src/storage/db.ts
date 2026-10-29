@@ -404,17 +404,6 @@ export async function patchCachedEpisode(
   }
 }
 
-export async function clearFeedCache(): Promise<void> {
-  try {
-    const d = await db();
-    await d.clear('feeds');
-    await d.clear('feedStats');
-    await d.clear('resume');
-  } catch {
-    /* ignore */
-  }
-}
-
 // ── resume projection (Home's continue-listening rail) ─────────────
 export async function getResume(feedId: string): Promise<ResumeEntry | undefined> {
   try {

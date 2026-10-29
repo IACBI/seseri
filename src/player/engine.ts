@@ -72,10 +72,6 @@ function clamp01(v: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(v) ? v : 1));
 }
 
-/** The listener's own level, 0–1 — not whatever a fade has it at right now. */
-export function pbGetVolume(): number {
-  return userVolume;
-}
 export function pbSetVolume(v: number): void {
   userVolume = clamp01(v);
   applyVolume();

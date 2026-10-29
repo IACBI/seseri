@@ -13,7 +13,6 @@ export interface Lang {
   btn_next: string;
   btn_sort: string;
   filter_placeholder: string;
-  settings_title: string;
   settings_heading: string;
   close: string;
   sort_asc_label: string;
@@ -26,7 +25,6 @@ export interface Lang {
   no_results: string;
   ep_count_unit: string;
   ep_not_found: string;
-  loading_eps: string;
   retry: string;
   btn_retry: string;
   btn_queue: string;
@@ -114,7 +112,6 @@ export interface Lang {
   s_ambient_hint: string;
   np_notes: string;
   dl_label: string;
-  rss_invalid: string;
   limit_note: string;
   limit_of_total: LangFn;
   s_storage: string;
@@ -161,7 +158,6 @@ export interface Lang {
   home_continue: string;
   home_empty: string;
   home_empty_hint: string;
-  home_see_all: string;
   lib_tab_subs: string;
   lib_tab_downloads: string;
   lib_empty_subs: string;

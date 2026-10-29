@@ -38,7 +38,7 @@ import {
 } from '../../player/session';
 import { queue } from '../../state/queue';
 import { setSetting, settings, type Settings } from '../../state/settings';
-import { feedSpeedRevision, hasOwnSpeed, setFeedSpeed, speedFor } from '../../state/feed-speed';
+import { SPEEDS, feedSpeedRevision, hasOwnSpeed, setFeedSpeed, speedFor } from '../../state/feed-speed';
 import type { PlaybackController } from '../playback-controller';
 import { must } from '../shell';
 import { initWaveform, type WaveformController } from '../waveform';
@@ -55,8 +55,6 @@ export interface NowPlayingSheet {
   isOpen(): boolean;
   el: HTMLElement;
 }
-
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5];
 
 export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   const { playback } = deps;

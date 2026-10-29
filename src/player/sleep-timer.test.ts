@@ -32,7 +32,6 @@ vi.mock('./engine', () => ({
   pbSetVolume: (v: number) => {
     engine.userVolume = v;
   },
-  pbGetVolume: () => engine.userVolume,
 }));
 
 const store = vi.hoisted(() => ({ map: new Map<string, unknown>() }));

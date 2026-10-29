@@ -1,6 +1,3 @@
-/** Where a feed's data comes from. Drives which resolver handles it. */
-export type FeedSource = 'itunes' | 'rss';
-
 /**
  * A single playable item. Field names intentionally match the legacy app
  * (iTunes API naming) so persisted data (`pp_prog`, `pp_last_*`) stays valid.

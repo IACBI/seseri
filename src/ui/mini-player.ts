@@ -8,7 +8,7 @@ import { initSleepControl } from './sleep-control';
 import { initVolumeControl } from './volume-control';
 import { nowPlayingLabel, playing } from '../player/session';
 import { setSetting, settings } from '../state/settings';
-import { feedSpeedRevision, hasOwnSpeed, setFeedSpeed, speedFor } from '../state/feed-speed';
+import { SPEEDS, feedSpeedRevision, hasOwnSpeed, setFeedSpeed, speedFor } from '../state/feed-speed';
 import type { PlaybackController } from './playback-controller';
 import { must } from './shell';
 
@@ -23,8 +23,6 @@ import { must } from './shell';
 /** Slim frequency-line bars drawn on the mini dock (animated via CSS while
  * body.is-playing; a clean static line when paused or under reduced motion). */
 const MINI_BARS = 24;
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5];
-
 export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () => void }): void {
   const { playback } = deps;
   const main = must('miniMain');

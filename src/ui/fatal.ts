@@ -17,7 +17,7 @@
  */
 
 import { applyLang, detectLang, langApplied, t } from '../i18n';
-import { hardReset, type HardResetReport } from '../storage/reset';
+import { hardReset } from '../storage/reset';
 import { h } from './h';
 
 export interface FatalHandlers {
@@ -167,4 +167,3 @@ export function showFatal(err: unknown): void {
 }
 
 /** Re-exported so Settings can describe the same reset outcome. */
-export type { HardResetReport };
