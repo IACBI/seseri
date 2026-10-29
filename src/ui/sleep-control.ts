@@ -23,7 +23,7 @@ import { toast } from './toast';
 const VAL_EPISODE = 'ep';
 const VAL_CUSTOM = 'custom';
 const DEFAULT_CUSTOM_MINUTES = 45;
-/** Floor for the fitted select, so "—" still reads as a control and not a gap. */
+/** Floor for the fitted select, so a short "Off" still reads as a control and not a gap. */
 const SLEEP_MIN_WIDTH_PX = 46;
 
 export interface SleepControlEls {
@@ -42,7 +42,7 @@ export function initSleepControl(els: SleepControlEls): void {
     for (const n of SLEEP_PRESETS) {
       const o = document.createElement('option');
       o.value = String(n);
-      o.textContent = n === 0 ? '—' : `${n} ${t('dur_m')}`;
+      o.textContent = n === 0 ? t('sleep_off_short') : `${n} ${t('dur_m')}`;
       select.appendChild(o);
     }
     const epOpt = document.createElement('option');
@@ -75,7 +75,7 @@ export function initSleepControl(els: SleepControlEls): void {
 
     select.classList.toggle('active', s.mode !== 'off');
     // "End of episode" is by far the longest option, and a native select is
-    // always as wide as its widest one — which left a 120px box reading "—".
+    // always as wide as its widest one — which left a 120px box reading "Off".
     fitSelect(select, SLEEP_MIN_WIDTH_PX);
 
     if (countdown) {

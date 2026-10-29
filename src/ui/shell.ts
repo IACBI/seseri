@@ -61,7 +61,7 @@ const MINI_PLAYER = `
        data-i18n-aria="seek_label" aria-label="Konum" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
     <div class="mini-progress" id="miniProgress"></div>
   </div>
-  <div class="mini-main" id="miniMain" role="button" tabindex="0" data-i18n-aria="np_open" aria-label="Oynatıcıyı aç">
+  <div class="mini-main" id="miniMain">
     <img class="mini-art" id="miniArt" alt="" loading="lazy" decoding="async">
     <div class="mini-info">
       <div class="mini-title" id="miniTitle">—</div>
@@ -77,7 +77,7 @@ const MINI_PLAYER = `
   </div>
   <div class="mini-secondary">
     <span class="vol mini-vol" id="miniVolume">
-      <button class="icon-btn mini-tp vol-btn" id="miniVolBtn" type="button" aria-label="Sesi kapat"><svg class="icon" aria-hidden="true"><use href="#ic-volume"/></svg></button>
+      <button class="icon-btn mini-tp vol-btn" id="miniVolBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#ic-volume"/></svg></button>
       <input class="range mini-vol-range" id="miniVolRange" type="range" min="0" max="100" step="1" value="100" data-i18n-aria="volume_label" aria-label="Ses düzeyi">
     </span>
     <span class="mini-sec-ctl mini-wide2">

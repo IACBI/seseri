@@ -87,6 +87,113 @@ export function shareUrlFor(
   return location.origin + urlFor(route);
 }
 
+/**
+ * The open Now Playing sheet as a history entry, so the platform's back
+ * gesture (Android back, a mouse's back button) dismisses the sheet instead of
+ * leaving the page.
+ *
+ * Opening pushes an entry at the SAME URL, tagged in `history.state`. Every
+ * popstate is classified by comparing the tag and the URL against the previous
+ * one: a change of tag alone is the sheet opening or closing and the router
+ * must not re-run `showFeed` for it; a change of URL is real navigation and
+ * the router handles it as before. The sheet follows `history` rather than the
+ * other way round, so back, forward, Esc and the close button cannot disagree.
+ */
+const SHEET_KEY = 'npSheet';
+/** A sheet entry the sheet gave up without popping — see `closed(true)`. */
+const SHEET_SPENT_KEY = 'npSheetSpent';
+
+function stateHas(key: string): boolean {
+  const s: unknown = history.state;
+  return typeof s === 'object' && s !== null && key in s;
+}
+
+let onSheetEntry = stateHas(SHEET_KEY);
+/**
+ * The URL of the current entry as this module last knew it. pushState and
+ * replaceState fire no event, so every write goes through `writeEntry`.
+ */
+let lastUrl = location.pathname + location.search;
+
+function writeEntry(mode: 'push' | 'replace', state: unknown, url: string): void {
+  if (mode === 'push') history.pushState(state, '', url);
+  else history.replaceState(state, '', url);
+  lastUrl = location.pathname + location.search;
+}
+
+/** Result of the latest popstate, for whoever listens after the tracker. */
+let transition: 'enter' | 'leave' | null = null;
+let trackerBound = false;
+
+/** Runs first (it is bound by the first of `initRouter` / `bindSheetHistory`). */
+function bindTracker(): void {
+  if (trackerBound) return;
+  trackerBound = true;
+  window.addEventListener('popstate', () => {
+    const was = onSheetEntry;
+    const url = location.pathname + location.search;
+    onSheetEntry = stateHas(SHEET_KEY);
+    transition = was === onSheetEntry ? null : onSheetEntry ? 'enter' : 'leave';
+    // A tag change with a different URL (history.go(-2) across the sheet's
+    // entry) is navigation too: let the router see it.
+    if (url !== lastUrl) transition = null;
+    lastUrl = url;
+  });
+}
+
+export interface SheetHistory {
+  /** The sheet just opened: push its entry unless one is already current. */
+  opened(): void;
+  /**
+   * The sheet just closed. By default the entry is popped with `back()`. A
+   * caller that is about to navigate passes `true`: `back()` is asynchronous
+   * and would land after the navigation's own push, so the entry is instead
+   * marked spent and the router's next push replaces it.
+   */
+  closed(navigating?: boolean): void;
+}
+
+export function bindSheetHistory(sheet: {
+  open(): void;
+  close(): void;
+  isOpen(): boolean;
+}): SheetHistory {
+  bindTracker();
+  // A reload on the sheet's entry restores its state but not the sheet.
+  if (onSheetEntry && !sheet.isOpen()) {
+    history.replaceState({ [SHEET_SPENT_KEY]: true }, '');
+    onSheetEntry = false;
+  }
+  window.addEventListener('popstate', () => {
+    // Follows the entry, whatever the URL did: a sheet must not stay open
+    // over a page the traversal has moved away from.
+    if (!onSheetEntry && sheet.isOpen()) sheet.close();
+    else if (onSheetEntry && !sheet.isOpen()) sheet.open();
+  });
+  return {
+    opened() {
+      if (!onSheetEntry) {
+        writeEntry('push', { [SHEET_KEY]: true }, location.href);
+        onSheetEntry = true;
+      }
+    },
+    closed(navigating = false) {
+      if (!onSheetEntry) return;
+      if (navigating) {
+        history.replaceState({ [SHEET_SPENT_KEY]: true }, '');
+        onSheetEntry = false;
+      } else {
+        history.back();
+      }
+    },
+  };
+}
+
+/** A spent sheet entry is a duplicate of the one before it: take its place. */
+function pushOrReplaceSpent(url: string): void {
+  writeEntry(stateHas(SHEET_SPENT_KEY) ? 'replace' : 'push', null, url);
+}
+
 export interface Router {
   /** Reflect an opened feed in the URL (pushes unless it's the initial load). */
   feedOpened(req: FeedRequest, push?: boolean): void;
@@ -107,7 +214,9 @@ export function initRouter(handlers: {
   // us, so the back button must navigate home instead of leaving the site.
   let hasHomeBehind = false;
 
+  bindTracker();
   window.addEventListener('popstate', () => {
+    if (transition !== null) return; // the sheet opening or closing, not navigation
     const route = parseLocation();
     if (route.kind === 'feed') handlers.showFeed(route.req);
     else if (route.kind === 'view') handlers.showView(route.view);
@@ -125,12 +234,12 @@ export function initRouter(handlers: {
     if (location.pathname + location.search === url) return;
     const cur = parseLocation().kind;
     if (push && cur !== 'home' && !(cur === 'view' && route.kind === 'feed')) {
-      history.replaceState(null, '', url);
+      writeEntry('replace', null, url);
     } else if (push) {
-      history.pushState(null, '', url);
+      pushOrReplaceSpent(url);
       hasHomeBehind = true;
     } else {
-      history.replaceState(null, '', url);
+      writeEntry('replace', null, url);
     }
   }
 
@@ -143,7 +252,7 @@ export function initRouter(handlers: {
     },
     canGoBack: () => hasHomeBehind,
     goHome() {
-      if (parseLocation().kind !== 'home') history.pushState(null, '', urlFor({ kind: 'home' }));
+      if (parseLocation().kind !== 'home') pushOrReplaceSpent(urlFor({ kind: 'home' }));
       handlers.showHome();
     },
   };

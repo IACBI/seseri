@@ -99,6 +99,9 @@ export interface Lang {
   sleep_off: string;
   sleep_extended: string;
   sleep_remaining: string;
+  sleep_short: string;
+  sleep_off_short: string;
+  speed_short: string;
   sc_title: string;
   sc_playpause: string;
   sc_back: string;

@@ -4,7 +4,8 @@
  * skip, speed, sleep timer and queue access live here.
  * Sheet chrome (open/close animation) lives in overlays.css; the inner
  * content is styled in views/now-playing.css + the shared signal-line.css.
- * Not a history entry (v1 decision) — Escape/close dismisses.
+ * While open it is a history entry (see `bindSheetHistory`), so the back
+ * gesture dismisses it; Escape and the close button pop that entry.
  */
 
 import { currentLang, t } from '../../i18n';
@@ -19,7 +20,7 @@ import {
 } from '../../player/transcript';
 import { artAt, artSrcset } from '../../lib/art';
 import { fmtTime } from '../../lib/format';
-import { shareUrlFor } from '../router';
+import { bindSheetHistory, shareUrlFor } from '../router';
 import { toast } from '../toast';
 import { httpsOnly } from '../../lib/safe';
 import { onEngine, pbCurrent, pbDuration, pbSeekTo, pbSetRate } from '../../player/engine';
@@ -104,22 +105,27 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
         </div>
 
         <div class="vol np-volume" id="npVolume">
-          <button class="icon-btn vol-btn np-vol-btn" id="npVolBtn" type="button" aria-label="Sesi kapat"><svg class="icon" aria-hidden="true"><use href="#ic-volume"/></svg></button>
+          <button class="icon-btn vol-btn np-vol-btn" id="npVolBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#ic-volume"/></svg></button>
           <input class="range np-vol-range" id="npVolRange" type="range" min="0" max="100" step="1" value="100" data-i18n-aria="volume_label" aria-label="Ses düzeyi">
         </div>
 
         <div class="np-secondary">
-          <label class="np-sec-ctl np-sleep">
-            <svg class="icon" aria-hidden="true"><use href="#ic-moon"/></svg>
-            <select class="seri-select np-sel" id="sleepSel" data-i18n-aria="sleep_timer" aria-label="Uyku zamanlayıcısı (dk)"></select>
-            <span class="np-sleep-left mono" id="sleepLeft" data-i18n-aria="sleep_remaining" aria-label="Kalan uyku süresi" aria-live="off" hidden></span>
-            <button class="np-sleep-plus" id="sleepPlus" type="button" title="+5" hidden>+5</button>
-          </label>
-          <label class="np-sec-ctl">
-            <span class="np-sec-glyph" aria-hidden="true">×</span>
-            <select class="seri-select np-sel" id="speedSel" data-i18n-aria="speed_label" aria-label="Oynatma hızı"></select>
-          </label>
-          <button class="icon-btn np-queue" id="queueToggle" data-i18n-aria="queue_title" aria-label="Çalma kuyruğu"><svg class="icon" aria-hidden="true"><use href="#ic-queue"/></svg><span class="np-queue-badge" id="queueCount" aria-hidden="true">0</span></button>
+          <div class="np-sec-ctl np-sleep">
+            <span class="np-sec-cap" data-i18n="sleep_short" aria-hidden="true">Uyku</span>
+            <span class="np-sec-row">
+              <svg class="icon" aria-hidden="true"><use href="#ic-moon"/></svg>
+              <select class="seri-select np-sel" id="sleepSel" data-i18n-aria="sleep_timer" aria-label="Uyku zamanlayıcısı (dk)"></select>
+              <span class="np-sleep-left mono" id="sleepLeft" data-i18n-aria="sleep_remaining" aria-label="Kalan uyku süresi" aria-live="off" hidden></span>
+              <button class="np-sleep-plus" id="sleepPlus" type="button" title="+5" hidden>+5</button>
+            </span>
+          </div>
+          <div class="np-sec-ctl">
+            <span class="np-sec-cap" data-i18n="speed_short" aria-hidden="true">Hız</span>
+            <span class="np-sec-row">
+              <select class="seri-select np-sel" id="speedSel" data-i18n-aria="speed_label" aria-label="Oynatma hızı"></select>
+            </span>
+          </div>
+          <button class="icon-btn np-queue" id="queueToggle" data-i18n-aria="queue_title" aria-label="Çalma kuyruğu"><svg class="icon" aria-hidden="true"><use href="#ic-list"/></svg><span class="np-queue-badge" id="queueCount" aria-hidden="true">0</span></button>
         </div>
 
         <details class="np-notes np-chapters" id="npChapters" hidden>
@@ -780,24 +786,50 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   function open(): void {
     if (isOpen()) return;
     lastFocus = document.activeElement as HTMLElement | null;
-    el.classList.add('open');
-    setBackgroundInert(true);
-    // The timeupdate handler skips work while dismissed, so sync from the
-    // engine on the way in — otherwise a seek made while paused shows stale.
+    // Everything the first frame of the slide would otherwise pay for is done
+    // before `.open` lands: the readouts are written while the sheet is still
+    // off-screen, and the sheet alone leaves inert so focus can enter it.
     const cur = pbCurrent();
     const dur = pbDuration();
+    // The timeupdate handler skips work while dismissed, so sync from the
+    // engine on the way in — otherwise a seek made while paused shows stale.
     elTCur.textContent = fmtTime(cur);
     elTTot.textContent = fmtTime(dur);
     if (!wave.isScrubbing()) wave.setProgress(dur ? (cur / dur) * 100 : 0);
-    must('npClose').focus();
+    el.inert = false;
+    el.setAttribute('aria-modal', 'true');
+    el.classList.add('open');
+    must('npClose').focus({ preventScroll: true });
+    hist.opened();
+    // Inerting .app-frame restyles and re-walks the accessibility tree of the
+    // whole app. The sheet is opaque and full-screen, so it can wait until the
+    // slide has begun without anything behind it being reachable by sight.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (isOpen()) setBackgroundInert(true);
+      }),
+    );
   }
-  function close(): void {
-    if (!isOpen()) return;
+
+  /** Visual and focus teardown, with no history side effects. */
+  function hide(): boolean {
+    if (!isOpen()) return false;
     el.classList.remove('open');
     setBackgroundInert(false);
     lastFocus?.focus({ preventScroll: true });
     lastFocus = null;
+    return true;
   }
+  /** Close because something else is taking over (navigation, a popstate). */
+  function close(): void {
+    if (hide()) hist.closed(true);
+  }
+  /** Close because the listener asked to: the history entry is popped. */
+  function dismiss(): void {
+    if (hide()) hist.closed(false);
+  }
+
+  const hist = bindSheetHistory({ open, close, isOpen });
 
   // Dismissed at boot: keep it out of the tab order until it is opened.
   setBackgroundInert(false);
@@ -805,9 +837,18 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
     return el.classList.contains('open');
   }
 
-  must('npClose').addEventListener('click', close);
-  el.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') close();
+  must('npClose').addEventListener('click', dismiss);
+  /**
+   * On the document, not the sheet: a click on a non-focusable part of the
+   * sheet leaves focus on <body>, which the sheet's own listener never sees.
+   * Anything stacked above the sheet gets Escape first — a native dialog (the
+   * shortcuts sheet, confirm, the number prompt) or a handler that already
+   * claimed the key.
+   */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !isOpen()) return;
+    if (document.querySelector('dialog[open]')) return;
+    dismiss();
   });
 
   return { open, close, isOpen, el };

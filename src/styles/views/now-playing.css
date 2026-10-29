@@ -189,7 +189,7 @@ body.has-ambient .np-inner::before { opacity: 1; }
   align-self: center;
   margin-block-start: calc(-1 * var(--s-3));
 }
-.np-volume .vol-btn { min-inline-size: 40px; }
+.np-volume .vol-btn { min-inline-size: 44px; }
 .np-volume .range { flex: 1; min-inline-size: 0; }
 
 /* ─ Secondary row: sleep, speed, queue ─ */
@@ -201,24 +201,40 @@ body.has-ambient .np-inner::before { opacity: 1; }
   gap: var(--s-3) var(--s-5);
   margin-block-start: var(--s-1);
 }
+/* Each control is a small caption over the control itself, so "Off" and "1×"
+   are never bare values with nothing saying what they are the value of. */
 .np-sec-ctl {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--text2);
+}
+.np-sec-row {
   display: inline-flex;
   align-items: center;
   gap: var(--s-1);
-  color: var(--text2);
 }
 .np-sec-ctl svg { inline-size: 16px; block-size: 16px; }
-.np-sec-glyph { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text3); }
+.np-sec-cap {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
 .np-sel { min-block-size: 40px; }
 .np-sel.active { color: var(--accent); border-color: var(--accent); }
+@media (pointer: coarse) {
+  .np-sel { min-block-size: 44px; }
+}
 
 /* ─ Sleep timer: live countdown + extend ─
    Running, the group grows a countdown and a +5 button — four items wide,
    which collides with the speed control on a phone, so it takes the row to
    itself. Idle it is an icon and a short select and shares the row happily.
    Without :has() it simply keeps the row it would have wrapped onto anyway. */
-.np-sleep {
-  gap: var(--s-1);
+.np-sleep .np-sec-row {
   flex-wrap: nowrap;
   justify-content: center;
 }
@@ -235,7 +251,8 @@ body.has-ambient .np-inner::before { opacity: 1; }
   text-align: center;
 }
 .np-sleep-plus {
-  min-block-size: 28px;
+  min-block-size: 44px;
+  min-inline-size: 44px;
   padding: 0 var(--s-2);
   border: 1px solid var(--border2);
   border-radius: var(--r-sm);
@@ -302,7 +319,7 @@ body.has-ambient .np-inner::before { opacity: 1; }
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text3);
-  min-block-size: 32px;
+  min-block-size: 44px;
   display: flex;
   align-items: center;
   gap: var(--s-2);
