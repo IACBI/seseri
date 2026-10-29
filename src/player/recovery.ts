@@ -130,6 +130,10 @@ export function initRecovery(h: RecoveryHooks): () => void {
         // Real progress is the only proof of health, and it retires the
         // failure history: a stream that hiccups hourly should get a full
         // budget each time, not run out over a long listen.
+        // Our own reload's `load()` pauses the element and fires a timeupdate
+        // as it resets to 0; counting that as health would refill the budget
+        // on every failed attempt and the watchdog would never give up.
+        if (audio.paused) break;
         lastProgressAt = Date.now();
         recovering = false;
         if (stallTimer) {

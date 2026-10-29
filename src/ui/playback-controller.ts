@@ -245,6 +245,12 @@ export function createPlaybackController(): PlaybackController {
   /** Aborts feed LOADING only. Never cancels an in-flight audio resolution. */
   let loadAbort: AbortController | null = null;
   let currentBlobUrl: string | null = null;
+  /**
+   * The episode the element actually holds. `playing` moves to the next episode
+   * at once, but the old source keeps playing through the offline lookup, and
+   * its `timeupdate` would save the old episode's position under the new id.
+   */
+  let loadedTrackId: string | null = null;
   /** One-shot: consumed by the next feed that paints. See resumeLastPlayed. */
   let resumeOnPaint = false;
   /** One-shot: the episode to start once the feed paints. See openAndPlay. */
@@ -535,15 +541,19 @@ export function createPlaybackController(): PlaybackController {
     }
     if (isBlob) currentBlobUrl = safe;
     resetRecovery(); // a new source starts with a clean failure budget
+    audio.src = safe;
+    audio.load();
+    loadedTrackId = id;
     if (!isBlob) {
       // Streaming from the network — start pulling a local copy alongside it.
       // A blob source is already local, so there is nothing to prefetch.
+      // Armed after the source swap: before it, the element still reports the
+      // previous episode's position, which skewed both the remaining-time
+      // check and the first listening-credit delta.
       const p = playing();
       const ep = p?.episodes[p.index];
       if (p && ep && String(ep.trackId) === id) prefetchEpisode(ep, p.feedId);
     }
-    audio.src = safe;
-    audio.load();
     /**
      * The `canplay` listener below outlives this source when the listener
      * moves on before it fires, and would then run against the next episode's
@@ -970,10 +980,18 @@ export function createPlaybackController(): PlaybackController {
         document.body.classList.add('is-playing');
         setPlaybackState('playing');
         break;
-      case 'pause':
+      case 'pause': {
         document.body.classList.remove('is-playing');
         setPlaybackState('paused');
+        // `timeupdate` is throttled, so the last quarter-second before a pause
+        // may never have been saved — and a pause is when the listener is most
+        // likely to pick up the other device.
+        const p = playing();
+        if (p && p.trackId === loadedTrackId && audio.currentTime > RESUME_FLOOR_SEC) {
+          setProgress(p.trackId, audio.currentTime);
+        }
         break;
+      }
       case 'ended': {
         const ended = playing();
         /**
@@ -1003,7 +1021,9 @@ export function createPlaybackController(): PlaybackController {
       }
       case 'timeupdate': {
         const p = playing();
-        if (p && e.current > RESUME_FLOOR_SEC) setProgress(p.trackId, e.current);
+        if (p && p.trackId === loadedTrackId && e.current > RESUME_FLOOR_SEC) {
+          setProgress(p.trackId, e.current);
+        }
         // The real rate, not the stored preference: a speed change applied to
         // the element must move the lock-screen bar with it.
         setMediaPosition(e.current, e.duration, audio.playbackRate);

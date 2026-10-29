@@ -120,6 +120,12 @@ audio.addEventListener('timeupdate', () => {
   lastUi = now;
   emit({ type: 'timeupdate', current: audio.currentTime, duration: audio.duration });
 });
+// A seek's own `timeupdate` can fall inside the throttle window, and the last
+// step of a scrub is the one position that matters.
+audio.addEventListener('seeked', () => {
+  lastUi = performance.now();
+  emit({ type: 'timeupdate', current: audio.currentTime, duration: audio.duration });
+});
 audio.addEventListener('play', () => emit({ type: 'play' }));
 audio.addEventListener('pause', () => emit({ type: 'pause' }));
 audio.addEventListener('ended', () => emit({ type: 'ended' }));
