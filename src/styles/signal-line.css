@@ -17,7 +17,7 @@
   user-select: none;
 }
 .signal-scrub:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 5px;
   border-radius: var(--r-sm);
 }
@@ -54,7 +54,7 @@
 }
 .signal-base i { background: var(--wave-track); }
 .signal-fill i {
-  background: var(--accent);
+  background: var(--accent-ink);
   box-shadow: 0 0 5px var(--accent-glow);
 }
 
@@ -76,7 +76,7 @@
   inline-size: 2px;
   margin-inline-start: -1px;
   border-radius: 999px;
-  background: var(--accent-2);
+  background: var(--accent-ink);
   box-shadow: 0 0 8px 1px var(--accent-glow);
   pointer-events: none;
 }
@@ -89,7 +89,7 @@
   block-size: 10px;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: var(--accent-2);
+  background: var(--accent-ink);
   box-shadow: 0 0 12px 3px var(--accent-glow);
 }
 
@@ -145,10 +145,6 @@
 .mini-player {
   align-items: center;
   gap: var(--s-2);
-  /* Landscape notches: layout.css fixes the inline insets, so the safe areas
-     come off as margins (they shrink an abspos box with both insets set). */
-  margin-left: env(safe-area-inset-left, 0px);
-  margin-right: env(safe-area-inset-right, 0px);
   padding-inline: var(--s-3) var(--s-2);
   /* The bottom strip is the seek hairline's reach; the controls stay above it. */
   padding-block: 0 8px;
@@ -172,7 +168,7 @@
   cursor: pointer;
   border-radius: var(--r-sm);
 }
-.mini-main:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.mini-main:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
 
 /* Inline transport cluster — centred between title (start) and the
    secondary cluster (volume + sleep + speed + expand, end) on wide screens */
@@ -226,7 +222,7 @@
 @media (pointer: coarse) {
   .mini-sel { min-block-size: 44px; }
 }
-.mini-sel.active { color: var(--accent); border-color: var(--accent); }
+.mini-sel.active { color: var(--accent-ink); border-color: var(--accent-ink); }
 select.mini-wide2 { display: none; }
 .mini-wide { display: none; }
 @media (min-width: 640px) {
@@ -248,7 +244,7 @@ select.mini-wide2 { display: none; }
 }
 
 .mini-expand { color: var(--text3); }
-.mini-expand:hover { color: var(--accent); }
+.mini-expand:hover { color: var(--accent-ink); }
 
 /* slim frequency line across the dock's top edge */
 .mini-signal {
@@ -272,7 +268,7 @@ select.mini-wide2 { display: none; }
 }
 body.is-playing .mini-signal { opacity: 1; }
 body.is-playing .mini-signal i {
-  background: var(--accent);
+  background: var(--accent-ink);
   box-shadow: 0 0 4px var(--accent-glow);
   animation: signal-shimmer 1.15s var(--ease-smooth) infinite;
 }
@@ -302,14 +298,14 @@ body.is-playing .mini-signal i:nth-child(4n) { animation-delay: -0.85s; }
 @media (pointer: coarse) {
   .mini-progress-track::before { inset-block: -29px 0; }
 }
-.mini-progress-track:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.mini-progress-track:hover .mini-progress { background: var(--accent-2); }
+.mini-progress-track:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 1px; }
+.mini-progress-track:hover .mini-progress { background: var(--accent-ink); }
 /* Scaled, not resized: width would re-layout on every timeupdate. The end cap
    is dropped because a stretched radius distorts; at 3px tall it was a pixel. */
 .mini-progress {
   block-size: 100%;
   inline-size: 100%;
-  background: var(--accent);
+  background: var(--accent-ink);
   transform: scaleX(0);
   transform-origin: 0 50%;
   transition: transform 0.25s linear;
