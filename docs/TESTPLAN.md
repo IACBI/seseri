@@ -140,6 +140,10 @@ same control.
 - [ ] While playing, the frequency line on the mini dock animates; paused, or under `prefers-reduced-motion`, it becomes a still line.
 - [ ] Drag-to-seek works on the waveform in the Now Playing sheet.
 - [ ] The sheet's close button and Esc both close it, and focus returns to the element that opened it.
+- [ ] Click an empty part of the open sheet (artwork, title), then press Esc: it still closes.
+- [ ] **Android / system Back with the sheet open closes the sheet** and stays on the same view; a second Back navigates as usual. Reloading with the sheet open does not leave a stray history entry.
+- [ ] With the shortcuts dialog or a confirm dialog over the sheet, Esc closes only the dialog.
+- [ ] A toast shown while the sheet is open does not cover the sheet's controls.
 - [ ] The **Queue** view (not in the tab bar or rail — opened from the Now Playing sheet or with `?view=queue`): ordered list; move up/down, remove and clear all work.
 - [ ] A row's queue button → a position badge; when an episode ends **the queue always beats auto-next** (if the queue has episodes, the next queued one plays whatever the auto-next setting is).
 - [ ] **Opening another feed keeps the queue**, and it survives a reload (`pp_queue`).
@@ -189,6 +193,10 @@ Screenshot tooling: `scripts/shot.cjs` (headless Chrome through
 - [ ] At 360×640 the Settings page scrolls vertically and every row is reachable.
 - [ ] ≤520px: the sort label is hidden; the sort button still shows the direction.
 - [ ] The Light theme at the same widths: contrast and legibility (small mono labels especially).
+- [ ] Every accent colour in Light, Dark and OLED: text on the play button, links, the active tab, the focus ring and the toggle all read clearly (the unit tests assert ≥ 4.5:1; this is the eye check). The sync pairing code is readable in every theme.
+- [ ] Windows High Contrast (`forced-colors`): sliders, toggles, swatches and progress bars stay visible.
+- [ ] A downloaded episode shows the "downloaded" icon (not the played tick); tapping it asks before deleting the file.
+- [ ] Landscape on a notched phone: the tab bar, dock and sheet stay clear of the notch.
 - [ ] `ar` (RTL): header, controls, list alignment **and the tab bar / rail** are mirrored; nothing overflows.
 - [ ] Keyboard: Tab moves through search results and Enter/Space opens them; selects and sliders show a focus ring; tab bar / rail items are reachable with Tab and the active one carries `aria-current="page"`; the Now Playing close button has a meaningful `aria-label`.
 - [ ] Long titles: an episode title too long for the dock drifts end to end and back; one that fits **never** moves; under `prefers-reduced-motion: reduce` it does not drift and ends in an ellipsis. In `ar` (RTL) it drifts the other way.
@@ -279,6 +287,14 @@ backend. What follows can only be checked by hand.
       delete its local data**.
 - [ ] Restore **a JSON backup from before sync existed**, then sync: the old
       positions do not get fresh stamps and do not roll the other device back.
+- [ ] **A device left open:** pause on the PC, listen on the phone, come back to
+      the PC tab without reloading — the paused episode is at the phone's
+      position, and pressing play continues from there (it does not push the
+      PC's older position back).
+- [ ] **Mark unplayed on one device:** the other drops its saved position for
+      that episode after the next sync, instead of resuming mid-way.
+- [ ] Switch episodes mid-play: the new episode does not inherit the old one's
+      position on either device.
 
 ## 19. The whole archive and the id migration
 

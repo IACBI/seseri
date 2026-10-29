@@ -78,6 +78,12 @@ AES-GCM key — so the backend holds bytes it cannot read.
   device.
 - Writes on two devices within a minute of each other count as simultaneous,
   and the further position wins.
+- A device left open catches up when you come back to it, and an episode
+  paused there moves to where the other device stopped, so play continues from
+  the newer position. Marking an episode unplayed carries over too, position
+  and all.
+- The server drops a stored copy that was never updated after it was created
+  once it is 7 days old, and any other after 180 days without a sync.
 - Unlinking stops syncing on that device and keeps everything it already has.
   **Delete server data** removes the stored copy for every device.
 - **Keep the code.** It is the only credential; lose it and the synced copy is
@@ -156,7 +162,7 @@ is playing, so they work from any view.
 | `↑` / `↓` | Previous / next episode |
 | `Home` / `End` | Jump to the start / end of the episode |
 | `[` | Collapse or expand the rail (desktop) |
-| `Esc` | Close the Now Playing sheet |
+| `Esc` | Close the Now Playing sheet (the system Back gesture does too) |
 | `?` | Show the shortcut list |
 | `↑` / `↓` in a list | Move between episode rows (`←` / `→` for a row's own buttons) |
 
@@ -177,7 +183,9 @@ On a new Cloudflare account, put your own D1 database id in
 `worker/wrangler.jsonc` and create the table with
 `npx wrangler d1 migrations apply seseri-sync --remote`. The Worker answers only
 the origins listed in `ALLOWED_ORIGINS` in `worker/src/index.ts`, so add your
-own site there.
+own site there. `SYNC_MAX_ROWS` and `SYNC_MAX_BYTES` (Worker vars, default
+50,000 rows and 1 GiB) cap the sync table; past them, new pairings are refused
+until the sweep frees room.
 
 **Without a Worker, or when it cannot answer,** the app asks iTunes directly
 from the browser. Apple sometimes refuses requests from Cloudflare's servers;
@@ -294,6 +302,12 @@ uç okuyamadığı baytları tutar.
 - Yazı boyutu, tema, ses düzeyi ve hızlar eşitlenmez; bunlar cihaza aittir.
 - İki cihazın bir dakika içindeki yazmaları eşzamanlı sayılır, daha ileri olan
   konum kazanır.
+- Açık bırakılan cihaz, ona döndüğünde öbür cihazın kaldığı yeri alır; orada
+  duraklatılmış bölüm de yeni konuma geçer, yani oynatınca kaldığın yerden
+  devam eder. Bir bölümü dinlenmedi olarak işaretlemek de konumuyla birlikte
+  öbür cihaza geçer.
+- Sunucu, oluşturulduktan sonra hiç güncellenmeyen kopyayı 7 gün sonra,
+  diğerlerini 180 gün eşitleme olmazsa siler.
 - Bağlantıyı kesmek yalnızca o cihazda eşitlemeyi durdurur, cihazdaki veriye
   dokunmaz. **Sunucudaki Veriyi Sil** saklanan kopyayı tüm cihazlar için
   kaldırır.
@@ -374,7 +388,7 @@ her görünümde işe yarar.
 | `↑` / `↓` | Önceki / sonraki bölüm |
 | `Home` / `End` | Bölümün başına / sonuna git |
 | `[` | Şeridi daralt veya genişlet (masaüstü) |
-| `Esc` | Şimdi Çalıyor panelini kapat |
+| `Esc` | Şimdi Çalıyor panelini kapat (sistemin Geri hareketi de kapatır) |
 | `?` | Kısayol listesini göster |
 | Listede `↑` / `↓` | Bölüm satırları arasında gezin (`←` / `→` satırın kendi düğmeleri) |
 
@@ -395,7 +409,9 @@ ile yayınla. Yeni bir Cloudflare hesabında `worker/wrangler.jsonc`'deki D1
 veritabanı kimliğini kendininkiyle değiştir ve tabloyu
 `npx wrangler d1 migrations apply seseri-sync --remote` ile oluştur. Worker
 yalnızca `worker/src/index.ts`'deki `ALLOWED_ORIGINS` listesindeki adreslere
-yanıt verir; kendi siteni oraya ekle.
+yanıt verir; kendi siteni oraya ekle. `SYNC_MAX_ROWS` ve `SYNC_MAX_BYTES`
+(Worker değişkenleri, varsayılan 50.000 satır ve 1 GiB) eşitleme tablosunu
+sınırlar; aşılınca temizlik yer açana kadar yeni eşleştirme kabul edilmez.
 
 **Worker yoksa ya da yanıt veremiyorsa** uygulama iTunes'a tarayıcıdan
 doğrudan gider. Apple zaman zaman Cloudflare sunucularından gelen istekleri
