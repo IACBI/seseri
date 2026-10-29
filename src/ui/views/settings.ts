@@ -129,9 +129,9 @@ const MARKUP = `
     <div class="s-section-title" data-i18n="s_appearance">Görünüm</div>
 
     <div class="s-row">
-      <div><div class="s-label" data-i18n="s_accent">Vurgu Rengi</div></div>
+      <div><div class="s-label" id="lblAccent" data-i18n="s_accent">Vurgu Rengi</div></div>
     </div>
-    <div class="s-color-row" id="colorSwatches"></div>
+    <div class="s-color-row" id="colorSwatches" role="group" aria-labelledby="lblAccent"></div>
 
     <div class="s-row">
       <div><div class="s-label" data-i18n="s_font_size">Yazı Boyutu</div></div>
@@ -275,6 +275,8 @@ const MARKUP = `
       <button class="s-btn" id="btnSyncLink" data-i18n="btn_sync_link">Kod Gir</button>
       <button class="s-btn" id="btnSyncNow" data-i18n="btn_sync_now">Şimdi Eşitle</button>
       <button class="s-btn" id="btnSyncCopy" data-i18n="btn_sync_copy">Kodu Kopyala</button>
+    </div>
+    <div class="s-data-btns is-danger">
       <button class="s-btn danger" id="btnSyncUnlink" data-i18n="btn_sync_unlink">Bu Cihazda Durdur</button>
       <button class="s-btn danger" id="btnSyncForget" data-i18n="btn_sync_forget">Sunucudaki Veriyi Sil</button>
     </div>
@@ -295,11 +297,13 @@ const MARKUP = `
       <button class="s-btn" id="btnJsonExport" data-i18n="btn_json_export">JSON Yedeği İndir</button>
       <button class="s-btn" id="btnJsonImport" data-i18n="btn_json_import">JSON Yedeğini Geri Yükle</button>
       <button class="s-btn" id="btnDiagnostics" data-i18n="btn_diagnostics">Teşhis Bilgisini Kopyala</button>
-      <button class="s-btn danger" id="btnClearDownloads" data-i18n="btn_clear_downloads">🗑 İndirilenleri Sil</button>
-      <button class="s-btn danger" id="btnClearProgress" data-i18n="btn_clear_progress">🗑 Tüm İlerlemeyi Sıfırla</button>
-      <button class="s-btn danger" id="btnClearAll" data-i18n="btn_clear_all">🗑 Tüm Verileri Temizle</button>
       <input type="file" id="opmlFile" accept=".opml,.xml,text/xml,application/xml" hidden>
       <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+    </div>
+    <div class="s-data-btns is-danger">
+      <button class="s-btn danger" id="btnClearDownloads"><svg class="icon" aria-hidden="true"><use href="#ic-trash"/></svg><span data-i18n="btn_clear_downloads">İndirilenleri Sil</span></button>
+      <button class="s-btn danger" id="btnClearProgress"><svg class="icon" aria-hidden="true"><use href="#ic-trash"/></svg><span data-i18n="btn_clear_progress">Tüm İlerlemeyi Sıfırla</span></button>
+      <button class="s-btn danger" id="btnClearAll"><svg class="icon" aria-hidden="true"><use href="#ic-trash"/></svg><span data-i18n="btn_clear_all">Tüm Verileri Temizle</span></button>
     </div>
   </section>
 </div>`;
@@ -357,10 +361,10 @@ export function initSettingsView(deps: SettingsViewDeps): View {
 
   // ── accent swatches (now dynamic from ACCENT_SWATCHES) ───────────
   const swatches = ACCENT_SWATCHES.map(({ hex, name }) => {
-    const sw = h('div', {
+    const sw = h('button', {
       className: 's-color-swatch',
       style: `background:${hex}`,
-      attrs: { role: 'button', tabindex: '0', 'aria-label': name },
+      attrs: { type: 'button', 'aria-label': name, 'aria-pressed': 'false' },
       dataset: { color: hex },
     });
     const choose = (): void => {
@@ -369,15 +373,26 @@ export function initSettingsView(deps: SettingsViewDeps): View {
       updateSwatchActive();
     };
     sw.addEventListener('click', choose);
-    sw.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        choose();
-      }
-    });
     return sw;
   });
   swatchWrap.append(...swatches);
+
+  // The switch has no text of its own: the row's label names it, and clicking
+  // that label (a 44px-tall row is a far easier target than the track) flips it.
+  for (const row of el.querySelectorAll<HTMLElement>('.s-row')) {
+    const input = row.querySelector<HTMLInputElement>('.s-toggle input');
+    const label = row.querySelector<HTMLElement>('.s-label');
+    if (!input || !label) continue;
+    label.id ||= 'lbl_' + input.id;
+    input.setAttribute('aria-labelledby', label.id);
+    const sub = row.querySelector<HTMLElement>('.s-sublabel');
+    if (sub) {
+      sub.id ||= 'sub_' + input.id;
+      input.setAttribute('aria-describedby', sub.id);
+    }
+    label.parentElement?.classList.add('s-row-text');
+    label.parentElement?.addEventListener('click', () => input.click());
+  }
 
   function updateSwatchActive(): void {
     const active = normalizeAccent(settings().accentColor);

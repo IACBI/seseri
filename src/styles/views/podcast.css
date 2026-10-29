@@ -240,11 +240,10 @@
 .ep-item.active {
   background: var(--accent-soft);
 }
-.ep-item.listened {
-  opacity: 0.62;
-}
-.ep-item.listened:hover {
-  opacity: 1;
+/* Dim the title only: fading the whole row took the date/duration line down
+   to ~2.6:1. */
+.ep-item.listened .ep-name {
+  color: var(--text2);
 }
 
 /* row number / equalizer */

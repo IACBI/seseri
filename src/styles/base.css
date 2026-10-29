@@ -12,7 +12,7 @@
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
   border-radius: 5px;
 }
@@ -61,13 +61,13 @@ h1, h2, h3, .display {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-time, .mono, .time-row {
+time, .mono {
   font-family: var(--font-mono);
   font-feature-settings: 'tnum';
   letter-spacing: 0;
 }
 
-a { color: var(--accent); }
+a { color: var(--accent-ink); }
 
 img { max-width: 100%; }
 
@@ -121,4 +121,48 @@ img { max-width: 100%; }
 @keyframes wm-sweep {
   0%, 46% { background-position: 100% 0; }
   74%, 100% { background-position: 0% 0; }
+}
+
+/* Higher-contrast preference: decorative hairlines and the dimmest text step up
+   so nothing relies on a 1.5:1 line or a 4.5:1 caption. */
+@media (prefers-contrast: more) {
+  :root, html.theme-light, html.theme-oled {
+    --border: var(--border-ui);
+    --border2: var(--border-ui);
+    --text3: var(--text2);
+  }
+  :focus-visible { outline-width: 3px; }
+}
+
+/* Forced colours replace every author colour, which erases anything drawn only
+   with a background (range fill, toggle track and thumb, swatches, progress
+   bars). Give those parts system colours or a real border to survive on. */
+@media (forced-colors: active) {
+  :focus-visible { outline-color: Highlight; }
+  .range { forced-color-adjust: none; }
+  .range::-webkit-slider-runnable-track,
+  .range::-moz-range-track {
+    background: linear-gradient(to right, Highlight var(--range-pct, 0%), GrayText var(--range-pct, 0%));
+    border: 1px solid CanvasText;
+  }
+  .range::-webkit-slider-thumb,
+  .range::-moz-range-thumb { background: ButtonText; border: 1px solid Canvas; }
+  .s-toggle-track { border: 2px solid ButtonText; background: Canvas; forced-color-adjust: none; }
+  .s-toggle-track::after { background: ButtonText; forced-color-adjust: none; }
+  .s-toggle input:checked + .s-toggle-track { background: Highlight; border-color: Highlight; }
+  .s-toggle input:checked + .s-toggle-track::after { background: HighlightText; }
+  .s-color-swatch {
+    forced-color-adjust: none;
+    border: 2px solid ButtonText;
+  }
+  .s-color-swatch.active { outline: 3px solid Highlight; outline-offset: 2px; }
+  .signal-base i, .mini-progress-track, .home-progress, .ep-progress {
+    forced-color-adjust: none;
+    background: GrayText;
+  }
+  .signal-fill i, .signal-head, .signal-head::after, .mini-progress,
+  .home-progress-fill, .ep-progress i {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
 }

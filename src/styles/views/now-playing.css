@@ -153,7 +153,7 @@ body.has-ambient .np-inner::before { opacity: 1; }
 .np-tp { color: var(--text2); }
 .np-tp:hover { color: var(--text); }
 .np-tp svg { inline-size: 22px; block-size: 22px; }
-.np-tp:disabled { opacity: 0.3; cursor: default; }
+.np-tp:disabled { opacity: 0.5; cursor: not-allowed; }
 .np-tp:disabled:hover { background: none; color: var(--text2); }
 
 /* the amber hero: big circular play/pause */

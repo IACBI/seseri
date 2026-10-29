@@ -43,6 +43,7 @@
   color: var(--text3);
   margin-block-start: 2px;
 }
+.s-row-text { cursor: pointer; }
 .s-row .s-select {
   flex-shrink: 0;
 }
@@ -55,8 +56,10 @@
   padding-block: var(--s-2) var(--s-4);
 }
 .s-color-swatch {
+  position: relative;
   inline-size: 28px;
   block-size: 28px;
+  padding: 0;
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid transparent;
@@ -65,16 +68,23 @@
 .s-color-swatch:hover {
   transform: scale(1.08);
 }
+/* 28px is what is drawn; the pseudo-element stretches the target to 44px. */
+.s-color-swatch::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
 .s-color-swatch:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
 }
 .s-color-swatch.active {
   border-color: var(--bg);
-  box-shadow: 0 0 0 2px var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ink);
 }
 
-/* Data section: buttons stacked, danger group last */
+/* Data section: frequent actions first; the destructive ones sit behind a rule
+   and a larger gap so a thumb aimed at "Export" cannot land on "Delete". */
 .s-data-btns {
   display: flex;
   flex-direction: column;
@@ -84,20 +94,24 @@
 .s-data-btns .s-btn {
   justify-content: flex-start;
 }
-.s-data-btns .s-btn.danger {
-  margin-block-start: 0;
+.s-data-btns.is-danger {
+  gap: var(--s-3);
+  margin-block-start: var(--s-5);
+  padding-block-start: var(--s-4);
+  border-block-start: 1px solid var(--border);
 }
-.s-data-btns .s-btn.danger:first-of-type {
-  margin-block-start: var(--s-3);
+.s-data-btns .s-btn .icon {
+  inline-size: 16px;
+  block-size: 16px;
 }
 
 /* Cross-device sync: the code is read aloud and retyped, so it gets a mono
    face and generous tracking rather than the body font. */
 .sync-code {
   font-family: var(--font-mono);
-  font-size: 0.95em;
+  font-size: var(--fs-md);
   letter-spacing: 0.08em;
-  color: var(--accent-text);
+  color: var(--text);
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
@@ -113,12 +127,12 @@
   text-transform: uppercase;
   color: var(--text);
   background: var(--surface2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-ui);
   border-radius: var(--r-sm);
   padding: var(--s-2);
   min-block-size: 44px;
 }
 .sync-input:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
 }

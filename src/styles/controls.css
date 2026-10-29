@@ -9,7 +9,7 @@
   gap: var(--s-2);
   min-height: 44px;
   padding: 0 var(--s-4);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border-ui);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text);
@@ -19,7 +19,7 @@
   cursor: pointer;
   transition: background var(--d-fast) var(--ease-smooth), border-color var(--d-fast) var(--ease-smooth), transform var(--d-fast) var(--ease-smooth);
 }
-.btn:hover { background: var(--surface2); border-color: var(--border2); }
+.btn:hover { background: var(--surface2); border-color: var(--border-ui); }
 .btn:active { transform: scale(0.98); }
 .btn-primary {
   background: var(--accent-grad);
@@ -28,7 +28,7 @@
   font-weight: 600;
 }
 .btn-primary:hover { background: var(--accent-grad); filter: brightness(1.06); }
-.btn.danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+.btn.danger { color: var(--red); border-color: var(--red); }
 .btn.danger:hover { background: color-mix(in srgb, var(--red) 12%, var(--surface)); }
 
 /* legacy alias kept for ported markup (settings/confirm buttons) */
@@ -39,7 +39,7 @@
   gap: var(--s-2);
   min-height: 44px;
   padding: 0 var(--s-4);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border-ui);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text);
@@ -50,7 +50,7 @@
   transition: background var(--d-fast) var(--ease-smooth), border-color var(--d-fast) var(--ease-smooth);
 }
 .s-btn:hover { background: var(--surface2); }
-.s-btn.danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 35%, transparent); }
+.s-btn.danger { color: var(--red); border-color: var(--red); }
 .s-btn.danger:hover { background: color-mix(in srgb, var(--red) 12%, var(--surface)); }
 
 /* Icon-only button */
@@ -68,7 +68,7 @@
   transition: background var(--d-fast) var(--ease-smooth), color var(--d-fast) var(--ease-smooth);
 }
 .icon-btn:hover { background: var(--surface2); color: var(--text); }
-.icon-btn.faved, .icon-btn.active { color: var(--accent); }
+.icon-btn.faved, .icon-btn.active { color: var(--accent-ink); }
 
 /* Skip buttons carry their offset inside the glyph. The seconds live in the
    icon's own coordinate system, where the circular arrow is centred on
@@ -78,7 +78,7 @@
   fill: currentColor;
   stroke: none;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11.5px;
   font-weight: 700;
   /* No letter-spacing: CSS adds it after the last glyph too, which shifts
      what text-anchor:middle centres. */
@@ -96,7 +96,7 @@
   appearance: none;
   min-height: 36px;
   padding: 0 var(--s-4) 0 var(--s-3);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border-ui);
   border-radius: var(--r-xs);
   background: var(--surface);
   color: var(--text);
@@ -112,7 +112,7 @@
   appearance: none;
   min-height: 36px;
   padding: 0 var(--s-3);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border-ui);
   border-radius: var(--r-xs);
   background: var(--surface);
   color: var(--text);
@@ -143,8 +143,8 @@
   border-radius: 999px;
   background: linear-gradient(
     to right,
-    var(--accent) var(--range-pct, 0%),
-    var(--border2) var(--range-pct, 0%)
+    var(--accent-ink) var(--range-pct, 0%),
+    var(--border-ui) var(--range-pct, 0%)
   );
 }
 .range::-moz-range-track {
@@ -152,8 +152,8 @@
   border-radius: 999px;
   background: linear-gradient(
     to right,
-    var(--accent) var(--range-pct, 0%),
-    var(--border2) var(--range-pct, 0%)
+    var(--accent-ink) var(--range-pct, 0%),
+    var(--border-ui) var(--range-pct, 0%)
   );
 }
 .range::-webkit-slider-thumb {
@@ -164,7 +164,7 @@
   margin-block-start: -4.5px;
   border: 0;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-ink);
   box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.55);
   transition: transform var(--d-fast) var(--ease-spring);
 }
@@ -173,20 +173,20 @@
   block-size: 13px;
   border: 0;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-ink);
   box-shadow: 0 1px 4px -1px rgba(0, 0, 0, 0.55);
 }
 .range:hover::-webkit-slider-thumb,
 .range:active::-webkit-slider-thumb { transform: scale(1.25); }
 .range:focus { outline: none; }
-.range:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 999px; }
+.range:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; border-radius: 999px; }
 /* Silent: the track keeps its shape, the fill loses its voice. */
 .is-muted .range::-webkit-slider-runnable-track,
 .is-muted .range::-moz-range-track {
   background: linear-gradient(
     to right,
     var(--text3) var(--range-pct, 0%),
-    var(--border2) var(--range-pct, 0%)
+    var(--border-ui) var(--range-pct, 0%)
   );
 }
 .is-muted .range::-webkit-slider-thumb { background: var(--text3); }
@@ -204,13 +204,23 @@
 .vol.is-muted .vol-btn { color: var(--text3); }
 
 /* ─ Toggle switch (ported .s-toggle markup) ─ */
-.s-toggle { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+/* The label is the hit area (44px tall); the 40x22 track is only what is drawn. */
+.s-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  cursor: pointer;
+}
 .s-toggle input { position: absolute; opacity: 0; inline-size: 100%; block-size: 100%; cursor: pointer; }
 .s-toggle-track {
+  position: relative;
   inline-size: 40px;
   block-size: 22px;
   border-radius: 999px;
-  background: var(--border2);
+  background: var(--border-ui);
   transition: background var(--d-base) var(--ease-smooth);
   flex-shrink: 0;
 }
@@ -225,16 +235,16 @@
   background: var(--text);
   transition: transform var(--d-base) var(--ease-spring);
 }
-.s-toggle input:checked + .s-toggle-track { background: var(--accent); }
-.s-toggle input:checked + .s-toggle-track::after { transform: translateX(18px); background: var(--accent-text); }
+.s-toggle input:checked + .s-toggle-track { background: var(--accent-ink); }
+.s-toggle input:checked + .s-toggle-track::after { transform: translateX(18px); background: var(--bg); }
 [dir="rtl"] .s-toggle input:checked + .s-toggle-track::after { transform: translateX(-18px); }
-.s-toggle input:focus-visible + .s-toggle-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.s-toggle input:focus-visible + .s-toggle-track { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
 /* ─ Text input ─ */
 .text-input {
   min-height: 44px;
   padding: 0 var(--s-4);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border-ui);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text);
@@ -244,8 +254,7 @@
 }
 .text-input::placeholder { color: var(--text3); }
 .text-input:focus {
-  outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-ink);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
@@ -311,7 +320,7 @@
 .retry-btn {
   min-height: 40px;
   padding: 0 var(--s-4);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border-ui);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text);
@@ -358,7 +367,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .badge-done { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
 
@@ -370,7 +379,7 @@
   gap: var(--s-2);
   min-height: 40px;
   padding: 0 var(--s-3);
-  border: 1px solid var(--border2);
+  border: 1px solid var(--border-ui);
   border-radius: 999px;
   background: var(--surface);
   color: var(--text);
@@ -424,8 +433,8 @@
 }
 .lang-menu-opt:hover,
 .lang-menu-opt:focus-visible { background: var(--surface); outline: none; }
-.lang-menu-opt:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
-.lang-menu-opt.selected { color: var(--accent); font-weight: 600; }
+.lang-menu-opt:focus-visible { box-shadow: inset 0 0 0 2px var(--accent-ink); }
+.lang-menu-opt.selected { color: var(--accent-ink); font-weight: 600; }
 .lang-menu-name { flex: 1; }
 .lang-menu-check { width: 15px; height: 15px; }
 
@@ -450,13 +459,13 @@
   transition: color var(--d-fast) var(--ease-smooth), border-color var(--d-fast) var(--ease-smooth);
 }
 .tab:hover { color: var(--text); }
-.tab[aria-selected="true"] { color: var(--accent); border-block-end-color: var(--accent); }
+.tab[aria-selected="true"] { color: var(--accent-ink); border-block-end-color: var(--accent-ink); }
 
 /* A show playing at its own speed rather than the default says so, quietly:
    without this the control reads as the global setting and the listener has no
    way to tell that this one show is different. */
 .seri-select.has-own,
 .mini-sel.has-own {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent-ink);
+  border-color: color-mix(in srgb, var(--accent-ink) 55%, transparent);
 }
