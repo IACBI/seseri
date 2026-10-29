@@ -51,7 +51,15 @@ You can expect an initial response within a week.
   as a document. The SSRF check parses
   addresses rather than pattern-matching them, so IPv4-mapped IPv6
   (`::ffff:169.254.169.254`), the unspecified address, CGNAT `100.64/10`,
-  link-local and NAT64-embedded private addresses are all rejected.
+  link-local and NAT64-embedded private addresses are all rejected. Targets
+  are also limited to ports 80 and 443 (an explicit default port is fine; any
+  other would turn the proxy into a port scanner for whatever a public host runs
+  besides its web server), and `*.workers.dev` is refused, since proxying a
+  worker back into a worker is a request loop. `/v1/itunes` re-checks its host
+  on every redirect hop, not just the first request. Every response from
+  `/v1/feed`, `/v1/itunes` and `/v1/parse` — errors and cache hits included —
+  carries `Content-Security-Policy: default-src 'none'; sandbox` as well as
+  `nosniff`, so a body that is somehow rendered as a document can do nothing.
 - **Private (paid) feeds:** services like Patreon, Memberful and Substack put a
   subscriber token in the feed URL itself. Such URLs are never sent to the
   public CORS proxies — they go only to the app's own Worker, and the feed
@@ -83,6 +91,30 @@ The threat model, stated plainly:
   spend the proxies' budget.
 - Blobs are capped at 128 KiB, never cached (`cache-control: no-store`, and the
   service worker skips the route), and rows untouched for 180 days are swept.
+- **Creating a row needs no credential** (the id is whatever the caller
+  invents), so it is limited separately from reads and updates. Each address
+  gets five creations an hour, counted in storage inside the limiter object —
+  an in-memory count would reset whenever an idle instance is evicted — and
+  creation is refused, not allowed, while that object is unreachable. A row that
+  was created and never written again (rev 1) is swept after 7 days instead of
+  180; a device in real use pushes on every change and is never affected. A
+  table-wide ceiling (50,000 rows or 1 GiB, overridable with the
+  `SYNC_MAX_ROWS` / `SYNC_MAX_BYTES` variables) refuses further creations with
+  503 while leaving updates alone; the count is cached per isolate for 30
+  seconds, so it is a soft cap that a burst can overshoot slightly.
+- **The server clock is not trusted without bound.** The client uses
+  `x-sync-time` to correct its own timestamps, and ignores any reading more than
+  24 hours from the device clock (a value restored from storage is held to the
+  same limit), so a hostile or broken server cannot make every local edit look
+  ancient or every remote one look newer than anything local.
+- **A replayed row is detected.** AES-GCM cannot tell an old blob from a new
+  one: both authenticate. Each push therefore carries a counter inside the
+  encrypted payload, one above the highest any device has seen, and a device
+  stores the highest it has seen. A pulled row below it is neither applied nor
+  overwritten (the status shows an error, and the next push from a device with a
+  higher counter repairs the row). A payload with no counter, from an older
+  build, is accepted. Decompression of a payload is capped at 1 MiB and fails
+  closed, so a crafted blob cannot expand into memory.
 
 ## Known residual risks
 
@@ -102,6 +134,20 @@ The threat model, stated plainly:
   guard, the feed-shape check, the size cap, the drain deadline and the
   isolate-wide drain budget are what bound that. The `Origin` header is not a
   limit: it is a value the caller chooses.
+- Rate limits count requests, not bytes. A per-address byte budget would mean
+  charging the limiter object a second time per proxied response (the size is
+  only known after the upstream is drained), doubling its calls against a
+  100,000-a-day free allowance and moving the failure point to the limiter
+  itself. Bytes are bounded per request (20 MB), in aggregate per isolate, by the
+  drain deadline, and by the edge cache, which serves repeats without fetching.
+- Rollback detection has two gaps by design. A blob from before the counter
+  existed (no counter) is accepted, so replaying one is not caught; and a
+  genuine server-side restore to an older row makes devices refuse it until
+  someone pushes past their counter or re-pairs. The sync blob's authenticated
+  data stays the version byte alone: binding a context string would make every
+  existing blob fail to open, and a fallback to the old form would reopen the
+  very blobs the binding was meant to exclude. The key is already unique to the
+  pairing code, so a blob cannot be substituted from another pairing.
 - The Windows installer is currently unsigned (SmartScreen warning expected)
   pending a code-signing certificate.
 - Credential detection for private feeds is tuned for precision: it inspects
