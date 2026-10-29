@@ -11,7 +11,9 @@
      the feed names, and a podcast's audio can be anywhere; an allowlist would
      have to contain the whole podcast internet. It is no wider than the
      media-src and img-src above, which already accept any https origin, and
-     the app holds no account or token to exfiltrate. -->
+     the app holds no account or token to exfiltrate.
+     Trusted Types make the innerHTML-only-constants rule browser-enforced;
+     the one policy, `default`, lives in src/lib/trusted-types.ts. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   base-uri 'none';
@@ -22,6 +24,8 @@
   img-src 'self' data: https:;
   media-src https: blob: http://127.0.0.1:8787;
   connect-src 'self' https: ws: http://127.0.0.1:8787;
+  require-trusted-types-for 'script';
+  trusted-types default;
 ">
 <title>Seseri</title>
 <meta name="author" content="𝓐.𝓒.𝓑">

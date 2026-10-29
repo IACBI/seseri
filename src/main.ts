@@ -1,3 +1,5 @@
+// First, before any module can touch an HTML sink.
+import './lib/trusted-types';
 import './styles/index.css';
 import { boot } from './app';
 import { isLangCode, loadLang } from './i18n';
@@ -33,8 +35,33 @@ function savedLang(): string | null {
   }
 }
 
+/**
+ * GitHub Pages cannot send `frame-ancestors`, and the CSP <meta> cannot carry
+ * it, so another site could frame the app and steer clicks onto its reset or
+ * sync controls. Framed, it offers only a link to open itself.
+ */
+function framed(): boolean {
+  try {
+    return window.top !== window.self;
+  } catch {
+    return true;
+  }
+}
+
+function offerTopLevel(): void {
+  const a = document.createElement('a');
+  a.href = location.href;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.textContent = 'Seseri ↗';
+  a.className = 'framed-open';
+  document.body.replaceChildren(a);
+}
+
 const lang = savedLang();
-if (lang && isLangCode(lang)) {
+if (framed()) {
+  offerTopLevel();
+} else if (lang && isLangCode(lang)) {
   void loadLang(lang).then(start, start);
 } else {
   start();
