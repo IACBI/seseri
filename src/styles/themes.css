@@ -1,10 +1,9 @@
 /* Per-theme overrides — theme class set on <html> by src/ui/theme.ts.
-   The 9 core surface/text tokens are injected by JS (THEME_VALUES); this file
+   The 10 core surface/text tokens are injected by JS (THEME_VALUES); this file
    only re-derives the translucent chrome, shadows and sheen per theme. */
 html.theme-light { color-scheme: light; }
 html.theme-light {
   --glass: rgba(255,255,255,0.78);
-  --glass-2: rgba(255,255,255,0.58);
   --hairline: rgba(30,25,18,0.06);
   --shadow-sm: 0 1px 2px rgba(40,32,20,0.06), 0 2px 10px -6px rgba(40,32,20,0.12);
   --shadow-md: 0 6px 20px -10px rgba(40,32,20,0.16), 0 2px 6px -4px rgba(40,32,20,0.10);
@@ -12,10 +11,13 @@ html.theme-light {
   /* On a light canvas the sheen must be a coloured shimmer, not white (which
      would erase the letters); a faint warm vignette keeps depth without mud. */
   --wm-shine: var(--accent-dim);
-  --hero-vignette: rgba(48,38,24,0.05);
+  /* Semantic colours darkened to >=4.5:1 on every light surface, including
+     their own 15-18% tints. */
+  --green: #17603b;
+  --red: #9c2820;
+  --yellow: #6e4d00;
 }
 html.theme-oled {
   --glass: rgba(10,8,7,0.82);
-  --glass-2: rgba(18,15,12,0.6);
   --hairline: rgba(255,255,255,0.06);
 }

@@ -1,6 +1,6 @@
 /* Design tokens — "Sinyal" identity (Seseri 4.0 redesign).
    Warm charcoal surfaces + amber "radio dial glow" accent.
-   The 9 surface/text values below MUST stay equal to THEME_VALUES.dark in
+   The 10 surface/text/control values below MUST stay equal to THEME_VALUES.dark in
    src/ui/theme.ts — theme.test.ts guards the parity (anti-FOUC). */
 :root {
   color-scheme: dark;
@@ -11,6 +11,8 @@
   --surface2: #302822;
   --border: #3e342a;
   --border2: #4e4234;
+  /* control boundaries (>=3:1); decorative lines stay on --border/--border2 */
+  --border-ui: #80725a;
   /* ─ Signature accent — amber dial glow (JS-overridable) ─ */
   --accent: #f2a33c;
   --accent-dim: #bd7f2f;
@@ -18,22 +20,22 @@
   --accent-glow: rgba(242,163,60,0.18);
   --accent-soft: rgba(242,163,60,0.10);
   --accent-text: #1a1510;
+  /* accent for text and rings: JS recomputes it per theme for >=4.5:1 */
+  --accent-ink: #f2a33c;
   --accent-grad: linear-gradient(135deg, #f2a33c 0%, #bd7f2f 100%);
   --text: #f6f1e7;
   --text2: #cabfae;
   --text3: #9a8d76;
-  --green: #58b283;
-  --red: #e0584f;
+  --green: #66bf90;
+  --red: #f58a84;
   --yellow: #d9a83c;
 
-  /* ─ Wordmark sheen + hero vignette — overridden per-theme so they never
-       collapse into the background ─ */
+  /* ─ Wordmark sheen — overridden per-theme so it never collapses into the
+       background ─ */
   --wm-shine: #ffffff;
-  --hero-vignette: rgba(0,0,0,0.18);
 
   /* ─ Translucent chrome (recomputed per-theme by .theme-* overrides) ─ */
   --glass: rgba(26,22,18,0.78);
-  --glass-2: rgba(36,30,25,0.6);
   --hairline: rgba(255,255,255,0.05);
 
   /* ─ Typography ─ */
@@ -60,9 +62,9 @@
   --s-8: 64px;
 
   /* ─ Type scale ─ */
-  --fs-xs: 10.5px;
-  --fs-sm: 12px;
-  --fs-md: 13.5px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
   --fs-lg: 16px;
   --fs-xl: 22px;
   --fs-2xl: 40px;
@@ -81,14 +83,12 @@
 
   /* ─ Waveform / frequency line (signature) ─ */
   --wave-track: var(--border2);
-  --wave-played: var(--accent);
 
   /* ─ Settings (JS-overridable — settings view writes these) ─ */
   --player-font-size: 13px;
   --list-row-height: 54px;
 
   /* ─ Layout ─ */
-  --header-h: 64px;
   --status-h: 30px;
   --sortbar-h: 44px;
   --nav-w-full: 232px; /* desktop sidebar, open */

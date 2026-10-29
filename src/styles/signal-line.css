@@ -3,7 +3,7 @@
    is drawn for its RESTING state first (a clean line); the playing state adds a
    gentle shimmer. base.css zeroes animation durations under prefers-reduced-
    motion — the static line is the correct fallback, so we never fight it.
-   Rules: consume --wave-track / --wave-played / --accent tokens; logical
+   Rules: consume --wave-track / --accent tokens; logical
    properties throughout; the fill mirrors under [dir="rtl"]. */
 
 /* ═══════════════════ Hero scrubber (Now Playing) ═══════════════════ */
@@ -201,7 +201,7 @@
   color: var(--text2);
 }
 .mini-tp:hover { color: var(--text); background: none; }
-.mini-tp:disabled { opacity: 0.3; cursor: default; }
+.mini-tp:disabled { opacity: 0.5; cursor: not-allowed; }
 .mini-tp:disabled:hover { color: var(--text2); }
 .mini-tp svg { inline-size: 19px; block-size: 19px; }
 

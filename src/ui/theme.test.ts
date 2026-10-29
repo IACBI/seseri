@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import {
+  ACCENT_SWATCHES,
+  accentInkFor,
+  accentTextFor,
+  contrast,
+  themeSurfaces,
+  themeToken,
+} from './theme';
 
 /**
  * Parity guard: the pre-hydration CSS defaults in tokens.css must equal the
@@ -46,4 +54,75 @@ describe('theme / tokens parity', () => {
       expect(tokensDefault(key)).toBe(darkValue);
     },
   );
+});
+
+const THEMES = ['dark', 'oled', 'light'] as const;
+// The swatches plus accents a user could plausibly arrive at some other way.
+const ACCENTS = [
+  ...ACCENT_SWATCHES.map((a) => a.hex),
+  '#ffff00',
+  '#00ffff',
+  '#ff00ff',
+  '#ffffff',
+  '#000000',
+  '#0000ff',
+  '#7f7f7f',
+];
+
+describe('accent contrast', () => {
+  it.each(ACCENTS)('text on a %s fill reaches 4.5:1', (hex) => {
+    expect(contrast(hex, accentTextFor(hex))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  for (const theme of THEMES) {
+    it.each(ACCENTS)(`accent ink for %s reaches 4.5:1 on every ${theme} surface`, (hex) => {
+      const ink = accentInkFor(hex, theme);
+      for (const surface of themeSurfaces(theme)) {
+        expect(contrast(ink, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
+  it('leaves an already-readable accent untouched on dark', () => {
+    expect(accentInkFor('#f2a33c', 'dark')).toBe('#f2a33c');
+  });
+});
+
+describe('control boundary token', () => {
+  for (const theme of THEMES) {
+    it(`--border-ui reaches 3:1 on every ${theme} surface`, () => {
+      const border = themeToken(theme, '--border-ui') as string;
+      for (const surface of themeSurfaces(theme)) {
+        expect(contrast(border, surface)).toBeGreaterThanOrEqual(3);
+      }
+    });
+  }
+});
+
+describe('light semantic colours', () => {
+  const themesSrc = readFileSync(
+    fileURLToPath(new URL('../styles/themes.css', import.meta.url)),
+    'utf8',
+  );
+  const light = (name: string): string => {
+    const m = themesSrc.match(new RegExp(`${name}:\\s*(#[0-9a-f]{6})`, 'i'));
+    if (!m?.[1]) throw new Error('missing light ' + name);
+    return m[1];
+  };
+  it.each(['--green', '--red', '--yellow'])('%s reaches 4.5:1 on every light surface', (name) => {
+    for (const surface of themeSurfaces('light')) {
+      expect(contrast(light(name), surface)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe('dark semantic colours', () => {
+  it.each(['--green', '--red', '--yellow'])('%s reaches 4.5:1 on every dark and oled surface', (name) => {
+    const value = tokensDefault(name) as string;
+    for (const theme of ['dark', 'oled'] as const) {
+      for (const surface of themeSurfaces(theme)) {
+        expect(contrast(value, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
 });
