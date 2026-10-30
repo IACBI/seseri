@@ -14,11 +14,15 @@ import type { Episode } from './types';
  * what "newest" means.
  */
 export function chronological(episodes: readonly Episode[]): Episode[] {
-  const dated = episodes.reduce((n, e) => n + (e.releaseDate ? 1 : 0), 0);
+  // A date no parser reads (a localized weekday, say) is no date at all. As a
+  // `NaN` it made the comparator inconsistent, and the sort then left a whole
+  // unreadable feed in source order and displaced the readable items around a
+  // single bad one.
+  const keyed = episodes.map((e) => ({ e, t: e.releaseDate ? Date.parse(e.releaseDate) : NaN }));
+  const dated = keyed.reduce((n, k) => n + (Number.isNaN(k.t) ? 0 : 1), 0);
   if (dated * 2 > episodes.length) {
-    return episodes
-      .slice()
-      .sort((a, b) => +new Date(a.releaseDate || 0) - +new Date(b.releaseDate || 0));
+    const at = (k: { t: number }): number => (Number.isNaN(k.t) ? 0 : k.t);
+    return keyed.sort((a, b) => at(a) - at(b)).map((k) => k.e);
   }
   return episodes.slice().reverse();
 }
