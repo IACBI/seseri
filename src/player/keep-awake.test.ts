@@ -126,6 +126,34 @@ describe('keep-awake', () => {
     expect(request).toHaveBeenCalledTimes(1);
   });
 
+  it('asks once when playback starts twice before the platform has answered', async () => {
+    play();
+    play();
+    await settle();
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets go of a lock that was granted after playback had stopped', async () => {
+    let grant: (s: FakeSentinel) => void = () => undefined;
+    request.mockImplementation(
+      () =>
+        new Promise<FakeSentinel>((resolve) => {
+          grant = (s) => {
+            granted.push(s);
+            resolve(s);
+          };
+        }),
+    );
+
+    play();
+    pause(); // the listener paused before the answer arrived
+    const late = new FakeSentinel();
+    grant(late);
+    await settle();
+
+    expect(late.released).toBe(true);
+  });
+
   it('survives a platform with no wakeLock at all', async () => {
     Object.defineProperty(navigator, 'wakeLock', { value: undefined, configurable: true });
     play();

@@ -19,14 +19,31 @@ type Sentinel = {
 
 let sentinel: Sentinel | null = null;
 let wanted = false;
+/**
+ * A request is out and unanswered. Without it a second `acquire()` (the `play`
+ * event and a visibility change land together) made a second request, and the
+ * handle it returned replaced the first, which then could never be released.
+ */
+let requesting = false;
 
 async function acquire(): Promise<void> {
-  if (sentinel || !wanted || document.hidden) return;
+  if (sentinel || requesting || !wanted || document.hidden) return;
+  requesting = true;
   try {
     const wl = (navigator as Navigator & { wakeLock?: { request(t: 'screen'): Promise<Sentinel> } })
       .wakeLock;
     if (!wl) return;
     const held = await wl.request('screen');
+    // The platform takes a moment to answer, and playback may have stopped or
+    // the page been hidden meanwhile. `release()` ran before there was a handle
+    // to release, so a lock kept now would hold the screen on with nothing
+    // playing until the next play/pause cycle.
+    if (!wanted || document.hidden) {
+      void held.release().catch(() => {
+        /* already gone */
+      });
+      return;
+    }
     sentinel = held;
     /**
      * The OS drops the lock on its own — battery saver, a system dialog, the
@@ -48,6 +65,8 @@ async function acquire(): Promise<void> {
     });
   } catch {
     /* denied, unsupported, or not a secure context */
+  } finally {
+    requesting = false;
   }
 }
 
