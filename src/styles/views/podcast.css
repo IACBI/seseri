@@ -324,9 +324,11 @@ body:not(.is-playing) .ep-eq i {
   font-size: var(--fs-xs);
   color: var(--text3);
   margin-block-start: 3px;
-  white-space: nowrap;
+  /* The date and the duration are one text run in an anonymous flex item, so
+     `nowrap` + `text-overflow` never produced an ellipsis here: the end of the
+     line was simply cut ("05.09.202"). Letting the run wrap is what the
+     comment above promises. */
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .ep-saved-badge {
   font-family: var(--font-body);
@@ -341,6 +343,12 @@ body:not(.is-playing) .ep-eq i {
   align-items: center;
   gap: var(--s-2);
   flex-shrink: 0;
+}
+/* At 320px three 44px actions plus their gaps leave the title column 68px, one
+   pixel run short of a 10-character date. Each icon keeps 26px of air without
+   the gap. */
+@media (max-width: 359px) {
+  .ep-actions { gap: 0; }
 }
 .ep-act {
   min-inline-size: 44px;
