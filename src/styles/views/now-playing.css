@@ -352,7 +352,9 @@ body.has-ambient .np-inner::before { opacity: 1; }
   line-height: 1.6;
   color: var(--text2);
 }
-.np-note-p { margin-block-end: var(--s-3); }
+/* A bare URL in a paragraph has no break opportunity and made the whole notes
+   box scroll sideways (the links list below it already wraps). */
+.np-note-p { margin-block-end: var(--s-3); overflow-wrap: anywhere; }
 .np-note-links {
   display: grid;
   gap: var(--s-2);
