@@ -201,6 +201,33 @@ describe('failures are not news', () => {
     expect(result).toMatchObject({ checked: 1, failed: 1 });
   });
 
+  it('gives up on a feed that never answers, and can sweep again afterwards', async () => {
+    // Nothing below resolveFeed bounds a direct request: a quiet connection
+    // kept `sweeping` set for good, so "Checking…" never ended and no later
+    // sweep could start.
+    resolveFeed.mockImplementation(
+      (_req: unknown, opts: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          opts.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    );
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const sweep = sweepSubscriptions([sub('f1')], { now: NOW });
+      await vi.advanceTimersByTimeAsync(30_001);
+      expect(await sweep).toMatchObject({ checked: 0, failed: 1 });
+
+      resolveFeed.mockReset();
+      resolveFeed.mockResolvedValue(feed('f1', episodes(2)));
+      const again = await sweepSubscriptions([sub('f1')], { now: NOW + 1, force: true });
+      expect(again.checked).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('ignores a subscription from the retired YouTube source', async () => {
     const result = await sweepSubscriptions([sub('yt:channel:abc')], { now: NOW });
     expect(resolveFeed).not.toHaveBeenCalled();

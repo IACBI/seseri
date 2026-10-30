@@ -72,6 +72,14 @@ export const CHECK_EVERY_MS = 30 * 60 * 1000;
 /** Feeds fetched at once. Small on purpose — phones, and other people's hosts. */
 const CONCURRENCY = 3;
 
+/**
+ * Longest one feed may hold a sweep up. Nothing below `resolveFeed` bounds a
+ * direct request, so a connection that goes quiet half-way would otherwise keep
+ * `sweeping` set for the rest of the session: "Checking…" for good, and no
+ * later sweep ever allowed to start.
+ */
+const FEED_DEADLINE_MS = 30_000;
+
 export const inbox = signal<InboxItem[]>([]);
 
 let seen: Record<string, SeenMark> = {};
@@ -236,8 +244,10 @@ async function checkFeed(sub: Subscription, now: number): Promise<InboxItem[] | 
   let episodes: Episode[];
   let feedName = sub.name;
   let feedArt = sub.art;
+  const ctrl = new AbortController();
+  const deadline = setTimeout(() => ctrl.abort(), FEED_DEADLINE_MS);
   try {
-    const resolved = await resolveFeed(req, {});
+    const resolved = await resolveFeed(req, { signal: ctrl.signal });
     episodes = resolved.episodes;
     feedName = resolved.meta.name || feedName;
     feedArt = resolved.meta.art || feedArt;
@@ -247,6 +257,8 @@ async function checkFeed(sub: Subscription, now: number): Promise<InboxItem[] | 
     refreshSubscription(resolved.meta);
   } catch {
     return null;
+  } finally {
+    clearTimeout(deadline);
   }
   if (!episodes.length) return [];
 
