@@ -113,6 +113,9 @@
   color: var(--text2);
   line-height: 1.3;
   overflow: hidden;
+  /* A long single word ("Wissenschaftspodcast") used to be cut at the tile
+     edge with no ellipsis; the clamp below only ever ends lines. */
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
