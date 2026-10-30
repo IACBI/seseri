@@ -442,6 +442,16 @@
 .lang-menu-name { flex: 1; }
 .lang-menu-check { width: 15px; height: 15px; }
 
+/* The compact controls above are right for a pointer and 4 to 8px short of the
+   44px every other control gets under a finger — the dock's selects already do
+   this (signal-line.css). Declared after them so it wins on source order. */
+@media (pointer: coarse) {
+  .seri-select,
+  .s-select,
+  .lang-menu-btn,
+  .lang-menu-opt { min-height: 44px; }
+}
+
 /* ─ Tabs (library) ─ */
 .tabs {
   display: flex;

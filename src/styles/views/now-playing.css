@@ -423,6 +423,10 @@ body.has-ambient .np-inner::before { opacity: 1; }
   cursor: pointer;
   transition: background var(--d-fast) var(--ease-smooth), color var(--d-fast) var(--ease-smooth);
 }
+@media (pointer: coarse) {
+  .np-chapter,
+  .np-cue { min-height: 44px; }
+}
 .np-chapter:hover,
 .np-cue:hover {
   background: var(--surface2);

@@ -181,6 +181,10 @@
   min-inline-size: 0;
   min-block-size: 40px;
 }
+@media (pointer: coarse) {
+  .p-sort,
+  .p-filter { min-block-size: 44px; }
+}
 
 /* ── episode list ───────────────────────────────────────────────── */
 .ep-list {
