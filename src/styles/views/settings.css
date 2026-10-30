@@ -43,7 +43,17 @@
   color: var(--text3);
   margin-block-start: 2px;
 }
-.s-row-text { cursor: pointer; }
+/* Clicking the label flips its switch (settings.ts), and the row is 44px tall
+   so that is the target: stretched to the row, not just as tall as its text
+   (16px for a one-line label). */
+.s-row-text {
+  cursor: pointer;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
 .s-row .s-select {
   flex-shrink: 0;
 }
