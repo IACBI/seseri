@@ -100,7 +100,6 @@
   /* ─ Stacking order — one scale for the layered UI (low → high). Local
        stacking inside a single component (0/1/2/3) stays literal. ─ */
   --z-header: 5;
-  --z-banner: 10;
   --z-mini: 60;
   --z-nav: 70;
   --z-sheet: 90;

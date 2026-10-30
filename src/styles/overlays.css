@@ -101,14 +101,16 @@ body:has(.np-sheet.open) .toast-host {
   font-variant-numeric: tabular-nums;
 }
 
-/* ─ Offline banner ─ */
+/* ─ Offline banner ─
+   In the flow, first in the body's column, so the app frame gives up the strip's
+   height instead of the strip lying over the top ~30px of the page — which
+   covered the top of the language button on Home (measured 7 to 10px). It sits
+   under the sheet and the dialogs, as the fixed one did. */
 .offline-banner {
-  position: fixed;
-  inset-block-start: env(safe-area-inset-top, 0px);
-  inset-inline: 0;
-  z-index: var(--z-banner);
+  order: -1;
+  flex: none;
   text-align: center;
-  padding: var(--s-2) var(--s-4);
+  padding: calc(var(--s-2) + env(safe-area-inset-top, 0px)) var(--s-4) var(--s-2);
   font-size: var(--fs-sm);
   color: var(--yellow);
   background: color-mix(in srgb, var(--yellow) 10%, var(--bg2));
