@@ -217,7 +217,10 @@ checklist is [docs/TESTPLAN.md](docs/TESTPLAN.md).
 │   ├── storage/           # localStorage keys, IndexedDB, OPML, backup
 │   ├── sync/              # pairing code, encryption, merge, transport
 │   ├── ui/                # views, router, playback controller, shell and widgets
-│   ├── i18n/              # 8 languages, completeness checked at compile time
+│   ├── i18n/              # 8 languages (tr, en bundled; the rest load on demand),
+│   │                      # a missing key is a compile error
+│   ├── lib/               # pure helpers: formatting, artwork URLs, scrub maths,
+│   │                      # the Trusted Types policy
 │   ├── styles/            # design tokens, layers, one stylesheet per view, fonts
 │   └── sw.ts              # service worker
 ├── worker/                # Cloudflare Worker (Hono): /v1/feed /v1/parse /v1/itunes /v1/sync
@@ -443,7 +446,10 @@ listesi [docs/TESTPLAN.md](docs/TESTPLAN.md)'de.
 │   ├── storage/           # localStorage keys, IndexedDB, OPML, backup
 │   ├── sync/              # pairing code, encryption, merge, transport
 │   ├── ui/                # views, router, playback controller, shell and widgets
-│   ├── i18n/              # 8 languages, completeness checked at compile time
+│   ├── i18n/              # 8 languages (tr, en bundled; the rest load on demand),
+│   │                      # a missing key is a compile error
+│   ├── lib/               # pure helpers: formatting, artwork URLs, scrub maths,
+│   │                      # the Trusted Types policy
 │   ├── styles/            # design tokens, layers, one stylesheet per view, fonts
 │   └── sw.ts              # service worker
 ├── worker/                # Cloudflare Worker (Hono): /v1/feed /v1/parse /v1/itunes /v1/sync
