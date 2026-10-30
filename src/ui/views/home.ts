@@ -73,6 +73,8 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
   function activate(node: HTMLElement, onOpen: () => void): void {
     node.addEventListener('click', onOpen);
     node.addEventListener('keydown', (e) => {
+      // A control inside the row (the dismiss button) owns its own keys.
+      if (e.target !== e.currentTarget) return;
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
       onOpen();
