@@ -14,6 +14,7 @@ import { TOPIC_KEYS, topicShows } from '../../feeds/topics';
 import { parseDirectInput } from '../../feeds/input-parse';
 import { currentLang, t } from '../../i18n';
 import { artTile, ROW_ART_PX } from '../art-tile';
+import { errorText } from '../error-text';
 import { h } from '../h';
 import { stateBox } from '../states';
 import { must } from '../shell';
@@ -264,8 +265,7 @@ export function initSearchView(deps: SearchViewDeps): View {
         }
       })
       .catch((e: Error) => {
-        if (e.name !== 'AbortError') podsErr = e.message;
-        else if (timedOut) podsErr = 'timed out';
+        if (e.name !== 'AbortError' || timedOut) podsErr = errorText(e);
       })
       .finally(() => {
         podsDone = true;

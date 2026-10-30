@@ -68,6 +68,7 @@ import { refreshSubscription } from '../storage/subscriptions';
 import { consumeSleepAtEpisodeEnd } from '../player/sleep-timer';
 import { PRIVATE_FEED_ERROR } from '../feeds/credential-url';
 import { API_BASE, PROXIES_DISABLED_ERROR } from '../feeds/proxy-chain';
+import { errorText } from './error-text';
 import { modalOpen } from './modal';
 import { toast } from './toast';
 
@@ -450,7 +451,7 @@ export function createPlaybackController(): PlaybackController {
             ? t('private_feed_err')
             : err.message === PROXIES_DISABLED_ERROR
               ? t('proxies_disabled_err')
-              : t('status_err') + (err.message || String(err));
+              : t('status_err') + errorText(err);
         patch({ status: { kind: 'error', message } });
       }
     })();

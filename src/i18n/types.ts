@@ -70,6 +70,9 @@ export interface Lang {
   audio_err: string;
   private_feed_err: string;
   proxies_disabled_err: string;
+  err_timeout: string;
+  err_network: string;
+  err_response: string;
   s_privacy: string;
   s_allow_proxies: string;
   s_allow_proxies_sub: string;
