@@ -21,7 +21,12 @@ let subAt: Record<string, number> = {};
 let subRm: Record<string, number> = {};
 
 function asStamps(v: unknown): Record<string, number> {
-  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, number>) : {};
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, at] of Object.entries(v)) {
+    if (typeof at === 'number' && Number.isFinite(at)) out[k] = at;
+  }
+  return out;
 }
 
 /**

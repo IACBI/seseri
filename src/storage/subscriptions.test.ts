@@ -15,6 +15,7 @@ import {
   sanitizeSubscriptions,
   setSubscriptionsStamped,
   subscriptions,
+  subscriptionsSnapshot,
 } from './subscriptions';
 
 function store(value: unknown): void {
@@ -59,6 +60,33 @@ describe('loadSubscriptions survives a corrupt store', () => {
     store([null, { id: 'f1', name: 'A', artist: '', art: '' }]);
     expect(() => loadSubscriptions()).not.toThrow();
     expect(subscriptions().map((f) => f.id)).toEqual(['f1']);
+  });
+});
+
+describe('loadSubscriptions reads the stamp sidecars defensively', () => {
+  it('keeps only finite numbers, so sync never sends a string as a timestamp', () => {
+    store([{ id: 'f1' }, { id: 'f2' }, { id: 'f3' }]);
+    localStorage.setItem('pp_subs_at', JSON.stringify({ f1: 1000, f2: 'later', f3: null }));
+    localStorage.setItem('pp_subs_rm', JSON.stringify({ gone: 500, bad: { at: 1 } }));
+    loadSubscriptions();
+
+    const snap = subscriptionsSnapshot();
+    // A missing stamp reads as 0 ("unknown"), which loses no conflict it should win.
+    expect(snap.at).toEqual({ f1: 1000, f2: 0, f3: 0 });
+    expect(snap.removed).toEqual({ gone: 500 });
+  });
+
+  it.each([
+    ['an array', '[1]'],
+    ['a string', '"x"'],
+    ['a number', '7'],
+  ])('treats %s as no stamps at all', (_label, raw) => {
+    store([{ id: 'f1' }]);
+    localStorage.setItem('pp_subs_at', raw);
+    localStorage.setItem('pp_subs_rm', raw);
+    loadSubscriptions();
+    expect(subscriptionsSnapshot().at).toEqual({ f1: 0 });
+    expect(subscriptionsSnapshot().removed).toEqual({});
   });
 });
 
