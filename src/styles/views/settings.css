@@ -82,11 +82,13 @@
 .s-color-swatch:hover {
   transform: scale(1.08);
 }
-/* 28px is what is drawn; the pseudo-element stretches the target to 44px. */
+/* 28px is what is drawn; the pseudo-element stretches the target to 44px.
+   It is positioned from the padding box, inside the 2px border, so the inset
+   has to cover the border as well: -8px made a 40px target. */
 .s-color-swatch::after {
   content: '';
   position: absolute;
-  inset: -8px;
+  inset: -10px;
 }
 .s-color-swatch:focus-visible {
   outline: 2px solid var(--text);
