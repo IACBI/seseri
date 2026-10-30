@@ -98,11 +98,11 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
         </div>
 
         <div class="np-transport">
-          <button class="icon-btn np-tp" id="btnPrev" data-i18n-aria="btn_prev" aria-label="Önceki"><svg class="icon" aria-hidden="true"><use href="#ic-prev"/></svg></button>
+          <button class="icon-btn np-tp" id="btnPrev" data-i18n-aria="btn_prev" aria-label="Önceki"><svg class="icon icon-flip" aria-hidden="true"><use href="#ic-prev"/></svg></button>
           <button class="icon-btn np-tp" id="btnSkipBack" data-i18n-aria="s_skip_back" aria-label="Geri Atla"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-rewind"/><text class="skip-n" id="lblSkipBack" x="12" y="12" text-anchor="middle" dominant-baseline="central">15</text></svg></button>
           <button class="np-play" id="btnPlay" data-i18n-aria="play" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
           <button class="icon-btn np-tp" id="btnSkipFwd" data-i18n-aria="s_skip_fwd" aria-label="İleri Atla"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-forward"/><text class="skip-n" id="lblSkipFwd" x="12" y="12" text-anchor="middle" dominant-baseline="central">30</text></svg></button>
-          <button class="icon-btn np-tp" id="btnNext" data-i18n-aria="btn_next" aria-label="Sonraki"><svg class="icon" aria-hidden="true"><use href="#ic-next"/></svg></button>
+          <button class="icon-btn np-tp" id="btnNext" data-i18n-aria="btn_next" aria-label="Sonraki"><svg class="icon icon-flip" aria-hidden="true"><use href="#ic-next"/></svg></button>
         </div>
 
         <div class="vol np-volume" id="npVolume">
