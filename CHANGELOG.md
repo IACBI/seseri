@@ -4,6 +4,56 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.15 — 2026-10-31
+
+### The dock
+
+- **The frequency line no longer runs through the transport buttons.** The
+  mini player's animated line sat on top of the back, play, forward and expand
+  buttons; the dock now reserves its own strip for it, at every width.
+
+### Fixes
+
+- **A restored backup survives the reload.** The page's exit-time write put the
+  old settings and positions back over the restored ones.
+- **Feeds and searches that never answer end in an error** with a retry,
+  instead of "Loading…" for ever, and the reason is shown in your language.
+- **Playback:** a failed recovery no longer restarts from 0; the sleep timer's
+  pause is not "recovered"; the wake lock is released when playback stops;
+  a quick next-then-previous keeps the right title; the show's own speed is
+  not overridden when the default speed changes; Space on a `<summary>` and
+  shortcut keys inside a dialog no longer act on playback.
+- **Keyboard:** Alt/Cmd+arrow stays the browser's Back/Forward in lists, tabs
+  and the seek bars; the new-episode dismiss button takes its own Enter/Space.
+- Episode rows relabel when the language changes; episodes with unreadable
+  dates no longer scramble the list; a pasted feed URL containing "guid…" is
+  not read as an Apple id; a shared link to an episode newer than the cached
+  feed still plays; the tab title returns after leaving a show; "Check now"
+  waits for a sweep that is already running instead of saying "nothing new";
+  unsubscribing from the confirm dialog acts on the show it was opened for.
+- Corrupt stored values of the right JSON type but the wrong shape (positions,
+  sleep timer, subscription stamps) no longer stop saving or arm a bad timer.
+
+### Layout and readability
+
+- Controls that were 36–40 px are 44 px under a finger; the queue buttons,
+  settings labels, colour swatches and volume slider reach their promised
+  targets.
+- At 320 px: a long word in a Home tile, a bare URL in show notes, the podcast
+  header actions, the sort/filter bar and episode dates no longer get cut off
+  or push the page sideways. The offline banner no longer covers the top of
+  the page.
+- Accent text stays readable on tinted washes and on the primary button's
+  gradient; skip and sidebar glyphs mirror in right-to-left; the closed
+  sheet's waveform stops animating; an episode that cannot be played says so.
+
+### Tooling
+
+- `scripts/audit-layout.cjs` measures overlaps, clipping, small targets, text
+  under 12 px and sideways scroll across 9 viewports, 3 themes, 2 font sizes
+  and 6 languages. Dead helpers and the unused Android, iOS and Microsoft
+  Store icon sets were removed.
+
 ## 4.2.14 — 2026-10-30
 
 ### Sync resumes where the other device stopped

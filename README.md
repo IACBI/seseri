@@ -148,6 +148,7 @@ running, the app falls back as described under [Configuration](#configuration).
 | `node scripts/smoke-live.cjs [url]` | the deployed site against real CDNs, including CSP violations |
 | `node scripts/store-shots.cjs` | regenerate the install screenshots in `public/screenshots/` |
 | `node scripts/shot.cjs [dir]` | regenerate the reference screenshots in `docs/screens-v4/` |
+| `node scripts/audit-layout.cjs [--quick]` | measure overlaps, clipping, small targets and sideways scroll across viewports, themes, font sizes and languages |
 | `node scripts/icons.cjs` | regenerate every PNG icon from `public/icons/seseri.svg` |
 
 #### Keyboard shortcuts
@@ -377,6 +378,7 @@ yola düşer.
 | `node scripts/smoke-live.cjs [url]` | yayındaki siteyi gerçek CDN'lere karşı dener, CSP ihlalleri dahil |
 | `node scripts/store-shots.cjs` | `public/screenshots/` içindeki yükleme ekran görüntülerini yeniden üretir |
 | `node scripts/shot.cjs [dir]` | `docs/screens-v4/` içindeki başvuru ekran görüntülerini yeniden üretir |
+| `node scripts/audit-layout.cjs [--quick]` | ekran boyutu, tema, yazı boyutu ve dil kombinasyonlarında çakışma, kırpılma, küçük dokunma alanı ve yatay kaydırmayı ölçer |
 | `node scripts/icons.cjs` | tüm PNG simgeleri `public/icons/seseri.svg`'den yeniden üretir |
 
 #### Klavye kısayolları
