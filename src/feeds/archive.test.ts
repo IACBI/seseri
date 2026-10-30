@@ -9,7 +9,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Episode } from './types';
-import { buildEpisodeRemap, applyEpisodeRemap, needsArchive } from './archive';
+import { buildEpisodeRemap, applyEpisodeRemap } from './archive';
 import {
   loadProgress,
   getProgress,
@@ -196,13 +196,5 @@ describe('applyEpisodeRemap', () => {
     expect(report).toEqual({ positions: 0, queued: 0, downloads: 0, lastPlayed: false });
     expect(getProgress('1001')).toBe(12);
     expect(remapDownload).not.toHaveBeenCalled();
-  });
-});
-
-describe('needsArchive', () => {
-  it('is exactly Apple admitting the list is short', () => {
-    const base = { meta: { id: '1', name: '', artist: '', art: '' }, episodes: [] };
-    expect(needsArchive({ ...base, limited: true })).toBe(true);
-    expect(needsArchive({ ...base, limited: false })).toBe(false);
   });
 });

@@ -26,7 +26,7 @@
  *     archive fits in the lookup response costs no extra request.
  */
 
-import type { Episode, ResolvedFeed } from './types';
+import type { Episode } from './types';
 import { remapDownload } from '../player/offline';
 import { remapLastPlayed, remapProgressIds } from '../storage/progress';
 import { remapQueueIds } from '../state/queue';
@@ -106,13 +106,4 @@ export async function applyEpisodeRemap(
     if (await remapDownload(from, to)) report.downloads++;
   }
   return report;
-}
-
-/**
- * Should we go to the show's own feed for this one?
- *
- * `limited` is Apple's own admission that it returned less than the show has.
- */
-export function needsArchive(feed: ResolvedFeed): boolean {
-  return feed.limited === true;
 }

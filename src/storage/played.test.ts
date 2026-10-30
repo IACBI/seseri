@@ -8,7 +8,6 @@ import {
   markPlayed,
   markUnplayed,
   notePlaybackEnded,
-  playedFraction,
   playedRevision,
   playedSnapshot,
   setPlayedStamped,
@@ -162,21 +161,6 @@ describe('sync seam', () => {
     snap.played['injected'] = 1;
     expect(isPlayed('e1', 0)).toBe(true);
     expect(playedSnapshot().played['injected']).toBeUndefined();
-  });
-});
-
-describe('playedFraction', () => {
-  it('reports how far in, ignoring the overrides', () => {
-    setProgress('e1', 1800);
-    expect(playedFraction('e1', HOUR_MS)).toBeCloseTo(0.5);
-    markPlayed('e1');
-    expect(playedFraction('e1', HOUR_MS)).toBeCloseTo(0.5);
-  });
-
-  it('clamps past the end and answers 0 without a duration', () => {
-    setProgress('e1', 99999);
-    expect(playedFraction('e1', HOUR_MS)).toBe(1);
-    expect(playedFraction('e1', 0)).toBe(0);
   });
 });
 

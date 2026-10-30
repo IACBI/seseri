@@ -99,14 +99,6 @@ export function isPlayed(episodeId: string, durationMs = 0): boolean {
   return (seconds * 1000) / durationMs >= LISTENED_PERCENT / 100;
 }
 
-/** Fraction heard, 0–1, or 0 when it cannot be known. Ignores the overrides. */
-export function playedFraction(episodeId: string, durationMs: number): number {
-  if (durationMs <= 0) return 0;
-  const seconds = getProgress(episodeId);
-  if (seconds <= 0) return 0;
-  return Math.min(1, (seconds * 1000) / durationMs);
-}
-
 export function markPlayed(episodeId: string): void {
   if (!episodeId) return;
   delete unplayed[episodeId];
