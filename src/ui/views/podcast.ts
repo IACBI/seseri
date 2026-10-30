@@ -21,7 +21,7 @@ import { stateBox } from '../states';
 import { fmtDate, fmtDur } from '../../lib/format';
 import { artAt, artSrcset } from '../../lib/art';
 import { dprWidths, HEADER_ART_PX } from '../art-tile';
-import { t } from '../../i18n';
+import { currentLang, t } from '../../i18n';
 import { getProgress } from '../../storage/progress';
 import { isExplicitlyUnplayed, isPlayed } from '../../storage/played';
 import { jobFraction, isDownloading } from '../../player/download-jobs';
@@ -141,6 +141,8 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
       S.resumePos ? 1 : 0,
       S.showDl ? 1 : 0,
       ep.trackName,
+      // Labels, tooltips and dates are all translated.
+      currentLang(),
     ].join('\u0001');
   }
 
