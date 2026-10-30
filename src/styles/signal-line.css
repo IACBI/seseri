@@ -146,8 +146,9 @@
   align-items: center;
   gap: var(--s-2);
   padding-inline: var(--s-3) var(--s-2);
-  /* The bottom strip is the seek hairline's reach; the controls stay above it. */
-  padding-block: 0 8px;
+  /* Two strips the controls never enter: the frequency line's lane on top and
+     the seek hairline's reach below. 10 + 44 + 8 + 2px border = --mini-h. */
+  padding-block: 10px 8px;
   overflow: hidden;
   border-radius: var(--r-lg);
   background: var(--glass);
@@ -246,12 +247,13 @@ select.mini-wide2 { display: none; }
 .mini-expand { color: var(--text3); }
 .mini-expand:hover { color: var(--accent-ink); }
 
-/* slim frequency line across the dock's top edge */
+/* slim frequency line across the dock's top edge, in the lane .mini-player
+   reserves for it — it was 14px tall over the controls and ran through them */
 .mini-signal {
   position: absolute;
   inset-block-start: 0;
   inset-inline: var(--s-4);
-  block-size: 14px;
+  block-size: 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
