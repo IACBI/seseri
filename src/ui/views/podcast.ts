@@ -46,6 +46,7 @@ export interface PodcastView extends View {
 
 export function initPodcastView(deps: PodcastViewDeps): PodcastView {
   const { playback } = deps;
+  const appTitle = document.title;
   const el = viewEl('podcast');
   el.innerHTML = `
     <div class="view-inner p-inner">
@@ -795,6 +796,10 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
     focusTitle: () => titleEl.focus({ preventScroll: false }),
     onShow() {
       render(playback.session());
+    },
+    onHide() {
+      // The show's name belongs to this view only.
+      document.title = appTitle;
     },
   };
   registerView(view);
