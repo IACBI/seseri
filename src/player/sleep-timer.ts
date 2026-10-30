@@ -170,7 +170,14 @@ export function initSleepTimer(done: () => void): void {
   notifyDone = done;
   const saved = local.get<Persisted | null>('pp_sleep', null);
   if (!saved) return;
-  if (saved.mode === 'minutes' && saved.remainingMs > 0) {
+  // `> 0` alone coerces: `true` and `"5000"` both pass it, and the countdown
+  // would then run on a non-number and pause playback on its first tick.
+  if (
+    saved.mode === 'minutes' &&
+    Number.isFinite(saved.minutes) &&
+    Number.isFinite(saved.remainingMs) &&
+    saved.remainingMs > 0
+  ) {
     // `held` until the first tick observes playback actually running.
     sleepState.set({
       mode: 'minutes',

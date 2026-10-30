@@ -202,6 +202,21 @@ describe('sleep timer — persistence', () => {
     expect(sleepTimerActive()).toBe(false);
   });
 
+  it.each([
+    ['a boolean remaining time', { mode: 'minutes', minutes: 10, remainingMs: true }],
+    ['a string remaining time', { mode: 'minutes', minutes: 10, remainingMs: '5000' }],
+    ['a string minutes label', { mode: 'minutes', minutes: 'abc', remainingMs: 5000 }],
+    ['an array', [{ mode: 'minutes', minutes: 10, remainingMs: 5000 }]],
+    ['a bare string', 'minutes'],
+  ])('discards a stored timer with %s instead of arming it', (_label, saved) => {
+    store.map.set('pp_sleep', saved);
+    initSleepTimer(() => {});
+    expect(sleepTimerActive()).toBe(false);
+    expect(store.map.has('pp_sleep')).toBe(false);
+    advance(60_000);
+    expect(engine.pauseCalls).toBe(0);
+  });
+
   it('keeps writing the remaining time when a throttled tab delivers late ticks', () => {
     // The gate used to be `Math.round(remainingMs / 1000) % 15 === 0`: it fires
     // only when the countdown happens to LAND on a 15-second multiple. With
