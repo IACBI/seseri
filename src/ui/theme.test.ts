@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   ACCENT_SWATCHES,
+  accentGradEndFor,
   accentInkFor,
   accentTextFor,
   contrast,
@@ -73,6 +74,17 @@ const ACCENTS = [
 describe('accent contrast', () => {
   it.each(ACCENTS)('text on a %s fill reaches 4.5:1', (hex) => {
     expect(contrast(hex, accentTextFor(hex))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  // The primary button's label sits on the gradient, not on the flat accent.
+  it.each(ACCENTS)('text on a %s gradient reaches 4.5:1 at its far end too', (hex) => {
+    const ink = accentTextFor(hex);
+    expect(contrast(accentGradEndFor(hex, ink), ink)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps the full depth where the ink already clears the dim end', () => {
+    // Amber: dark ink on the 78% shade is 5.4:1.
+    expect(accentGradEndFor('#f2a33c', accentTextFor('#f2a33c'))).toBe('#bd7f2f');
   });
 
   for (const theme of THEMES) {

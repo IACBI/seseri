@@ -170,6 +170,24 @@ export function accentInkFor(accent: string, theme: ResolvedTheme): string {
   return toHex([toward, toward, toward]);
 }
 
+/**
+ * Where the accent gradient ends. The ink was chosen against the flat accent,
+ * but the primary button's label sits on the gradient, and its dim end (78% of
+ * the accent) is darker: measured on rendered pixels, the "Search" label fell to
+ * 3.5:1 on Signal Red and 3.9:1 on Sky, 4.3:1 on Copper. The end is eased
+ * toward the accent until the ink clears AA against it too, so the label does
+ * on every point between; accents that already clear it keep the full depth.
+ */
+export function accentGradEndFor(accent: string, ink: string): string {
+  const base = channels(accent);
+  for (let step = 0; step <= 20; step++) {
+    const k = 0.78 + 0.22 * (step / 20);
+    const end = toHex(base.map((v) => v * k));
+    if (contrast(end, ink) >= INK_TARGET) return end;
+  }
+  return toHex(base);
+}
+
 export function applyAccent(stored: string): void {
   const c = normalizeAccent(stored);
   const r = parseInt(c.slice(1, 3), 16);
@@ -199,13 +217,17 @@ export function applyAccent(stored: string): void {
   root.style.setProperty('--accent', c);
   root.style.setProperty('--accent-2', accent2);
   root.style.setProperty('--accent-dim', dim);
-  root.style.setProperty('--accent-grad', `linear-gradient(135deg, ${c} 0%, ${dim} 100%)`);
+  const ink = accentTextFor(c);
+  root.style.setProperty(
+    '--accent-grad',
+    `linear-gradient(135deg, ${c} 0%, ${accentGradEndFor(c, ink)} 100%)`,
+  );
   root.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.18)`);
   // Soft row highlight: stronger in light theme so it stays visible on white
   root.style.setProperty(
     '--accent-soft',
     `rgba(${r},${g},${b},${accentSoftAlpha(resolveTheme(settings().theme))})`,
   );
-  root.style.setProperty('--accent-text', accentTextFor(c));
+  root.style.setProperty('--accent-text', ink);
   root.style.setProperty('--accent-ink', accentInkFor(c, resolveTheme(settings().theme)));
 }
