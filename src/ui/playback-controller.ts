@@ -1076,8 +1076,9 @@ export function createPlaybackController(): PlaybackController {
       return;
     // A dialog owns the keyboard: ↑↓ would skip episodes behind its backdrop.
     if (modalOpen()) return;
-    // Space must activate a focused button (e.g. #npClose), not toggle playback.
-    if (e.key === ' ' && target.closest('button, [role="button"], a')) return;
+    // Space must activate a focused button (e.g. #npClose) or open a focused
+    // <summary> (the sheet's notes), not toggle playback.
+    if (e.key === ' ' && target.closest('button, [role="button"], a, summary')) return;
     // Transport keys follow what is PLAYING, so they keep working on Home,
     // Search and Library — they used to require the feed view to be open.
     if (!playing()) return;

@@ -450,4 +450,17 @@ describe('global transport keys', () => {
     expect(playing()?.index).toBe(0);
     expect(audio.src).toContain('a1.mp3');
   });
+
+  it('leaves Space to a focused <summary>, which toggles its <details>', async () => {
+    await open(FEED_A.url, 3);
+    await play(0, 'a1');
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    details.append(summary);
+    document.body.append(details);
+
+    expect(press(' ', summary).defaultPrevented).toBe(false);
+    // …and still toggles playback from anywhere that has no Space of its own.
+    expect(press(' ').defaultPrevented).toBe(true);
+  });
 });
