@@ -25,13 +25,22 @@ let watchingOtherTabs = false;
 
 const LAST_PREFIX = 'pp_last_';
 
+/**
+ * A plain object of finite numbers, whatever was stored. `typeof` alone lets an
+ * array through, and an array that is later given string keys serialises back
+ * as `[]`: saved positions would stop persisting without any error.
+ */
 function asRecord(v: unknown): Record<string, number> {
-  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, number>) : {};
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, n] of Object.entries(v)) {
+    if (typeof n === 'number' && Number.isFinite(n)) out[k] = n;
+  }
+  return out;
 }
 
 export function loadProgress(): void {
-  prog = local.get<Record<string, number>>('pp_prog', {});
-  if (!prog || typeof prog !== 'object') prog = {};
+  prog = asRecord(local.get<unknown>('pp_prog', {}));
   progAt = asRecord(local.get<unknown>('pp_prog_at', {}));
   lastAt = asRecord(local.get<unknown>('pp_last_at', {}));
 
@@ -64,10 +73,10 @@ export function loadProgress(): void {
  * is written after `pp_prog`, so by its event both are in storage.
  */
 function adoptOtherTabWrites(): void {
-  const theirs = local.get<Record<string, number>>('pp_prog', {});
+  const theirs = asRecord(local.get<unknown>('pp_prog', {}));
   const theirAt = asRecord(local.get<unknown>('pp_prog_at', {}));
   for (const [id, at] of Object.entries(theirAt)) {
-    const t = theirs?.[id];
+    const t = theirs[id];
     if (typeof t === 'number' && at > (progAt[id] ?? 0)) {
       prog[id] = t;
       progAt[id] = at;
