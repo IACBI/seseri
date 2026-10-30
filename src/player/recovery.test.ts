@@ -82,6 +82,23 @@ describe('playback recovery', () => {
     expect(onGiveUp).toHaveBeenCalled();
   });
 
+  it('keeps the place when the reload it started never gets going', async () => {
+    const { resume } = arm(async () => 'https://x/fresh.m4a');
+    // A real `resume` ends in `audio.load()`, which puts the element back at 0.
+    resume.mockImplementation(() => {
+      audio.currentTime = 0;
+    });
+    noteUserIntent(true);
+    audio.currentTime = 600;
+    fire('error');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(resume).toHaveBeenNthCalledWith(1, 'https://x/fresh.m4a', 600);
+
+    // No `loadedmetadata`, no progress: the stall grace expires and tries again.
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(resume).toHaveBeenNthCalledWith(2, 'https://x/fresh.m4a', 600);
+  });
+
   it('gives up after the attempt budget and stops trying', async () => {
     const { resume, onGiveUp } = arm(async () => null); // never resolvable
     noteUserIntent(true);

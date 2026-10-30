@@ -40,6 +40,12 @@ let inFlight = false;
 let lastProgressAt = 0;
 /** Set while `resume()` reloads the element, so its own events don't re-trigger. */
 let recovering = false;
+/**
+ * Where the listener was when the current repair began. `resume()` ends in
+ * `audio.load()`, which puts the element back at 0, so a reload that never gets
+ * going leaves nothing to read the place from on the next attempt.
+ */
+let resumeFrom: number | null = null;
 
 function clearTimers(): void {
   if (stallTimer) clearTimeout(stallTimer);
@@ -53,6 +59,7 @@ export function resetRecovery(): void {
   attempt = 0;
   inFlight = false;
   recovering = false;
+  resumeFrom = null;
   lastProgressAt = Date.now();
 }
 
@@ -83,7 +90,11 @@ async function attemptRecovery(): Promise<void> {
 
   inFlight = true;
   clearTimers();
-  const position = audio.currentTime;
+  // A seek made while the reload is pending reads as a position of its own;
+  // only the untouched 0 that `load()` leaves behind is replaced.
+  const here = audio.currentTime;
+  const position = recovering && !(here > 0) && resumeFrom !== null ? resumeFrom : here;
+  resumeFrom = position;
   const n = attempt++;
   try {
     const url = await hooks.reresolve();
@@ -136,6 +147,7 @@ export function initRecovery(h: RecoveryHooks): () => void {
         if (audio.paused) break;
         lastProgressAt = Date.now();
         recovering = false;
+        resumeFrom = null;
         if (stallTimer) {
           clearTimeout(stallTimer);
           stallTimer = null;
