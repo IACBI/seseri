@@ -53,6 +53,9 @@ export function loadProgress(): void {
   // Pointers written before the sidecar existed report 0 rather than going
   // missing, so a first sync merges them instead of ignoring them.
   for (const key of local.keys(LAST_PREFIX)) {
+    // `pp_last_at` (the stamp map) and `pp_last_feed` share the prefix but are
+    // not per-feed pointers; counting them made a phantom feed "at"/"feed".
+    if (key === 'pp_last_at' || key === 'pp_last_feed') continue;
     const feedId = key.slice(LAST_PREFIX.length);
     if (!(feedId in lastAt)) lastAt[feedId] = 0;
   }

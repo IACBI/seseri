@@ -53,4 +53,13 @@ describe('loadProgress on a value that parses but has the wrong shape', () => {
     expect(getProgress('text')).toBe(0);
     expect(progressSnapshot().progAt).toEqual({ ok: 1000 });
   });
+
+  it('does not mistake the sidecar keys for per-feed pointers', () => {
+    localStorage.setItem('pp_last_at', '{"f1":5}');
+    localStorage.setItem('pp_last_feed', '{"kind":"itunes","id":"1"}');
+    localStorage.setItem('pp_last_f1', 'e1');
+    loadProgress();
+    saveProgressNow();
+    expect(Object.keys(stored('pp_last_at') as object).sort()).toEqual(['f1']);
+  });
 });
