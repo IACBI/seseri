@@ -68,6 +68,7 @@ import { refreshSubscription } from '../storage/subscriptions';
 import { consumeSleepAtEpisodeEnd } from '../player/sleep-timer';
 import { PRIVATE_FEED_ERROR } from '../feeds/credential-url';
 import { API_BASE, PROXIES_DISABLED_ERROR } from '../feeds/proxy-chain';
+import { modalOpen } from './modal';
 import { toast } from './toast';
 
 /**
@@ -1073,6 +1074,8 @@ export function createPlaybackController(): PlaybackController {
     const tag = (target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'select' || tag === 'textarea' || target.isContentEditable)
       return;
+    // A dialog owns the keyboard: ↑↓ would skip episodes behind its backdrop.
+    if (modalOpen()) return;
     // Space must activate a focused button (e.g. #npClose), not toggle playback.
     if (e.key === ' ' && target.closest('button, [role="button"], a')) return;
     // Transport keys follow what is PLAYING, so they keep working on Home,

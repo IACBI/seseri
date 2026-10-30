@@ -41,6 +41,7 @@ import { queue } from '../../state/queue';
 import { setSetting, settings, type Settings } from '../../state/settings';
 import { SPEEDS, feedSpeedRevision, hasOwnSpeed, setFeedSpeed, speedFor } from '../../state/feed-speed';
 import type { PlaybackController } from '../playback-controller';
+import { modalOpen } from '../modal';
 import { must } from '../shell';
 import { initWaveform, type WaveformController } from '../waveform';
 
@@ -853,7 +854,7 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
    */
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || e.defaultPrevented || !isOpen()) return;
-    if (document.querySelector('dialog[open]')) return;
+    if (modalOpen()) return;
     dismiss();
   });
 

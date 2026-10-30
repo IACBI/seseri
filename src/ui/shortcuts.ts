@@ -9,6 +9,7 @@
 import { currentLang, t } from '../i18n';
 import type { LangKey } from '../i18n/types';
 import { h } from './h';
+import { modalOpen } from './modal';
 
 /** [keycap, description key] — keycaps are symbols, so they are not translated. */
 const ROWS: ReadonlyArray<readonly [string, LangKey]> = [
@@ -98,6 +99,8 @@ export function initShortcuts(): void {
     if (tag === 'input' || tag === 'select' || tag === 'textarea' || target.isContentEditable) {
       return;
     }
+    // Never stack the cheatsheet on top of a confirmation that is waiting.
+    if (modalOpen()) return;
     e.preventDefault();
     openShortcuts();
   });

@@ -406,3 +406,48 @@ describe('a feed that never answers', () => {
     expect(ctl.session().status.kind).toBe('loading');
   });
 });
+
+/**
+ * The transport keys live on `document`, so a dialog's keystrokes reach them
+ * like any other. ↓ inside the shortcut sheet skipped to the next episode; ←
+ * seeked, all behind the backdrop.
+ */
+describe('global transport keys', () => {
+  function press(key: string, target: Element = document.body): KeyboardEvent {
+    const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    target.dispatchEvent(e);
+    return e;
+  }
+
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it('steps to the next episode on ArrowDown', async () => {
+    await open(FEED_A.url, 3);
+    await play(0, 'a1');
+
+    press('ArrowDown');
+
+    await waitFor(() => (playing()?.index ?? 0) > 0, 'the next episode');
+  });
+
+  it('leaves the transport alone while a dialog is open', async () => {
+    await open(FEED_A.url, 3);
+    await play(0, 'a1');
+    const dialog = document.createElement('dialog');
+    dialog.setAttribute('open', '');
+    const ok = document.createElement('button');
+    dialog.append(ok);
+    document.body.append(dialog);
+
+    const e = press('ArrowDown', ok);
+    press('ArrowUp', ok);
+    press('ArrowRight', ok);
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(e.defaultPrevented).toBe(false);
+    expect(playing()?.index).toBe(0);
+    expect(audio.src).toContain('a1.mp3');
+  });
+});

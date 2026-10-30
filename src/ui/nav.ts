@@ -7,6 +7,7 @@
 import { currentLang, t } from '../i18n';
 import type { LangKey } from '../i18n/types';
 import { setSetting, settings } from '../state/settings';
+import { modalOpen } from './modal';
 import { must } from './shell';
 import { onViewChange, type ViewName } from './views';
 
@@ -126,6 +127,7 @@ export function initNav(deps: { go(dest: NavDestination): void }): void {
     if (tag === 'input' || tag === 'select' || tag === 'textarea' || target.isContentEditable) {
       return;
     }
+    if (modalOpen()) return;
     // There is no rail to collapse under the mobile tab bar.
     if (!window.matchMedia('(min-width: 900px)').matches) return;
     e.preventDefault();
