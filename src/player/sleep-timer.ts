@@ -13,6 +13,7 @@
 
 import { local } from '../storage/local';
 import { pbPause, pbPaused, pbSetFade } from './engine';
+import { noteUserIntent } from './recovery';
 import { sleepState, SLEEP_EXTEND_MS, SLEEP_OFF, type SleepState } from '../state/sleep';
 
 /** Fade the last stretch instead of cutting the audio dead. */
@@ -87,6 +88,10 @@ function tick(): void {
   const remainingMs = Math.max(0, s.remainingMs - elapsed);
   if (remainingMs <= FADE_MS) pbSetFade(remainingMs / FADE_MS);
   if (remainingMs === 0) {
+    // This pause is a decision, not a fault. The recovery watchdog restarts
+    // whatever is still meant to be playing when the page is foregrounded or
+    // the network returns, which would undo the timer by morning.
+    noteUserIntent(false);
     pbPause();
     clearState();
     notifyDone?.();

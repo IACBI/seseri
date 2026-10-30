@@ -54,6 +54,7 @@ import {
   sleepTimerActive,
 } from './sleep-timer';
 import { sleepState } from '../state/sleep';
+import { noteUserIntent, userWantsPlayback } from './recovery';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -83,6 +84,18 @@ describe('sleep timer — countdown', () => {
     advance(60_000);
     expect(engine.pauseCalls).toBe(1);
     expect(sleepTimerActive()).toBe(false);
+  });
+
+  it('stops for good: the recovery watchdog must not take the pause for a fault', () => {
+    // The watchdog restarts anything that is meant to be playing and is not —
+    // on foregrounding and when the network comes back. A timer that paused
+    // without saying so had the episode start again the next morning.
+    noteUserIntent(true);
+    setSleepMinutes(1);
+    advance(60_000);
+
+    expect(engine.paused).toBe(true);
+    expect(userWantsPlayback()).toBe(false);
   });
 
   it('does not count down while playback is paused', () => {
