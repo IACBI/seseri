@@ -438,14 +438,10 @@ export function createPlaybackController(): PlaybackController {
         clearTimeout(timeout);
         const err = e as Error;
         if (painted) return; // cached list stays usable offline
-        if (err.name === 'AbortError') {
-          // The listener moving on is silent. This load giving up on its own is
-          // not: it would leave the skeleton up with no error and no retry.
-          if (timedOut && loadAbort === ctrl) {
-            patch({ status: { kind: 'error', message: t('status_err') + 'timed out' } });
-          }
-          return;
-        }
+        // Opening another feed aborts this one and is not a failure. The
+        // deadline is: it is how a request that never answers ends, and
+        // returning here left the skeleton and "Loading…" up for good.
+        if (err.name === 'AbortError' && !(timedOut && loadAbort === ctrl)) return;
         const message =
           err.message === PRIVATE_FEED_ERROR
             ? t('private_feed_err')

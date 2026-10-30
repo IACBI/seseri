@@ -20,6 +20,7 @@ import { audio } from '../player/engine';
 import { playing } from '../player/session';
 import { noteUserIntent } from '../player/recovery';
 import { clearQueue, queue } from '../state/queue';
+import { langDict } from '../i18n';
 import { DEFAULT_SETTINGS, setSetting, settings } from '../state/settings';
 
 /** `dated` limits how many items carry a pubDate (the rest have none). */
@@ -462,5 +463,47 @@ describe('global transport keys', () => {
     expect(press(' ', summary).defaultPrevented).toBe(false);
     // …and still toggles playback from anywhere that has no Space of its own.
     expect(press(' ').defaultPrevented).toBe(true);
+  });
+});
+
+/**
+ * The deadline on a feed load aborts the request, and the catch treated every
+ * AbortError as "the reader moved on" — so a request that never answered ended
+ * in silence: the skeleton and "Loading episodes…" stayed up for good.
+ */
+describe('a feed that never answers', () => {
+  const hang = (_url: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+    new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () =>
+        reject(new DOMException('aborted', 'AbortError')),
+      );
+    });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('ends in an error the reader can retry, not in a skeleton forever', async () => {
+    vi.stubGlobal('fetch', vi.fn(hang));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    ctl.openFeed({ kind: 'itunes', id: '777000111' });
+    expect(ctl.session().status.kind).toBe('loading');
+    await vi.advanceTimersByTimeAsync(10_001);
+
+    expect(ctl.session().status.kind).toBe('error');
+    expect(ctl.session().status.message).toContain(langDict('tr').err_timeout);
+  });
+
+  it('stays quiet when the reader opens another feed instead', async () => {
+    vi.stubGlobal('fetch', vi.fn(hang));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+
+    ctl.openFeed({ kind: 'itunes', id: '777000111' });
+    await vi.advanceTimersByTimeAsync(100);
+    ctl.openFeed({ kind: 'itunes', id: '777000222' });
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(ctl.session().status.kind).toBe('loading');
   });
 });
