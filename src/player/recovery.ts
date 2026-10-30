@@ -98,7 +98,13 @@ async function attemptRecovery(): Promise<void> {
   const n = attempt++;
   try {
     const url = await hooks.reresolve();
-    if (!wantsPlayback) return; // user pressed pause while we were resolving
+    if (!wantsPlayback) {
+      // User pressed pause while we were resolving. A downloaded copy comes back
+      // as a fresh blob: URL that only `resume` would have adopted, so nobody
+      // else will ever revoke it.
+      if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+      return;
+    }
     if (url) {
       recovering = true;
       hooks.resume(url, position);

@@ -141,4 +141,51 @@ describe('playback recovery', () => {
     await vi.advanceTimersByTimeAsync(30000);
     expect(resume).not.toHaveBeenCalled();
   });
+
+  it('revokes the blob it was handed when the user paused during the lookup', async () => {
+    const revoke = vi.fn();
+    const original = URL.revokeObjectURL;
+    URL.revokeObjectURL = revoke;
+    try {
+      let settle!: (url: string) => void;
+      const lookup = new Promise<string>((resolve) => {
+        settle = resolve;
+      });
+      const { resume } = arm(() => lookup);
+      noteUserIntent(true);
+      fire('error'); // starts a recovery, which parks on the lookup
+      await vi.advanceTimersByTimeAsync(0);
+
+      noteUserIntent(false); // pause while the download's blob is being minted
+      settle('blob:minted-while-pausing');
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(resume).not.toHaveBeenCalled();
+      expect(revoke).toHaveBeenCalledWith('blob:minted-while-pausing');
+    } finally {
+      URL.revokeObjectURL = original;
+    }
+  });
+
+  it('leaves a network URL alone when the user paused during the lookup', async () => {
+    const revoke = vi.fn();
+    const original = URL.revokeObjectURL;
+    URL.revokeObjectURL = revoke;
+    try {
+      let settle!: (url: string) => void;
+      const lookup = new Promise<string>((resolve) => {
+        settle = resolve;
+      });
+      arm(() => lookup);
+      noteUserIntent(true);
+      fire('error');
+      await vi.advanceTimersByTimeAsync(0);
+      noteUserIntent(false);
+      settle('https://x/fresh.m4a');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(revoke).not.toHaveBeenCalled();
+    } finally {
+      URL.revokeObjectURL = original;
+    }
+  });
 });
