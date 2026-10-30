@@ -13,6 +13,16 @@ function ensureHost(): HTMLDivElement {
   return host;
 }
 
+/**
+ * Put the live region in the page. It has to exist BEFORE the first message is
+ * added to it: a region that is inserted already holding its text is the case
+ * assistive tech most often fails to announce, and the first toast of a
+ * session was exactly that. Called once from boot.
+ */
+export function initToast(): void {
+  ensureHost();
+}
+
 /** Non-blocking notification — replaces legacy alert(). */
 export function toast(message: string, kind: 'info' | 'error' = 'info', ms = 3500): void {
   const el = h('div', { className: `toast toast-${kind}` }, message);

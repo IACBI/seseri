@@ -30,7 +30,7 @@ import { createPlaybackController } from './ui/playback-controller';
 import { initRouter, parseLocation, type AppView } from './ui/router';
 import { renderShell, must } from './ui/shell';
 import { applyAccent, applyTheme } from './ui/theme';
-import { toast } from './ui/toast';
+import { initToast, toast } from './ui/toast';
 import { showView, type ViewName } from './ui/views';
 import { initHomeView } from './ui/views/home';
 import { initLibraryView } from './ui/views/library';
@@ -88,6 +88,7 @@ export function boot(): void {
   setQuotaListener(() => toast(t('storage_full'), 'error'));
   requestPersistence(); // keep downloads/idb safe from storage-pressure eviction
   initOfflineBanner();
+  initToast();
   // After the loaders: sync reads what they just restored, and pushes it.
   initSync();
 
