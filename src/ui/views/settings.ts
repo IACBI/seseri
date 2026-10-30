@@ -25,13 +25,19 @@ import { formatCode } from '../../sync/code';
 import { SYNC_AVAILABLE } from '../../sync/transport';
 import { clearAllDownloads, storageInfo } from '../../player/offline';
 import { clearPlayed } from '../../storage/played';
-import { clearFeedSpeeds, feedSpeedCount, feedSpeedRevision } from '../../state/feed-speed';
+import {
+  clearFeedSpeeds,
+  feedSpeedCount,
+  feedSpeedRevision,
+  speedFor,
+} from '../../state/feed-speed';
 import { clearProgress, saveProgressNow } from '../../storage/progress';
 import { hardReset } from '../../storage/reset';
 import { exportBackup, restoreBackup } from '../../storage/backup';
 import { exportOpml, parseOpml, unfollowedEntries } from '../../storage/opml';
 import { addSubscriptions, subscriptions } from '../../storage/subscriptions';
 import { pbSetRate } from '../../player/engine';
+import { playing } from '../../player/session';
 import {
   settings,
   setSetting,
@@ -444,7 +450,8 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   sSpeed.addEventListener('change', () => {
     const v = parseFloat(sSpeed.value) || 1;
     setSetting('defaultSpeed', v);
-    pbSetRate(v);
+    // What is playing keeps its own show's speed when it has one.
+    pbSetRate(speedFor(playing()?.feedId));
   });
   sSkipBack.addEventListener('change', () => setSetting('skipBack', parseInt(sSkipBack.value) || 15));
   sSkipFwd.addEventListener('change', () => setSetting('skipForward', parseInt(sSkipFwd.value) || 30));
