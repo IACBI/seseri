@@ -137,6 +137,10 @@
   display: flex;
   align-items: center;
   gap: var(--s-2);
+  /* The filter drops to its own line when it cannot keep a usable width: at
+     320px it was 72px wide in Turkish, and in French the sort description
+     pushed it off the screen. */
+  flex-wrap: wrap;
   min-block-size: var(--sortbar-h);
   margin-block-end: var(--s-2);
 }
@@ -166,10 +170,14 @@
   font-size: var(--fs-xs);
   color: var(--text3);
   white-space: nowrap;
-  flex-shrink: 0;
+  /* May give way (with an ellipsis) when the line is full: it is a caption,
+     the sort button beside it is the control. */
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .p-filter {
-  flex: 1;
+  flex: 1 1 140px;
   min-inline-size: 0;
   min-block-size: 40px;
 }
