@@ -16,12 +16,15 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPlaybackController } from './playback-controller';
+import { toast } from './toast';
 import { audio } from '../player/engine';
 import { playing } from '../player/session';
 import { noteUserIntent } from '../player/recovery';
 import { clearQueue, queue } from '../state/queue';
 import { langDict } from '../i18n';
 import { DEFAULT_SETTINGS, setSetting, settings } from '../state/settings';
+
+vi.mock('./toast', () => ({ toast: vi.fn() }));
 
 /** `dated` limits how many items carry a pubDate (the rest have none). */
 function feedXml(title: string, ids: string[], dated = ids.length): string {
@@ -505,5 +508,31 @@ describe('a feed that never answers', () => {
     await vi.advanceTimersByTimeAsync(100);
 
     expect(ctl.session().status.kind).toBe('loading');
+  });
+});
+
+/**
+ * The recovery watchdog gives up after its last retry, and the only trace of
+ * that was the status line of the feed list — nothing at all with the Now
+ * Playing sheet open, or on Home, where the play button just stopped working.
+ */
+describe('when every retry has failed', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('says so in a toast, wherever the reader is', async () => {
+    await open(FEED_A.url, 3);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.mocked(toast).mockClear();
+    ctl.playEpisode(0, true);
+    await vi.advanceTimersByTimeAsync(100);
+
+    audio.dispatchEvent(new Event('error'));
+    // Five retries, each given an 8 s stall grace, then the watchdog gives up.
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(ctl.session().status.kind).toBe('error');
+    expect(toast).toHaveBeenCalledWith(langDict('tr').audio_err, 'error');
   });
 });

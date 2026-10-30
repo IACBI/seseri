@@ -551,11 +551,21 @@ export function createPlaybackController(): PlaybackController {
     return '';
   }
 
+  /**
+   * The episode cannot be played. The status line belongs to the feed list, so
+   * on its own it says nothing with the Now Playing sheet open or on Home, where
+   * the play button would just stop working — hence the toast as well.
+   */
+  function audioFailed(): void {
+    patch({ status: { kind: 'error', message: t('audio_err') } });
+    toast(t('audio_err'), 'error');
+  }
+
   function startAudio(src: string, id: string, autoplay: boolean): void {
     const isBlob = src.startsWith('blob:');
     const safe = safeMediaSrc(src);
     if (!safe) {
-      patch({ status: { kind: 'error', message: t('audio_err') } });
+      audioFailed();
       return;
     }
     if (currentBlobUrl && currentBlobUrl !== safe) {
@@ -990,7 +1000,7 @@ export function createPlaybackController(): PlaybackController {
     },
     resume: (url, positionSec) => resumeAudioAt(url, positionSec),
     onGiveUp: () => {
-      patch({ status: { kind: 'error', message: t('audio_err') } });
+      audioFailed();
       setPlaybackState('paused');
       document.body.classList.remove('is-playing');
     },
