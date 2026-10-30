@@ -84,6 +84,13 @@
 .p-fav.faved {
   color: var(--accent-ink);
 }
+/* At 320px the back button, the artwork and the two actions left the title
+   about 48px, so most words did not fit and were cut mid-letter. The actions
+   take their own line under the header instead. */
+@media (max-width: 359px) {
+  .p-header { grid-template-columns: auto auto 1fr; }
+  .p-header-actions { grid-column: 1 / -1; justify-self: end; }
+}
 
 /* ── status strip ───────────────────────────────────────────────── */
 .p-status {
