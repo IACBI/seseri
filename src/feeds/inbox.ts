@@ -83,7 +83,8 @@ const FEED_DEADLINE_MS = 30_000;
 export const inbox = signal<InboxItem[]>([]);
 
 let seen: Record<string, SeenMark> = {};
-let sweeping = false;
+/** The sweep in progress, if any, and whether it ignores the per-feed interval. */
+let running: { promise: Promise<SweepResult>; force: boolean } | null = null;
 
 function asSeen(v: unknown): Record<string, SeenMark> {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
@@ -300,14 +301,47 @@ let foundEpisodes: Array<{ ep: Episode; feedId: string }> = [];
  * `force` ignores the per-feed interval — the pull-to-refresh case. One sweep
  * at a time: two overlapping sweeps would each see the other's un-persisted
  * marks as absent and announce the same episodes twice.
+ *
+ * A caller that arrives mid-sweep is never answered with an empty result: that
+ * is indistinguishable from "looked and found nothing", and "check now" used to
+ * report exactly that for a sweep it had merely collided with. It shares the
+ * running sweep when that one already does what was asked. A forced call behind
+ * an interval-throttled sweep waits for it and then makes its own forced pass —
+ * the throttled one skipped the feeds the listener wanted looked at — keeping
+ * what the first pass announced, so the toast describes everything found.
  */
-export async function sweepSubscriptions(
+export function sweepSubscriptions(
   subs: readonly Subscription[],
-  { force = false, now = Date.now() }: { force?: boolean; now?: number } = {},
+  opts: { force?: boolean; now?: number } = {},
+): Promise<SweepResult> {
+  const force = opts.force ?? false;
+  if (!subs.length) return Promise.resolve({ checked: 0, skipped: 0, found: 0, failed: 0 });
+
+  if (running) {
+    if (!force || running.force) return running.promise;
+    return running.promise.then(
+      (first) =>
+        sweepSubscriptions(subs, opts).then((second) => ({
+          ...second,
+          found: first.found + second.found,
+        })),
+      () => sweepSubscriptions(subs, opts),
+    );
+  }
+
+  const promise = runSweep(subs, force, opts.now ?? Date.now()).finally(() => {
+    running = null;
+  });
+  running = { promise, force };
+  return promise;
+}
+
+async function runSweep(
+  subs: readonly Subscription[],
+  force: boolean,
+  now: number,
 ): Promise<SweepResult> {
   const result: SweepResult = { checked: 0, skipped: 0, found: 0, failed: 0 };
-  if (sweeping || !subs.length) return result;
-  sweeping = true;
   foundEpisodes = [];
   try {
     const due = subs.filter((s) => {
@@ -352,7 +386,6 @@ export async function sweepSubscriptions(
     await autoDownload(foundEpisodes);
     return result;
   } finally {
-    sweeping = false;
     foundEpisodes = [];
   }
 }

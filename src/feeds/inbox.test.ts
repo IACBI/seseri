@@ -469,3 +469,95 @@ describe('what "check now" says', () => {
     ]);
   });
 });
+
+describe('a sweep that is already running', () => {
+  const later = NOW + CHECK_EVERY_MS + 1;
+
+  function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void } {
+    let resolve!: (v: T) => void;
+    const promise = new Promise<T>((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
+  const published = (): ResolvedFeed =>
+    feed('f1', [
+      ...episodes(2),
+      {
+        trackId: 'e2',
+        trackName: 'Episode 2',
+        releaseDate: new Date(NOW + DAY).toUTCString(),
+        episodeUrl: 'https://cdn.example.com/e2.mp3',
+        trackTimeMillis: 600_000,
+      },
+    ]);
+
+  /** f1 is known up to e1; its next fetch parks on the returned gate. */
+  async function parkedSweep(): Promise<{ resolve: (v: ResolvedFeed) => void }> {
+    resolveFeed.mockResolvedValue(feed('f1', episodes(2)));
+    await sweepSubscriptions([sub('f1')], { now: NOW });
+    resolveFeed.mockReset();
+    const gate = deferred<ResolvedFeed>();
+    resolveFeed.mockReturnValueOnce(gate.promise);
+    resolveFeed.mockResolvedValue(published());
+    return gate;
+  }
+
+  it('is waited for by "check now", which then looks again instead of reporting nothing', async () => {
+    const gate = await parkedSweep();
+
+    const automatic = sweepSubscriptions([sub('f1')], { now: later });
+    const manual = sweepSubscriptions([sub('f1')], { now: later, force: true });
+    // Never two fetches at once: they would announce the same episodes twice.
+    expect(resolveFeed).toHaveBeenCalledTimes(1);
+
+    gate.resolve(published());
+    const [autoResult, manualResult] = await Promise.all([automatic, manual]);
+
+    expect(autoResult.found).toBe(1);
+    // It used to resolve at once with every counter at zero, which the toast
+    // rendered as "Nothing new." while the rail filled in behind it.
+    expect(manualResult).toMatchObject({ found: 1, checked: 1, failed: 0 });
+    expect(sweepMessage(manualResult)[0]).not.toBe('Nothing new.');
+    // Forced, so it asked again rather than trusting the interval-throttled pass.
+    expect(resolveFeed).toHaveBeenCalledTimes(2);
+    expect(inbox().filter((i) => i.trackId === 'e2')).toHaveLength(1);
+  });
+
+  it('is joined, not repeated, by a second manual check', async () => {
+    const gate = await parkedSweep();
+
+    const first = sweepSubscriptions([sub('f1')], { now: later, force: true });
+    const second = sweepSubscriptions([sub('f1')], { now: later, force: true });
+    gate.resolve(published());
+    const [a, b] = await Promise.all([first, second]);
+
+    expect(resolveFeed).toHaveBeenCalledTimes(1);
+    expect(a).toEqual(b);
+    expect(a.found).toBe(1);
+  });
+
+  it('is joined by an automatic sweep that arrives during a manual one', async () => {
+    const gate = await parkedSweep();
+
+    const manual = sweepSubscriptions([sub('f1')], { now: later, force: true });
+    const automatic = sweepSubscriptions([sub('f1')], { now: later });
+    gate.resolve(published());
+    const [m, a] = await Promise.all([manual, automatic]);
+
+    expect(resolveFeed).toHaveBeenCalledTimes(1);
+    expect(a).toEqual(m);
+  });
+
+  it('lets the next sweep start normally once it has finished', async () => {
+    const gate = await parkedSweep();
+    const running = sweepSubscriptions([sub('f1')], { now: later });
+    gate.resolve(published());
+    await running;
+
+    resolveFeed.mockClear();
+    await sweepSubscriptions([sub('f1')], { now: later + 1000, force: true });
+    expect(resolveFeed).toHaveBeenCalledTimes(1);
+  });
+});
