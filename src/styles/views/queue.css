@@ -59,10 +59,12 @@
   text-overflow: ellipsis;
 }
 
-/* Move/remove controls: compact icon-btn variant, still 44px tall targets */
+/* Move/remove controls: the row is already tight, so they sit closer than the
+   default icon-btn — but at 44px a side, which `min-inline-size: 40px` (it
+   beat the base `min-width: 44px`) quietly was not. */
 .queue-row .icon-btn {
-  min-inline-size: 40px;
-  block-size: 40px;
+  min-inline-size: 44px;
+  block-size: 44px;
 }
 .queue-row .icon-btn:last-child:hover { color: var(--red); }
 
