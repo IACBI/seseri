@@ -332,3 +332,49 @@ describe('settings writes only re-emit for what the list renders', () => {
     ).toBe(1);
   });
 });
+
+describe('a feed that never answers', () => {
+  /** Hangs until the request is aborted, the way a browser fetch does. */
+  function hangingFetch(): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            );
+          }),
+      ),
+    );
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('turns into an error instead of loading for ever', async () => {
+    hangingFetch();
+    vi.useFakeTimers();
+
+    ctl.openFeed({ kind: 'itunes', id: '1234567' });
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(ctl.session().status.kind).toBe('error');
+  });
+
+  it('stays silent when the listener moved on to another feed first', async () => {
+    hangingFetch();
+    vi.useFakeTimers();
+
+    ctl.openFeed({ kind: 'itunes', id: '1234567' });
+    await vi.advanceTimersByTimeAsync(5_000);
+    ctl.openFeed({ kind: 'itunes', id: '7654321' });
+    // Aborting the first load is navigation, not a timeout: it must not paint
+    // an error over the feed that replaced it.
+    await vi.advanceTimersByTimeAsync(4_000);
+
+    expect(ctl.session().req).toEqual({ kind: 'itunes', id: '7654321' });
+    expect(ctl.session().status.kind).toBe('loading');
+  });
+});

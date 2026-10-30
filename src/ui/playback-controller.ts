@@ -304,7 +304,14 @@ export function createPlaybackController(): PlaybackController {
     const sig = ctrl.signal;
     // Bound to this load's controller: reading `loadAbort` when the timer fires
     // would abort whichever feed is loading by then.
-    const timeout = setTimeout(() => ctrl.abort(), req.kind === 'itunes' ? 10000 : 25000);
+    let timedOut = false;
+    const timeout = setTimeout(
+      () => {
+        timedOut = true;
+        ctrl.abort();
+      },
+      req.kind === 'itunes' ? 10000 : 25000,
+    );
 
     // NOTE: no embedStop(), no clearQueue(), no audio.src write here. Browsing a
     // feed is not a playback action — that conflation is the bug this split fixes.
@@ -417,8 +424,15 @@ export function createPlaybackController(): PlaybackController {
       } catch (e) {
         clearTimeout(timeout);
         const err = e as Error;
-        if (err.name === 'AbortError') return;
         if (painted) return; // cached list stays usable offline
+        if (err.name === 'AbortError') {
+          // The listener moving on is silent. This load giving up on its own is
+          // not: it would leave the skeleton up with no error and no retry.
+          if (timedOut && loadAbort === ctrl) {
+            patch({ status: { kind: 'error', message: t('status_err') + 'timed out' } });
+          }
+          return;
+        }
         const message =
           err.message === PRIVATE_FEED_ERROR
             ? t('private_feed_err')
