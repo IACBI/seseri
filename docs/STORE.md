@@ -144,7 +144,10 @@ The link for the README and the site:
 - **Icons** are regenerated from the "signal" mark (the five-bar frequency sign)
   with `npx tauri icon ../public/icons/icon-512.png`; the source PNGs come from
   `public/icons/seseri.svg` via `node scripts/icons.cjs`. Only needed when the
-  brand image changes.
+  brand image changes. The NSIS build reads just `icon.ico`, `128x128.png` and
+  `32x32.png` (see `bundle.icon` in `tauri.conf.json`), plus `icon.png` as the
+  source for the next regeneration — delete the Android, iOS and Microsoft
+  Store sizes the command also writes.
 
 ---
 
