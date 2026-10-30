@@ -41,6 +41,7 @@ export function initSearchView(deps: SearchViewDeps): View {
   const list = must('resultsList');
 
   let searchAbort: AbortController | null = null;
+  let searchTimer: ReturnType<typeof setTimeout> | null = null;
   // The row the user activated to open a feed — restored on back navigation.
   let lastFocusedRow: HTMLElement | null = null;
 
@@ -187,11 +188,20 @@ export function initSearchView(deps: SearchViewDeps): View {
     if (!raw) return;
 
     searchAbort?.abort();
-    searchAbort = new AbortController();
-    const signal = searchAbort.signal;
+    if (searchTimer) clearTimeout(searchTimer);
+    // Bound to this search's controller: `searchAbort` is whichever search is
+    // current when the timer fires, which may be a later one.
+    const ctrl = new AbortController();
+    searchAbort = ctrl;
+    const signal = ctrl.signal;
+    let timedOut = false;
     // Generous: the iTunes proxy can be slow on a cold worker; podcasts
     // render progressively long before this fires.
-    const searchTimeout = setTimeout(() => searchAbort?.abort(), 30000);
+    const searchTimeout = setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+    }, 30000);
+    searchTimer = searchTimeout;
     const restoreBtn = () => {
       btn.disabled = false;
       btn.textContent = t('btn_search');
@@ -217,7 +227,8 @@ export function initSearchView(deps: SearchViewDeps): View {
     let podsDone = false;
     let podsErr = '';
     const settle = (): void => {
-      if (signal.aborted) return;
+      // Abandoned for a newer search is silent; running out of time is not.
+      if (signal.aborted && !timedOut) return;
       if (!podsDone) return;
       restoreBtn();
       clearTimeout(searchTimeout);
@@ -254,6 +265,7 @@ export function initSearchView(deps: SearchViewDeps): View {
       })
       .catch((e: Error) => {
         if (e.name !== 'AbortError') podsErr = e.message;
+        else if (timedOut) podsErr = 'timed out';
       })
       .finally(() => {
         podsDone = true;
