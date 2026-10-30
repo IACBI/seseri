@@ -1055,6 +1055,9 @@ export function createPlaybackController(): PlaybackController {
   // ── global keyboard shortcuts ─────────────────────────────────────
   document.addEventListener('keydown', (e) => {
     if (e.defaultPrevented) return; // scrubber/rows already handled this key
+    // Alt/Cmd+arrow is the browser's Back/Forward and Cmd+arrow scrolls the
+    // page; claiming them would make those shortcuts seek or skip a track.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const target = e.target as HTMLElement;
     const tag = (target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'select' || tag === 'textarea' || target.isContentEditable)

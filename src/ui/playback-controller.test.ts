@@ -333,6 +333,34 @@ describe('settings writes only re-emit for what the list renders', () => {
   });
 });
 
+describe('transport keys leave the browser\'s own shortcuts alone', () => {
+  function press(init: KeyboardEventInit): KeyboardEvent {
+    const e = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+    document.body.dispatchEvent(e);
+    return e;
+  }
+
+  it('still takes the bare keys while something is playing', async () => {
+    await open(FEED_A.url, 3);
+    await play(0, 'a1');
+
+    expect(press({ key: 'ArrowDown' }).defaultPrevented).toBe(true);
+  });
+
+  it.each([
+    ['Alt+←', { key: 'ArrowLeft', altKey: true }],
+    ['Alt+→', { key: 'ArrowRight', altKey: true }],
+    ['Cmd+←', { key: 'ArrowLeft', metaKey: true }],
+    ['Cmd+↓', { key: 'ArrowDown', metaKey: true }],
+    ['Ctrl+Space', { key: ' ', ctrlKey: true }],
+  ])('does not swallow %s, which the browser uses to go back/forward and scroll', async (_n, init) => {
+    await open(FEED_A.url, 3);
+    await play(0, 'a1');
+
+    expect(press(init).defaultPrevented).toBe(false);
+  });
+});
+
 describe('a feed that never answers', () => {
   /** Hangs until the request is aborted, the way a browser fetch does. */
   function hangingFetch(): void {
