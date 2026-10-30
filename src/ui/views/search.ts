@@ -24,6 +24,12 @@ export interface SearchViewDeps {
   openFeed(req: FeedRequest): void;
 }
 
+/**
+ * Generous: the iTunes proxy can be slow on a cold worker, and results render
+ * progressively long before this fires.
+ */
+const SEARCH_DEADLINE_MS = 30000;
+
 export function initSearchView(deps: SearchViewDeps): View {
   const el = viewEl('search');
   el.innerHTML = `
@@ -42,7 +48,6 @@ export function initSearchView(deps: SearchViewDeps): View {
   const list = must('resultsList');
 
   let searchAbort: AbortController | null = null;
-  let searchTimer: ReturnType<typeof setTimeout> | null = null;
   // The row the user activated to open a feed — restored on back navigation.
   let lastFocusedRow: HTMLElement | null = null;
 
@@ -98,7 +103,7 @@ export function initSearchView(deps: SearchViewDeps): View {
   }
 
   /** The chips, and whatever the open one found. Rebuilt on every change. */
-  function renderTopics(state: 'idle' | 'loading' | 'error' = 'idle'): void {
+  function renderTopics(state: 'idle' | 'loading' | 'error' = 'idle', failure = ''): void {
     if (input.value.trim()) return; // the reader has moved on to searching
     const box = h('div');
     box.append(h('div', { className: 'search-hint' }, t('sec_browse')));
@@ -125,7 +130,9 @@ export function initSearchView(deps: SearchViewDeps): View {
     if (state === 'loading') box.append(stateBox('loading', t('searching')));
     else if (state === 'error' && openTopic) {
       const retry = openTopic;
-      box.append(stateBox('error', t('no_results'), { onRetry: () => openTopicNamed(retry) }));
+      box.append(
+        stateBox('error', t('status_err') + failure, { onRetry: () => openTopicNamed(retry) }),
+      );
     } else if (rows?.length) {
       for (const p of rows) {
         box.append(
@@ -160,8 +167,15 @@ export function initSearchView(deps: SearchViewDeps): View {
       return;
     }
     renderTopics('loading');
-    topicAbort = new AbortController();
-    const signal = topicAbort.signal;
+    const ctrl = new AbortController();
+    topicAbort = ctrl;
+    const signal = ctrl.signal;
+    // A request that never answers would otherwise leave "Searching…" up for good.
+    let timedOut = false;
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+    }, SEARCH_DEADLINE_MS);
     void topicShows(term, signal)
       .then((rows) => {
         if (signal.aborted) return;
@@ -169,9 +183,10 @@ export function initSearchView(deps: SearchViewDeps): View {
         renderTopics();
       })
       .catch((e: Error) => {
-        if (e.name === 'AbortError' || signal.aborted) return;
-        renderTopics('error');
-      });
+        if (signal.aborted && !timedOut) return;
+        renderTopics('error', errorText(e));
+      })
+      .finally(() => clearTimeout(deadline));
   }
 
   /** What the screen shows before anything has been typed. */
@@ -184,29 +199,28 @@ export function initSearchView(deps: SearchViewDeps): View {
     renderTopics();
   }
 
+  /** The search box is ready again: button live, list no longer busy. */
+  function idle(): void {
+    btn.disabled = false;
+    btn.textContent = t('btn_search');
+    list.setAttribute('aria-busy', 'false');
+  }
+
   async function doSearch(): Promise<void> {
     const raw = input.value.trim();
     if (!raw) return;
 
     searchAbort?.abort();
-    if (searchTimer) clearTimeout(searchTimer);
-    // Bound to this search's controller: `searchAbort` is whichever search is
-    // current when the timer fires, which may be a later one.
     const ctrl = new AbortController();
     searchAbort = ctrl;
     const signal = ctrl.signal;
+    // Bound to this search's own controller: reading `searchAbort` when the
+    // timer fires would abort whichever search is running by then.
     let timedOut = false;
-    // Generous: the iTunes proxy can be slow on a cold worker; podcasts
-    // render progressively long before this fires.
     const searchTimeout = setTimeout(() => {
       timedOut = true;
       ctrl.abort();
-    }, 30000);
-    searchTimer = searchTimeout;
-    const restoreBtn = () => {
-      btn.disabled = false;
-      btn.textContent = t('btn_search');
-    };
+    }, SEARCH_DEADLINE_MS);
 
     btn.disabled = true;
     btn.textContent = '...';
@@ -217,8 +231,7 @@ export function initSearchView(deps: SearchViewDeps): View {
     const direct = parseDirectInput(raw);
     if (direct) {
       clearTimeout(searchTimeout);
-      restoreBtn();
-      list.setAttribute('aria-busy', 'false');
+      idle();
       list.replaceChildren();
       deps.openFeed(direct);
       return;
@@ -228,12 +241,12 @@ export function initSearchView(deps: SearchViewDeps): View {
     let podsDone = false;
     let podsErr = '';
     const settle = (): void => {
-      // Abandoned for a newer search is silent; running out of time is not.
+      // Replaced by a newer search, or the box was cleared: whoever did that
+      // owns the screen now. The deadline is different — it is the only way a
+      // request that never answers ends, and it has to leave an answer behind.
       if (signal.aborted && !timedOut) return;
       if (!podsDone) return;
-      restoreBtn();
-      clearTimeout(searchTimeout);
-      list.setAttribute('aria-busy', 'false');
+      idle();
       if (!podsBox.hasChildNodes()) {
         list.replaceChildren(
           podsErr
@@ -268,6 +281,7 @@ export function initSearchView(deps: SearchViewDeps): View {
         if (e.name !== 'AbortError' || timedOut) podsErr = errorText(e);
       })
       .finally(() => {
+        clearTimeout(searchTimeout);
         podsDone = true;
         settle();
       });
@@ -279,8 +293,10 @@ export function initSearchView(deps: SearchViewDeps): View {
   btn.addEventListener('click', () => void doSearch());
   input.addEventListener('input', () => {
     if (input.value.trim()) return;
-    // Cleared the box: back to the topics rather than to an empty screen.
+    // Cleared the box: back to the topics rather than to an empty screen. The
+    // aborted search will not settle, so the button it disabled is freed here.
     searchAbort?.abort();
+    idle();
     showBrowse();
   });
   // The topics are search terms in the interface language, against that
