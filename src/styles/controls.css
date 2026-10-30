@@ -133,10 +133,14 @@
   -webkit-appearance: none;
   direction: ltr;
   inline-size: 100%;
-  /* the pointer target; the visible track is 4px inside it */
-  block-size: 22px;
+  /* the pointer target; the visible track is 4px inside it. 24px is the WCAG
+     2.5.8 floor (it was 22); a finger gets the 44px the rest of the app uses. */
+  block-size: 24px;
   background: none;
   cursor: pointer;
+}
+@media (pointer: coarse) {
+  .range { block-size: 44px; }
 }
 .range::-webkit-slider-runnable-track {
   block-size: 4px;
