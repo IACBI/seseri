@@ -217,8 +217,15 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   }
 
   let titleTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * What the heading shows or is about to. Compared against instead of the DOM
+   * text, which lags 150 ms: a change back to the title still on screen would
+   * be taken for "nothing to do" with the swap to the other one still pending.
+   */
+  let titleTarget = titleEl.textContent ?? '';
   function setNowTitle(text: string): void {
-    if (titleEl.textContent === text) return;
+    if (titleTarget === text) return;
+    titleTarget = text;
     titleEl.classList.add('swapping');
     if (titleTimer) clearTimeout(titleTimer);
     titleTimer = setTimeout(() => {
