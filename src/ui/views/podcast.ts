@@ -616,12 +616,13 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
     if (!meta) return;
     if (isSubscribed(meta.id)) {
       // Unsubscribing loses the star + list placement — confirm first.
+      // The answer is for THIS show: the listener may have navigated while the
+      // dialog was up, and a toggle that is already undone (another device's
+      // unsubscribe synced in) would subscribe again.
       void confirmDialog('confirm_unsubscribe').then((ok) => {
-        const m = playback.session().meta;
-        if (ok && m) {
-          toggleSubscription(m);
-          syncFav(isSubscribed(m.id));
-        }
+        if (ok && isSubscribed(meta.id)) toggleSubscription(meta);
+        const shown = playback.session().meta;
+        syncFav(!!shown && isSubscribed(shown.id));
       });
     } else {
       toggleSubscription(meta);
