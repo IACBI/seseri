@@ -1,4 +1,6 @@
+import { loadSettings } from '../state/settings';
 import { local } from './local';
+import { loadProgress } from './progress';
 
 /**
  * The JSON backup: which keys it carries, and how a file is written back.
@@ -94,5 +96,15 @@ export function restoreBackup(text: string): boolean {
       local.remove(stamp);
     }
   }
+
+  /**
+   * The reload that follows fires `beforeunload` and `pagehide`, and those
+   * write the in-memory settings and positions back (`persistAndPush` in
+   * app.ts). Re-reading them here is what stops that write from putting the
+   * pre-restore copy over the file that was just restored. The other stores are
+   * only written when something changes them, so storage is already the truth.
+   */
+  loadSettings();
+  loadProgress();
   return true;
 }

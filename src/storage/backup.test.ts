@@ -10,6 +10,8 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { BACKUP_KEYS, exportBackup, restoreBackup } from './backup';
+import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../state/settings';
+import { loadProgress, saveProgressNow } from './progress';
 
 const NOW = 1_700_000_000_000;
 
@@ -153,5 +155,48 @@ describe('exportBackup', () => {
     localStorage.setItem('pp_sync', JSON.stringify({ code: 'ZZSECRETZZ', rev: 3, skewMs: 0 }));
 
     expect(exportBackup()).not.toContain('ZZSECRETZZ');
+  });
+});
+
+describe('restoring over a running app', () => {
+  // `location.reload()` fires `beforeunload` and `pagehide`, and both write the
+  // in-memory settings and positions back to storage (`persistAndPush` in
+  // app.ts). A restore that only touched localStorage was therefore undone for
+  // those two stores by the very reload that was meant to pick it up.
+  it('keeps the restored settings and positions through the exit-time writes', () => {
+    localStorage.setItem('pp_settings', JSON.stringify({ ...DEFAULT_SETTINGS, theme: 'dark' }));
+    localStorage.setItem('pp_prog', JSON.stringify({ '111': 900 }));
+    localStorage.setItem('pp_prog_at', JSON.stringify({ '111': NOW }));
+    loadSettings();
+    loadProgress();
+
+    const file = JSON.stringify({
+      pp_settings: { ...DEFAULT_SETTINGS, theme: 'light' },
+      pp_prog: { '111': 30, '222': 45 },
+      pp_prog_at: { '111': NOW - 1000, '222': NOW - 1000 },
+    });
+    expect(restoreBackup(file)).toBe(true);
+
+    saveSettings();
+    saveProgressNow();
+
+    expect(JSON.parse(localStorage.getItem('pp_settings') ?? '{}').theme).toBe('light');
+    expect(JSON.parse(localStorage.getItem('pp_prog') ?? '{}')).toEqual({ '111': 30, '222': 45 });
+    expect(JSON.parse(localStorage.getItem('pp_prog_at') ?? '{}')).toEqual({
+      '111': NOW - 1000,
+      '222': NOW - 1000,
+    });
+  });
+
+  it('does not write back the stamps a stamp-less file just discarded', () => {
+    localStorage.setItem('pp_prog', JSON.stringify({ '111': 900 }));
+    localStorage.setItem('pp_prog_at', JSON.stringify({ '111': NOW }));
+    loadProgress();
+
+    restoreBackup(PRE_SYNC_FILE);
+    saveProgressNow();
+
+    // The restored position must not wear the stamp of the one it replaced.
+    expect(JSON.parse(localStorage.getItem('pp_prog_at') ?? '{}')).toEqual({});
   });
 });
