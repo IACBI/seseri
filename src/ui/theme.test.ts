@@ -8,6 +8,7 @@ import {
   contrast,
   themeSurfaces,
   themeToken,
+  washedSurfaces,
 } from './theme';
 
 /**
@@ -78,6 +79,18 @@ describe('accent contrast', () => {
     it.each(ACCENTS)(`accent ink for %s reaches 4.5:1 on every ${theme} surface`, (hex) => {
       const ink = accentInkFor(hex, theme);
       for (const surface of themeSurfaces(theme)) {
+        expect(contrast(ink, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
+  // Copper's ink was 4.43:1 on the wash behind the active chip and the playing
+  // row in the light theme: it cleared every bare surface, which is all that
+  // was checked.
+  for (const theme of THEMES) {
+    it.each(ACCENTS)(`accent ink for %s reaches 4.5:1 on the ${theme} accent wash`, (hex) => {
+      const ink = accentInkFor(hex, theme);
+      for (const surface of washedSurfaces(hex, theme)) {
         expect(contrast(ink, surface)).toBeGreaterThanOrEqual(4.5);
       }
     });

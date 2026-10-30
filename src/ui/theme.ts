@@ -126,17 +126,39 @@ export function themeSurfaces(theme: ResolvedTheme): string[] {
   return THEME_VALUES[theme].slice(0, 4);
 }
 
+/**
+ * Opacity of the accent wash (`--accent-soft`): the highlight behind the active
+ * tab, chip and playing row. Stronger on light so it still shows on white.
+ */
+export function accentSoftAlpha(theme: ResolvedTheme): number {
+  return theme === 'light' ? 0.14 : 0.1;
+}
+
+/**
+ * Every surface with the accent wash laid over it. Ink sits on these as often
+ * as on a bare surface — the active chip, the playing row, the active
+ * sidebar item — and the wash is the darker of the two on light.
+ */
+export function washedSurfaces(accent: string, theme: ResolvedTheme): string[] {
+  const a = accentSoftAlpha(theme);
+  const top = channels(accent);
+  return themeSurfaces(theme).map((surface) =>
+    toHex(channels(surface).map((v, i) => v + ((top[i] as number) - v) * a)),
+  );
+}
+
 // A hair above 4.5 so browser rounding cannot dip under AA.
 const INK_TARGET = 4.6;
 
 /**
  * The accent as it may be used for text, links and focus rings: the accent
  * itself where it already clears AA on every surface (dark, OLED), otherwise
- * pushed toward white (dark themes) or black (light) until it does. Fills keep
+ * pushed toward white (dark themes) or black (light) until it does — on the
+ * bare surfaces and on the accent wash behind an active chip or row. Fills keep
  * the pure --accent; only thin strokes and glyphs use this.
  */
 export function accentInkFor(accent: string, theme: ResolvedTheme): string {
-  const surfaces = themeSurfaces(theme);
+  const surfaces = [...themeSurfaces(theme), ...washedSurfaces(accent, theme)];
   const worst = (c: string): number => Math.min(...surfaces.map((x) => contrast(c, x)));
   const toward = theme === 'light' ? 0 : 255;
   const base = channels(accent);
@@ -182,7 +204,7 @@ export function applyAccent(stored: string): void {
   // Soft row highlight: stronger in light theme so it stays visible on white
   root.style.setProperty(
     '--accent-soft',
-    `rgba(${r},${g},${b},${resolveTheme(settings().theme) === 'light' ? 0.14 : 0.1})`,
+    `rgba(${r},${g},${b},${accentSoftAlpha(resolveTheme(settings().theme))})`,
   );
   root.style.setProperty('--accent-text', accentTextFor(c));
   root.style.setProperty('--accent-ink', accentInkFor(c, resolveTheme(settings().theme)));
