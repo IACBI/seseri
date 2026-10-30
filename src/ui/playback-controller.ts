@@ -254,7 +254,8 @@ export function createPlaybackController(): PlaybackController {
   /** One-shot: consumed by the next feed that paints. See resumeLastPlayed. */
   let resumeOnPaint = false;
   /** One-shot: the episode to start once the feed paints. See openAndPlay. */
-  let playOnPaint: { trackId: string; autoplay: boolean; at?: number } | null = null;
+  let playOnPaint: { feedId: string; trackId: string; autoplay: boolean; at?: number } | null =
+    null;
   /**
    * A position a shared link asked for. It beats the saved one for that one
    * load and is then forgotten — a link is a pointer, not a new bookmark.
@@ -298,6 +299,9 @@ export function createPlaybackController(): PlaybackController {
     // Re-entering the already-loaded feed: keep the list (and its scroll state).
     if (cur.meta?.id === feedId && cur.episodes.length) return;
 
+    // A request to start an episode belongs to the feed it was made for.
+    if (playOnPaint && playOnPaint.feedId !== feedId) playOnPaint = null;
+
     loadAbort?.abort();
     const ctrl = new AbortController();
     loadAbort = ctrl;
@@ -326,7 +330,8 @@ export function createPlaybackController(): PlaybackController {
 
     let painted = false; // true once a list (cache or network) is on screen
 
-    const applyResolved = (resolved: ResolvedFeed): void => {
+    /** `final` is the network's answer; the stored copy is only a first paint. */
+    const applyResolved = (resolved: ResolvedFeed, final: boolean): void => {
       const eps = resolved.episodes;
       if (!eps.length) throw new Error(t('ep_not_found'));
 
@@ -375,10 +380,16 @@ export function createPlaybackController(): PlaybackController {
        * the row — `episodes` rather than `filtered` — because refusing to play
        * what was asked for would be the wrong answer to the wrong question.
        */
-      if (playOnPaint) {
+      if (playOnPaint && playOnPaint.feedId === feedId) {
         const wanted = playOnPaint;
-        playOnPaint = null;
-        startById(wanted.trackId, wanted.autoplay, wanted.at);
+        if (startById(wanted.trackId, wanted.autoplay, wanted.at)) {
+          playOnPaint = null;
+        } else if (final) {
+          // The stored copy can predate the episode (a link shared the day it
+          // came out), so only the network's answer may say it does not exist.
+          playOnPaint = null;
+          toast(t('ep_not_found'), 'error');
+        }
       }
 
       painted = true;
@@ -394,7 +405,7 @@ export function createPlaybackController(): PlaybackController {
       const cached = await getCachedFeed(feedId);
       if (cached && !sig.aborted) {
         try {
-          applyResolved(cached.feed);
+          applyResolved(cached.feed, false);
         } catch {
           /* unusable cache entry — skeleton stays until network */
         }
@@ -404,7 +415,7 @@ export function createPlaybackController(): PlaybackController {
         const resolved = await resolveFeed(req, { signal: sig });
         clearTimeout(timeout);
         if (sig.aborted) return;
-        applyResolved(resolved);
+        applyResolved(resolved, true);
         /**
          * Read again, because this resolve may have renamed them. The archive
          * switch re-keys downloads onto the feed's ids while it runs
@@ -914,7 +925,7 @@ export function createPlaybackController(): PlaybackController {
     trackId: string,
     { autoplay = true, at }: { autoplay?: boolean; at?: number } = {},
   ): void {
-    playOnPaint = { trackId, autoplay, ...(at ? { at } : {}) };
+    playOnPaint = { feedId: feedIdOf(req), trackId, autoplay, ...(at ? { at } : {}) };
     openFeed(req);
     // `openFeed` short-circuits for the feed already on screen, so its paint
     // hook will not run and this has to act on what is already listed.
