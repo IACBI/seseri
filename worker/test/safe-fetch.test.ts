@@ -134,8 +134,11 @@ describe('fetchWithTimeout redirect handling', () => {
       .intercept({ path: '/hop' })
       .reply(302, '', { headers: { location: 'https://elsewhere.example.com/x' } });
     await expect(
-      fetchWithTimeout('https://itunes.apple.com/hop', 5000, undefined, (u) =>
-        u.hostname.endsWith('apple.com'),
+      fetchWithTimeout(
+        'https://itunes.apple.com/hop',
+        5000,
+        undefined,
+        (u) => u.hostname === 'itunes.apple.com',
       ),
     ).rejects.toThrow('unsafe redirect');
   });
