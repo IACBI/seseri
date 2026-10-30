@@ -189,6 +189,23 @@ same control.
 Screenshot tooling: `scripts/shot.cjs` (headless Chrome through
 `scripts/lib/harness.cjs`, against `vite preview`; run `npm run build` first).
 
+Geometry audit: `node scripts/audit-layout.cjs` measures instead of looking. It
+plays an episode so the dock is on screen, then walks every view and dialog at
+9 viewports × 3 themes × 2 font sizes × 6 languages (`--quick` is a slice,
+`--help` lists the filters) and reports boxes that intersect, content that is
+clipped or drawn past the screen edge, sideways scroll, targets under 44 px,
+text under 12 px and content that cannot be scrolled out from under the dock.
+It starts its own dev server (ports from `--port`, default 5240), needs no
+network and exits 1 while an error is left. Run it after any CSS change to the
+dock, the sheet, a list row or a control, and read the "Skipped on purpose"
+block at the end: every exemption is counted there.
+
+- [ ] `node scripts/audit-layout.cjs` ends with **0 distinct errors**. Its
+      warnings are known and listed there: pointer-only controls of 24–43 px,
+      the episode and topic chips (32 px), the dock's seek strip (32 px under a
+      finger), placeholders that do not fit a phone, the digits inside the skip
+      icons, and the language list running past a short screen (the page
+      scrolls). A new warning is a regression.
 - [ ] Widths **320 / 360 / 390 / 520 / 600 / 768 / 900 / 1280** — Home, Search, a feed, Settings: no horizontal scrolling, text does not overflow (ellipsis), components do not overlap.
 - [ ] At 360×640 the Settings page scrolls vertically and every row is reachable.
 - [ ] ≤520px: the sort label is hidden; the sort button still shows the direction.
