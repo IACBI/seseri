@@ -137,6 +137,12 @@
 .np-player.playing .signal-fill i:nth-child(3n+1) { animation-duration: 0.95s; animation-delay: -0.55s; }
 .np-player.playing .signal-base i:nth-child(4n),
 .np-player.playing .signal-fill i:nth-child(4n) { animation-delay: -0.85s; }
+/* The closed sheet is never display:none, so its two lines of bars would keep
+   pulsing off-screen for as long as anything plays. Hidden, they are not
+   painted and so cannot be composited: every one of them was restyled on the
+   main thread each frame. Paused, they cost nothing and resume in place. */
+.np-sheet:not(.open) .np-player.playing .signal-base i,
+.np-sheet:not(.open) .np-player.playing .signal-fill i { animation-play-state: paused; }
 
 /* ═══════════════════════ Mini transport dock ══════════════════════ */
 /* layout.css fixes the .mini-player position; the look lives here.
