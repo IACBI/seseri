@@ -191,6 +191,8 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
   scrub.addEventListener('pointerup', endScrub);
   scrub.addEventListener('pointercancel', endScrub);
   scrub.addEventListener('keydown', (e) => {
+    // Alt/Cmd+arrow is Back/Forward; the browser keeps its own shortcuts.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const dir = seekDirection(e.key);
     if (dir === 0) return;
     e.preventDefault();

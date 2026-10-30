@@ -734,6 +734,8 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
   });
 
   epList.addEventListener('keydown', (e) => {
+    // Alt/Cmd+arrow is Back/Forward and Ctrl/Cmd+Home/End scroll the page.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const target = e.target as HTMLElement;
     const row = target.closest<HTMLElement>('.ep-item');
     if (!row) return;

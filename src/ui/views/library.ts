@@ -66,6 +66,8 @@ export function initLibraryView(deps: LibraryViewDeps): View {
   }
 
   function onTabKey(e: KeyboardEvent, idx: number): void {
+    // Alt/Cmd+arrow is Back/Forward and Ctrl/Cmd+Home/End scroll the page.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const rtl = document.documentElement.getAttribute('dir') === 'rtl';
     let next: number;
     if (e.key === 'ArrowRight') next = rtl ? idx - 1 : idx + 1;

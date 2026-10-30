@@ -140,6 +140,8 @@ export function initWaveform(
   wrap.addEventListener('pointerup', endScrub);
   wrap.addEventListener('pointercancel', endScrub);
   wrap.addEventListener('keydown', (e) => {
+    // Alt/Cmd+arrow is Back/Forward and Ctrl/Cmd+Home/End scroll the page.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const dir = seekDirection(e.key);
     if (dir !== 0) {
       e.preventDefault();
