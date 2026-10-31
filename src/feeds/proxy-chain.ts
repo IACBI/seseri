@@ -60,7 +60,8 @@ export function fetchWithTimeout(
 
 /** What `/v1/parse` answers with: the feed, already parsed, minus the bulk. */
 export interface ParsedFeedResponse {
-  meta: { name: string; artist: string; art: string };
+  /** `about` and `serial` are absent from a Worker deployed before they existed. */
+  meta: { name: string; artist: string; art: string; about?: unknown; serial?: unknown };
   /** Episodes the feed contains, whatever slice was returned. */
   total: number;
   offset: number;

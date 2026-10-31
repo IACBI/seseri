@@ -83,6 +83,14 @@ export interface ResolvedFeed {
    * `feeds/episode-notes.ts` — rather than for all 3000 of them up front.
    */
   notesDeferred?: boolean;
+  /**
+   * The show's description as the feed wrote it (it may carry markup — render
+   * it through `parseShowNotes`). Kept off `FeedMeta` on purpose: that is what
+   * a subscription stores and syncs, and this can run to kilobytes.
+   */
+  about?: string;
+  /** The feed declares itself serial: oldest first is the order it is meant for. */
+  serial?: boolean;
 }
 
 /** Result row from iTunes search. */

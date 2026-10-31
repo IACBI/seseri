@@ -61,6 +61,10 @@ export interface ParsedRss {
   title: string;
   author: string;
   art: string;
+  /** The show's own description, raw (it may carry markup). Absent when empty. */
+  about?: string;
+  /** `<itunes:type>serial</itunes:type>`: meant to be heard from the first episode. */
+  serial?: boolean;
   episodes: ScannedEpisode[];
 }
 
@@ -162,10 +166,15 @@ function readAttrs(inner: string): Record<string, string> {
   return out;
 }
 
+const ABOUT_MAX_CHARS = 4000;
+
 /** What a captured element's text is being collected for. */
 type Sink =
   | 'channel-title'
   | 'channel-author'
+  | 'channel-about'
+  | 'channel-summary'
+  | 'channel-type'
   | 'image-url'
   | 'item-title'
   | 'item-guid'
@@ -230,6 +239,9 @@ export function scanRss(xml: string): ParsedRss {
   let chTitle = '';
   let chAuthor = '';
   let chArt = '';
+  let chAbout = '';
+  let chSummary = '';
+  let chSerial = false;
 
   /** `<image>` in progress: href from the attribute, url from a child element. */
   let imageHref = '';
@@ -271,6 +283,15 @@ export function scanRss(xml: string): ParsedRss {
         return;
       case 'channel-author':
         if (!chAuthor) chAuthor = value;
+        return;
+      case 'channel-about':
+        if (!chAbout) chAbout = value;
+        return;
+      case 'channel-summary':
+        if (!chSummary) chSummary = value;
+        return;
+      case 'channel-type':
+        chSerial = value.toLowerCase() === 'serial';
         return;
       case 'image-url':
         if (!imageUrl) imageUrl = value;
@@ -469,6 +490,9 @@ export function scanRss(xml: string): ParsedRss {
       } else if (childOfChannel && !inItem) {
         if (name === 'title') startCapture('channel-title', depth);
         else if (name === 'author') startCapture('channel-author', depth);
+        else if (name === 'description') startCapture('channel-about', depth);
+        else if (name === 'summary') startCapture('channel-summary', depth);
+        else if (name === 'type') startCapture('channel-type', depth);
       } else if (childOfItem && item) {
         switch (name) {
           case 'title':
@@ -529,10 +553,16 @@ export function scanRss(xml: string): ParsedRss {
 
   if (!sawChannel) throw new Error('invalid rss');
 
+  // `<description>` is the RSS field; `<itunes:summary>` is the fallback some
+  // feeds fill instead. Capped: it is shown in a clamped box, and a feed that
+  // pastes its whole archive into it should not travel with every response.
+  const about = (chAbout || chSummary).slice(0, ABOUT_MAX_CHARS);
   return {
     title: chTitle || 'Podcast',
     author: chAuthor,
     art: chArt,
+    ...(about ? { about } : {}),
+    ...(chSerial ? { serial: true } : {}),
     episodes,
   };
 }

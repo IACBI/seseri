@@ -389,3 +389,40 @@ describe('parseDuration', () => {
     expect(parseDuration(input)).toBe(ms);
   });
 });
+
+describe('scanRss — the show itself', () => {
+  const feed = (channel: string, item = '<item><title>E1</title></item>') =>
+    `<?xml version="1.0"?><rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>Show</title>${channel}${item}</channel></rss>`;
+
+  it('reads the channel description, not an episode one', () => {
+    const parsed = scanRss(
+      feed(
+        '<description><![CDATA[<p>About the <b>show</b></p>]]></description>',
+        '<item><title>E1</title><description>About the episode</description></item>',
+      ),
+    );
+    expect(parsed.about).toBe('<p>About the <b>show</b></p>');
+  });
+
+  it('falls back to itunes:summary when there is no description', () => {
+    expect(scanRss(feed('<itunes:summary>From the summary</itunes:summary>')).about).toBe(
+      'From the summary',
+    );
+  });
+
+  it('leaves about out when the feed says nothing', () => {
+    expect('about' in scanRss(feed(''))).toBe(false);
+  });
+
+  it('caps a description that carries a whole archive', () => {
+    const about = scanRss(feed(`<description>${'x'.repeat(10_000)}</description>`)).about ?? '';
+    expect(about.length).toBe(4000);
+  });
+
+  it('marks a serial show and only a serial one', () => {
+    expect(scanRss(feed('<itunes:type>serial</itunes:type>')).serial).toBe(true);
+    expect(scanRss(feed('<itunes:type> Serial </itunes:type>')).serial).toBe(true);
+    expect('serial' in scanRss(feed('<itunes:type>episodic</itunes:type>'))).toBe(false);
+    expect('serial' in scanRss(feed(''))).toBe(false);
+  });
+});

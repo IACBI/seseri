@@ -317,7 +317,7 @@ function intParam(raw: string | undefined): number | undefined {
 }
 
 interface ParsedDoc {
-  meta: { name: string; artist: string; art: string };
+  meta: { name: string; artist: string; art: string; about?: string; serial?: boolean };
   total: number;
   /** Names the notes chunks this list belongs to; see `notesKey`. */
   build: string;
@@ -422,7 +422,13 @@ app.get('/v1/parse', async (c) => {
         return rest;
       });
       built = { build, chunks };
-      const meta = { name: parsed.title, artist: parsed.author, art: parsed.art };
+      const meta: ParsedDoc['meta'] = {
+        name: parsed.title,
+        artist: parsed.author,
+        art: parsed.art,
+        ...(parsed.about ? { about: parsed.about } : {}),
+        ...(parsed.serial ? { serial: true } : {}),
+      };
       const total = parsed.episodes.length;
       if (cacheable) {
         const cache = caches.default;

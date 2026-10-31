@@ -25,6 +25,8 @@ export interface ParsedRss {
   title: string;
   author: string;
   art: string;
+  about?: string;
+  serial?: boolean;
   episodes: Episode[];
 }
 
