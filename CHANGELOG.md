@@ -4,6 +4,18 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.20 — 2026-10-31
+
+### Fixed
+
+- **The sidebar no longer moves the page.** Pointing at the collapsed rail
+  opened it over the page, but clicking it to pin it open pushed everything to
+  the right, and the icons and destinations jumped a few pixels as well. On any
+  window wide enough for both, the page now keeps one place whether the rail is
+  collapsed, peeking or pinned, and the icons sit still in every state. Only a
+  narrow window still slides the content when collapsing, since making room is
+  what collapsing is for there. The shell smoke checks it.
+
 ## 4.2.19 — 2026-10-31
 
 ### Privacy
