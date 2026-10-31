@@ -1084,6 +1084,7 @@ export function createPlaybackController(): PlaybackController {
           p &&
           p.trackId === loadedTrackId &&
           !audio.paused &&
+          !e.seek &&
           crossedOutro(prevTick, e.current, e.duration, trimFor(p.feedId))
         ) {
           noteUserIntent(false);

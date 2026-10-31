@@ -8,7 +8,14 @@ export type EngineEvent =
   | { type: 'play' }
   | { type: 'pause' }
   | { type: 'ended' }
-  | { type: 'timeupdate'; current: number; duration: number }
+  /**
+   * `seek` marks a position the listener jumped to (a skip, a scrub, every
+   * frame of a waveform drag) rather than one playback reached. Consumers that
+   * react to playback *running into* a point — the outro skip — need to tell
+   * the two apart, and a position delta cannot: one drag frame moves less than
+   * a tick does at 2.5×.
+   */
+  | { type: 'timeupdate'; current: number; duration: number; seek?: boolean }
   /** Data ran out mid-playback, or the element is waiting on the network. */
   | { type: 'stalled' }
   /** `code` is a `MediaError` constant: 2 is NETWORK, 3 DECODE, 4 SRC_NOT_SUPPORTED. */
@@ -114,13 +121,19 @@ audio.addEventListener('timeupdate', () => {
   const now = performance.now();
   if (now - lastUi < 250) return;
   lastUi = now;
-  emit({ type: 'timeupdate', current: audio.currentTime, duration: audio.duration });
+  emit({
+    type: 'timeupdate',
+    current: audio.currentTime,
+    duration: audio.duration,
+    // The element also fires `timeupdate` for a seek in progress.
+    seek: audio.seeking,
+  });
 });
 // A seek's own `timeupdate` can fall inside the throttle window, and the last
 // step of a scrub is the one position that matters.
 audio.addEventListener('seeked', () => {
   lastUi = performance.now();
-  emit({ type: 'timeupdate', current: audio.currentTime, duration: audio.duration });
+  emit({ type: 'timeupdate', current: audio.currentTime, duration: audio.duration, seek: true });
 });
 audio.addEventListener('play', () => emit({ type: 'play' }));
 audio.addEventListener('pause', () => emit({ type: 'pause' }));

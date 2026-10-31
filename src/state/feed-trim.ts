@@ -35,8 +35,9 @@ export const MIN_BODY_SEC = 60;
 
 /**
  * A `timeupdate` lands every 250 ms or so of media time, a little more at high
- * speed or under background throttling. A jump wider than this was a seek: the
- * listener went there on purpose, and is not sent away from it.
+ * speed or under background throttling. A jump wider than this is not a tick.
+ * Seeks are told apart by the engine, which flags them; this bound is the
+ * backstop for a jump that arrives unflagged.
  */
 const MAX_TICK_SEC = 4;
 
