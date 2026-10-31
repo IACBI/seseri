@@ -287,6 +287,21 @@ export interface Lang {
   topic_comedy: string;
   topic_sport: string;
   topic_health: string;
+  sub_add: string;
+  sub_on: string;
+  home_empty_cta: string;
+  sort_auto: string;
+  sort_auto_sub: string;
+  unit_sec: LangFn;
+  skip_back_n: LangFn;
+  skip_fwd_n: LangFn;
+  sleep_extend: string;
+  p_about_more: string;
+  p_about_less: string;
+  search_label: string;
+  filter_label: string;
+  sync_code_label: string;
+  wave_label: string;
 }
 
 export type LangKey = keyof Lang;

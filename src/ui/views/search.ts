@@ -17,6 +17,7 @@ import { artTile, ROW_ART_PX } from '../art-tile';
 import { errorText } from '../error-text';
 import { h } from '../h';
 import { stateBox } from '../states';
+import { rememberPreview } from '../feed-preview';
 import { must } from '../shell';
 import { registerView, viewEl, type View } from '../views';
 
@@ -30,14 +31,33 @@ export interface SearchViewDeps {
  */
 const SEARCH_DEADLINE_MS = 30000;
 
-export function initSearchView(deps: SearchViewDeps): View {
+/** Open a result, leaving what the row already shows for the page to paint first. */
+function openResultWith(deps: SearchViewDeps, p: SearchResult): void {
+  const id = String(p.collectionId);
+  rememberPreview(id, {
+    name: p.collectionName,
+    artist: p.artistName,
+    art: p.artworkUrl100,
+    ...(p.trackCount ? { count: p.trackCount } : {}),
+  });
+  deps.openFeed({ kind: 'itunes', id });
+}
+
+export interface SearchView extends View {
+  /** Show the browse state with one topic's shows already open. */
+  showTopic(key: LangKey): void;
+}
+
+export function initSearchView(deps: SearchViewDeps): SearchView {
   const el = viewEl('search');
+  const openResult = (p: SearchResult): void => openResultWith(deps, p);
   el.innerHTML = `
     <div class="view-inner search-inner">
       <h1 class="view-title search-title" data-i18n="nav_search">Ara</h1>
       <div class="search-row">
         <input class="text-input search-input" id="searchInput" type="text"
-          placeholder="Podcast adı, Apple Podcasts linki veya RSS adresi..." data-i18n-ph="search_placeholder" />
+          placeholder="Podcast adı, Apple Podcasts linki veya RSS adresi..." data-i18n-ph="search_placeholder"
+          data-i18n-aria="search_label" aria-label="Podcast ara" />
         <button class="btn btn-primary search-btn" id="searchBtn" data-i18n="btn_search">Ara →</button>
       </div>
       <div class="results-list" id="resultsList" aria-live="polite"></div>
@@ -141,7 +161,7 @@ export function initSearchView(deps: SearchViewDeps): View {
             name: p.collectionName,
             author: p.artistName,
             count: `${p.trackCount ?? '?'} ${t('ep_count_unit')}`,
-            onOpen: () => deps.openFeed({ kind: 'itunes', id: String(p.collectionId) }),
+            onOpen: () => openResult(p),
           }),
         );
       }
@@ -271,7 +291,7 @@ export function initSearchView(deps: SearchViewDeps): View {
                 name: p.collectionName,
                 author: p.artistName,
                 count: `${p.trackCount ?? '?'} ${t('ep_count_unit')}`,
-                onOpen: () => deps.openFeed({ kind: 'itunes', id: String(p.collectionId) }),
+                onOpen: () => openResult(p),
               }),
             );
           }
@@ -305,8 +325,14 @@ export function initSearchView(deps: SearchViewDeps): View {
     if (!input.value.trim()) showBrowse();
   });
 
-  const view: View = {
+  const view: SearchView = {
     name: 'search',
+    showTopic(key) {
+      input.value = '';
+      showBrowse();
+      // openTopicNamed toggles, and a second tap on the same chip closes it.
+      if (openTopic !== key) openTopicNamed(key);
+    },
     el,
     /**
      * Coming back from a feed lands on the row that opened it rather than the

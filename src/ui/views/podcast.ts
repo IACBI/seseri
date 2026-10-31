@@ -32,6 +32,9 @@ import { confirmDialog } from '../confirm';
 import { openShowTrim } from '../show-trim';
 import { feedTrimRevision, hasOwnTrim } from '../../state/feed-trim';
 import { toast } from '../toast';
+import { previewFor } from '../feed-preview';
+import { feedIdOf } from '../../feeds/feed-id';
+import { parseShowNotes } from '../../feeds/show-notes';
 
 export interface PodcastViewDeps {
   playback: PlaybackController;
@@ -58,15 +61,19 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
         <div class="p-meta">
           <h1 class="p-title" id="pTitle" tabindex="-1">—</h1>
           <div class="p-author" id="pAuthor"></div>
-          <div class="p-count"><span id="pEpCount">0</span> <span data-i18n="ep_count_unit">bölüm</span></div>
+          <div class="p-count" id="pCount" hidden><span id="pEpCount">0</span> <span data-i18n="ep_count_unit">bölüm</span></div>
         </div>
         <div class="p-header-actions">
-          <button class="icon-btn p-fav" id="favBtn" data-i18n-aria="fav_btn" aria-label="Abonelik ekle/çıkar"><svg class="icon" aria-hidden="true"><use href="#ic-star"/></svg></button>
+          <button class="btn p-fav" id="favBtn" type="button" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#ic-star"/></svg><span id="favLabel">Abone ol</span></button>
           <button class="icon-btn p-trim" id="trimBtn" data-i18n-aria="trim_btn" aria-label="Giriş ve kapanışı atla"><svg class="icon" aria-hidden="true"><use href="#ic-trim"/></svg></button>
           <button class="icon-btn p-share" id="shareBtn" data-i18n-aria="share_btn" aria-label="Linki paylaş"><svg class="icon" aria-hidden="true"><use href="#ic-share"/></svg></button>
         </div>
       </div>
-      <div class="p-status" aria-live="polite">
+      <div class="p-about" id="pAbout" hidden>
+        <p class="p-about-text" id="pAboutText"></p>
+        <button class="p-about-toggle" id="pAboutToggle" type="button" aria-expanded="false" aria-controls="pAboutText" hidden></button>
+      </div>
+      <div class="p-status" id="pStatus" aria-live="polite">
         <span class="dot" id="dot" aria-hidden="true"></span>
         <span class="p-status-text" id="statusText"></span>
       </div>
@@ -76,7 +83,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
           <span data-i18n="btn_sort">Sıra</span>
         </button>
         <span class="p-sort-info" id="sortInfo"></span>
-        <input class="text-input p-filter" id="filterInput" type="text" placeholder="Bölüm ara..." data-i18n-ph="filter_placeholder" />
+        <input class="text-input p-filter" id="filterInput" type="text" placeholder="Bölüm ara..." data-i18n-ph="filter_placeholder" data-i18n-aria="filter_label" aria-label="Bölümlerde ara" />
       </div>
       <div class="p-modes" id="epModes" role="group" data-i18n-aria="filter_group" aria-label="Bölümleri filtrele"></div>
       <div class="ep-list" id="epList" role="list"></div>
@@ -89,7 +96,14 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
   const authorEl = q('pAuthor');
   const thumbEl = q<HTMLImageElement>('pThumb');
   const countEl = q('pEpCount');
+  const countWrap = q('pCount');
   const favBtn = q<HTMLButtonElement>('favBtn');
+  const favLabel = q('favLabel');
+  const aboutEl = q('pAbout');
+  const aboutText = q('pAboutText');
+  const aboutToggle = q<HTMLButtonElement>('pAboutToggle');
+  const statusEl = q('pStatus');
+  const listBar = el.querySelector<HTMLElement>('.p-listbar') as HTMLElement;
   const shareBtn = q<HTMLButtonElement>('shareBtn');
   const trimBtn = q<HTMLButtonElement>('trimBtn');
   const dotEl = q('dot');
@@ -517,12 +531,17 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
   // ── reactive header + status render ──────────────────────────────
   function render(s: PlaybackSession): void {
     const meta = s.meta;
-    titleEl.textContent = meta?.name || '—';
-    authorEl.textContent = meta?.artist || '';
-    const art = artAt(meta?.art, HEADER_ART_PX);
+    const loading = s.status.kind === 'loading';
+    // While the feed loads, the header shows what the screen that opened it
+    // already knew, rather than "—" and "0 episodes".
+    const preview = !meta && s.req ? previewFor(feedIdOf(s.req)) : null;
+    const shown = meta ?? preview;
+    titleEl.textContent = shown?.name || '';
+    authorEl.textContent = shown?.artist || '';
+    const art = artAt(shown?.art, HEADER_ART_PX);
     if (art) {
       thumbEl.src = art;
-      const set = artSrcset(meta?.art, dprWidths(HEADER_ART_PX));
+      const set = artSrcset(shown?.art, dprWidths(HEADER_ART_PX));
       if (set) {
         thumbEl.srcset = set;
         thumbEl.sizes = `${HEADER_ART_PX}px`;
@@ -534,12 +553,27 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
       thumbEl.removeAttribute('src');
     }
     thumbEl.classList.toggle('has-art', !!art);
-    countEl.textContent = String(s.episodes.length);
+    const count = s.episodes.length || (loading ? (preview?.count ?? 0) : 0);
+    countEl.textContent = String(count);
+    countWrap.hidden = count === 0;
     syncFav(!!(meta && isSubscribed(meta.id)));
+    // Nothing to subscribe to, skip in or share until the feed is known.
+    favBtn.disabled = !meta;
+    trimBtn.disabled = !meta;
+    shareBtn.disabled = !meta;
     syncTrim();
+    renderAbout(meta ? s.about : '');
 
     dotEl.className = 'dot ' + s.status.kind;
     statusTextEl.textContent = s.status.message;
+    // A whole list is its own confirmation; the strip is for loading and for a
+    // partial archive. A failure says itself in the list's error box, and the
+    // strip used to repeat it word for word right above it.
+    const failed = s.status.kind === 'error' && !s.episodes.length;
+    statusEl.hidden = (s.status.kind === 'ok' && !s.limited) || failed;
+    // Sorting and filtering an archive that did not load is nothing to offer.
+    listBar.hidden = failed;
+    modesEl.hidden = failed;
 
     sortInfoEl.textContent = s.sortAsc ? t('sort_asc_label') : t('sort_desc_label');
     renderModes(s);
@@ -609,12 +643,46 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
     filterTimer = setTimeout(() => playback.setFilter(value), 200);
   });
 
-  /** Outline star = not subscribed, filled = subscribed; never colour alone. */
+  /**
+   * Subscribing is the page's main action, so it says so in words. A bare star
+   * read as "favourite", and nothing on the page said what it would do.
+   */
   function syncFav(on: boolean): void {
     favBtn.classList.toggle('faved', on);
     favBtn.setAttribute('aria-pressed', String(on));
     favBtn.querySelector('.icon')?.classList.toggle('icon-fill', on);
+    favLabel.textContent = on ? t('sub_on') : t('sub_add');
   }
+
+  // ── the show's description ───────────────────────────────────────
+  let aboutRaw: string | null = null;
+  let aboutOpen = false;
+  /** Clamped to a few lines; the toggle appears only when something is hidden. */
+  function renderAbout(raw: string): void {
+    if (raw === aboutRaw) {
+      syncAboutToggle();
+      return;
+    }
+    aboutRaw = raw;
+    aboutOpen = false;
+    const text = parseShowNotes(raw).paragraphs.join('\n\n');
+    aboutText.textContent = text;
+    aboutEl.hidden = !text;
+    aboutEl.classList.remove('open');
+    // Whether the clamp hides anything is only known once it has been laid out.
+    requestAnimationFrame(syncAboutToggle);
+  }
+  function syncAboutToggle(): void {
+    const clipped = aboutOpen || aboutText.scrollHeight > aboutText.clientHeight + 1;
+    aboutToggle.hidden = aboutEl.hidden || !clipped;
+    aboutToggle.textContent = aboutOpen ? t('p_about_less') : t('p_about_more');
+    aboutToggle.setAttribute('aria-expanded', String(aboutOpen));
+  }
+  aboutToggle.addEventListener('click', () => {
+    aboutOpen = !aboutOpen;
+    aboutEl.classList.toggle('open', aboutOpen);
+    syncAboutToggle();
+  });
 
   favBtn.addEventListener('click', () => {
     const meta = playback.session().meta;

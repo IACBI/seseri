@@ -129,3 +129,47 @@ describe('setSetting throttles the write but not the signal', () => {
     expect(localStorage.getItem('pp_settings')).toBeNull();
   });
 });
+
+describe('the per-show sort default', () => {
+  it('is what a new install starts with', () => {
+    loadSettings();
+    expect(settings().defaultSort).toBe('auto');
+  });
+
+  it('moves a stored oldest-first, which was the old default, once', () => {
+    store({ defaultSort: 'asc' });
+    loadSettings();
+    expect(settings().defaultSort).toBe('auto');
+    expect(JSON.parse(localStorage.getItem('pp_settings') ?? '{}').defaultSort).toBe('auto');
+  });
+
+  it('keeps oldest-first when it is chosen after the move', () => {
+    loadSettings();
+    setSetting('defaultSort', 'asc');
+    saveSettings();
+    loadSettings();
+    expect(settings().defaultSort).toBe('asc');
+  });
+
+  it('writes nothing on a fresh install', () => {
+    // A reset that leaves a key behind is not a reset: the wipe smoke counts them.
+    loadSettings();
+    expect(localStorage.length).toBe(0);
+  });
+
+  it('keeps oldest-first when an older build saved it after the move', () => {
+    // Saved twice by this build, the marker travels with the settings.
+    store({ defaultSort: 'asc' });
+    loadSettings();
+    setSetting('defaultSort', 'asc');
+    saveSettings();
+    loadSettings();
+    expect(settings().defaultSort).toBe('asc');
+  });
+
+  it('never touches a newest-first choice', () => {
+    store({ defaultSort: 'desc' });
+    loadSettings();
+    expect(settings().defaultSort).toBe('desc');
+  });
+});

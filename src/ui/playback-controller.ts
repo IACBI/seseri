@@ -62,7 +62,7 @@ import {
   removeFromQueue,
   type QueueItem,
 } from '../state/queue';
-import { settings, type Settings } from '../state/settings';
+import { settings, type Settings, type SortDir } from '../state/settings';
 import { feedSpeedRevision, speedFor } from '../state/feed-speed';
 import { crossedOutro, startPastIntro, trimFor } from '../state/feed-trim';
 import { refreshSubscription } from '../storage/subscriptions';
@@ -118,6 +118,8 @@ export interface PlaybackSession {
   limited: boolean;
   /** Episodes the source says exist in total, when it says. */
   total?: number;
+  /** The show's own description, raw; '' when the feed gave none. */
+  about: string;
   sortAsc: boolean;
   filter: string;
   /** Which state filter the list is narrowed to. */
@@ -192,6 +194,7 @@ export function emptySession(): PlaybackSession {
     currentTrackId: null,
     limited: false,
     total: 0,
+    about: '',
     sortAsc: true,
     filter: '',
     mode: 'all',
@@ -199,6 +202,11 @@ export function emptySession(): PlaybackSession {
     downloadedIds: new Set(),
     status: { kind: 'idle', message: '' },
   };
+}
+
+/** Whether a show's list opens oldest first, under the user's default order. */
+export function opensOldestFirst(dir: SortDir, serial: boolean | undefined): boolean {
+  return dir === 'auto' ? serial === true : dir === 'asc';
 }
 
 /** Feed order for the list; see `chronological` for how undated feeds sort. */
@@ -340,8 +348,7 @@ export function createPlaybackController(): PlaybackController {
       const eps = resolved.episodes;
       if (!eps.length) throw new Error(t('ep_not_found'));
 
-      const S = settings();
-      const sortAsc = S.defaultSort === 'asc';
+      const sortAsc = opensOldestFirst(settings().defaultSort, resolved.serial);
       const sorted = sortEpisodes(eps, sortAsc);
 
       const live = session();
@@ -356,6 +363,7 @@ export function createPlaybackController(): PlaybackController {
         meta: resolved.meta,
         limited: resolved.limited,
         total: resolved.total ?? 0,
+        about: resolved.about ?? '',
         episodes: sorted,
         filtered,
         hiddenByMode,
@@ -831,10 +839,11 @@ export function createPlaybackController(): PlaybackController {
     const s = session();
     if (s.meta && s.meta.id === item.feedId && fromList(s.meta, s.filtered)) return;
 
-    const sortAsc = settings().defaultSort === 'asc';
+    const dir = settings().defaultSort;
 
     const cached = await getCachedFeed(item.feedId);
-    if (cached && fromList(cached.feed.meta, sortEpisodes(cached.feed.episodes, sortAsc))) {
+    const cachedAsc = opensOldestFirst(dir, cached?.feed.serial);
+    if (cached && fromList(cached.feed.meta, sortEpisodes(cached.feed.episodes, cachedAsc))) {
       return;
     }
 
@@ -843,6 +852,7 @@ export function createPlaybackController(): PlaybackController {
     try {
       const resolved = await resolveFeed(req, {});
       void putCachedFeed(resolved);
+      const sortAsc = opensOldestFirst(dir, resolved.serial);
       if (fromList(resolved.meta, sortEpisodes(resolved.episodes, sortAsc))) return;
     } catch {
       /* reported below */

@@ -4,6 +4,60 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.21 — 2026-10-31
+
+### Changed
+
+- **The waveform is the episode's real sound.** The Now Playing line used to
+  be a random shape seeded by the episode id. It now measures the audio: one
+  short window per bar, spread through the file and decoded on the device, so
+  loud and quiet stretches show where they are. A downloaded episode is read
+  from the device; a streamed one costs under a megabyte of ranged requests,
+  and only when the sheet is open and the "prefetch audio" setting allows a
+  transfer on this connection. Cover art embedded in the file (one real
+  episode carried 5.6 MB of it) is skipped. Audio that cannot be decoded in
+  pieces, such as AAC, keeps a flat line rather than an invented shape.
+  Measurements are kept, so a second visit draws at once.
+- **Each show opens in its own order.** The default sort is now "by podcast":
+  a serial (`<itunes:type>serial`) starts at episode one, everything else at
+  the newest. An oldest-first default saved by an earlier version, which was
+  only the old default, moves to the new one once; choosing oldest-first again
+  sticks. The scanner and the Worker now read the show type and description.
+- **The podcast page.** The header shows what the screen that opened it
+  already knew (name, artwork, episode count) while the feed loads, instead of
+  "—" and "0 episodes". Subscribe is a labelled button ("Subscribe" /
+  "Subscribed") rather than a bare star. The show's description sits under the
+  header, three lines with "Show more". The status strip only appears when it
+  has something to say.
+- **Episode rows on phones.** The title takes the full width and the actions
+  sit on the date line, so titles are no longer two clipped lines of three
+  words.
+- **Home always offers a way in.** Until something is subscribed, Home shows a
+  search button and the topic chips; a topic opens Search on that topic.
+- **Copy.** Turkish uses one word for a show ("podcast"), "Başlıklar" for
+  chapters, and error messages say what to do next. English uses sentence
+  case. New strings are translated into all eight languages.
+
+### Fixed
+
+- **Elements marked hidden stay hidden.** Any CSS rule that set `display` beat
+  the browser's own `[hidden]` rule, so the Library showed the Downloads panel
+  under Subscriptions, and an unpaired device showed "Sync now" and "Delete
+  server data". Fixed once for the whole app; the shell and sync smokes check
+  every view.
+- Disabled buttons look disabled.
+
+### Accessibility
+
+- Search, filter and sync-code fields are labelled; settings selects name
+  their row and description; settings and Home sections are headings.
+- A Library row is one button plus the star, instead of a button inside a
+  button.
+- Chapter and transcript lists mark the current item; skip buttons say how
+  many seconds they skip; the sleep timer's "+5" is labelled.
+- Removing from the queue keeps keyboard focus in the list; the language menu
+  closes when focus leaves it; error toasts are announced.
+
 ## 4.2.20 — 2026-10-31
 
 ### Fixed

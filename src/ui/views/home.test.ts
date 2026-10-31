@@ -44,6 +44,7 @@ beforeEach(async () => {
     resumeFeed: () => undefined,
     playEpisode,
     checkForNew: async () => undefined,
+    openSearch: () => undefined,
   });
   view.refresh();
   await settle();

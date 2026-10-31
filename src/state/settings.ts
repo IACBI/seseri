@@ -4,7 +4,8 @@ import { local } from '../storage/local';
 import { signal } from './signals';
 
 export type ThemeName = 'auto' | 'dark' | 'light' | 'oled';
-export type SortDir = 'asc' | 'desc';
+/** `auto` follows the show: a serial from its first episode, anything else newest first. */
+export type SortDir = 'auto' | 'asc' | 'desc';
 export type PrefetchMode = 'always' | 'wifi' | 'never';
 
 /** User settings — persisted under the legacy `pp_settings` key (same shape). */
@@ -80,7 +81,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fontSize: '13px',
   rowHeight: '54px',
   theme: 'auto',
-  defaultSort: 'asc',
+  defaultSort: 'auto',
   showDl: true,
   accentColor: '#f2a33c',
   lang: 'tr',
@@ -107,7 +108,7 @@ const ALLOWED: Partial<Record<keyof Settings, ReadonlySet<unknown>>> = {
   fontSize: new Set(['11px', '13px', '15px', '17px']),
   rowHeight: new Set(['42px', '54px', '66px']),
   theme: new Set(['auto', 'dark', 'light', 'oled']),
-  defaultSort: new Set(['asc', 'desc']),
+  defaultSort: new Set(['auto', 'asc', 'desc']),
   prefetchAudio: new Set(['always', 'wifi', 'never']),
   autoDownload: new Set(['always', 'wifi', 'never']),
 };
@@ -125,6 +126,9 @@ function acceptable<K extends keyof Settings>(key: K, value: unknown): boolean {
 }
 
 export const settings = signal<Settings>({ ...DEFAULT_SETTINGS });
+
+/** Set once the one-time `asc` → `auto` move has run (see loadSettings). */
+const SORT_AUTO_KEY = 'pp_sort_auto';
 
 export function loadSettings(): void {
   const raw = local.get<unknown>('pp_settings', null);
@@ -148,10 +152,27 @@ export function loadSettings(): void {
   if (!saved || !('lang' in saved) || !isLangCode(String(next.lang))) {
     next.lang = detectLang();
   }
+  // `asc` was the default until `auto` existed, and the whole object is saved,
+  // so a stored `asc` almost always means "never touched". Moved to `auto`
+  // once; after that an `asc` is somebody's choice and stays. The marker is
+  // written with every save (see `persist`), so settings saved under `auto`
+  // are never mistaken for old ones, and a fresh install writes nothing.
+  if (saved && !local.get<boolean>(SORT_AUTO_KEY, false)) {
+    if (next.defaultSort === 'asc') {
+      next.defaultSort = 'auto';
+      rejected = true;
+    }
+    local.set(SORT_AUTO_KEY, true);
+  }
   settings.set(next);
   // Write the sanitised set back, so a rejected value does not sit in storage
   // being re-rejected on every load.
-  if (rejected) local.set('pp_settings', next);
+  if (rejected) persist(next);
+}
+
+function persist(value: Settings): void {
+  local.set('pp_settings', value);
+  local.set(SORT_AUTO_KEY, true);
 }
 
 /**
@@ -173,14 +194,14 @@ export function saveSettings(): void {
     clearTimeout(saveTimer);
     saveTimer = null;
   }
-  local.set('pp_settings', settings());
+  persist(settings());
 }
 
 function scheduleSave(): void {
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    local.set('pp_settings', settings());
+    persist(settings());
   }, SAVE_DELAY_MS);
 }
 

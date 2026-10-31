@@ -136,6 +136,18 @@ async function attach(page) {
 }
 
 const store = (page, key) => page.evaluate((k) => localStorage.getItem(k), key);
+
+/**
+ * Start episode 111 by its title. "The first row" was 111 only while
+ * oldest-first was the default; a show now opens newest-first.
+ */
+const playFirstEpisode = (page) =>
+  page.evaluate((name) => {
+    const row = [...document.querySelectorAll('.ep-item')].find(
+      (r) => r.querySelector('.ep-name')?.textContent === name,
+    );
+    row.querySelector('.ep-open').click();
+  }, LOOKUP.results[1].trackName);
 const progOf = async (page, id) => {
   const raw = await store(page, 'pp_prog');
   return raw ? (JSON.parse(raw)[id] ?? null) : null;
@@ -229,7 +241,7 @@ async function scrubSeconds(page, minSeconds = 0) {
     await a.waitForSelector('.ep-item', { timeout: 20000 });
     await a.click('#favBtn');
     const subscribedAt = Date.now();
-    await a.click('.ep-item');
+    await playFirstEpisode(a);
     await a.waitForFunction(() => document.body.classList.contains('is-playing'), { timeout: 15000 });
     /**
      * Frontmost first. Two pages exist, so whichever was created last is the
@@ -246,6 +258,14 @@ async function scrubSeconds(page, minSeconds = 0) {
 
     await openSettings(a);
     ok('sync section is available', await a.$('#s_syncSection') !== null);
+    // An unpaired device offers only "start" and "link". The paired-only
+    // controls are `hidden`, and a `display` rule once overrode that and showed
+    // "Delete server data" to a device that had nothing on the server.
+    const unpaired = await a.evaluate(() =>
+      ['syncCodeRow', 'btnSyncNow', 'btnSyncCopy', 'btnSyncUnlink', 'btnSyncForget']
+        .filter((id) => document.getElementById(id)?.checkVisibility()),
+    );
+    ok('an unpaired device shows no paired-only controls', unpaired.length === 0, unpaired.join(','));
 
     await a.click('#btnSyncStart');
     await a.waitForFunction(() => /\S/.test(document.getElementById('syncCode')?.textContent || ''), { timeout: 10000 });
@@ -283,7 +303,7 @@ async function scrubSeconds(page, minSeconds = 0) {
     // reads the in-memory progress map, and a cycle still in flight is about to
     // rewrite it.
     await new Promise((r) => setTimeout(r, 2500));
-    await b.click('.ep-item');
+    await playFirstEpisode(b);
     await b.waitForFunction(() => document.body.classList.contains('is-playing'), { timeout: 15000 });
     const beforeClick = await progOf(b, '111');
     await new Promise((r) => setTimeout(r, 2500));

@@ -1,26 +1,17 @@
 import { fmtTime } from '../lib/format';
 import { scrubFraction, seekDirection } from '../lib/scrub';
 import { pbCurrent, pbDuration, pbSeekTo } from '../player/engine';
+import { PEAK_BARS } from '../player/peaks';
 
-const WAVE_BARS = 56;
-
-/** Deterministic PRNG (mulberry32 + string hash) — each episode gets a stable,
- * real-looking amplitude waveform without audio analysis. */
-function waveSeed(str: string): () => number {
-  let hSeed = 1779033703 ^ str.length;
-  for (let i = 0; i < str.length; i++) {
-    hSeed = Math.imul(hSeed ^ str.charCodeAt(i), 3432918353);
-    hSeed = (hSeed << 13) | (hSeed >>> 19);
-  }
-  return () => {
-    hSeed = Math.imul(hSeed ^ (hSeed >>> 16), 2246822507);
-    hSeed = Math.imul(hSeed ^ (hSeed >>> 13), 3266489909);
-    return ((hSeed ^= hSeed >>> 16) >>> 0) / 4294967296;
-  };
-}
+const WAVE_BARS = PEAK_BARS;
+/** Bar height while the episode's loudness is unknown: a level line, not a guess. */
+const FLAT = 0.14;
 
 export interface WaveformController {
+  /** Start a new episode's line, flat until `setPeaks` measures it. */
   build(id: string): void;
+  /** Real bar heights (0–1) for `id`; ignored if another episode is up by now. */
+  setPeaks(id: string, peaks: readonly number[]): void;
   setProgress(pct: number): void;
   isScrubbing(): boolean;
 }
@@ -40,24 +31,32 @@ export function initWaveform(
   const { wrap, base, fill, head, tip } = els;
   let scrubbing = false;
 
-  function build(id: string): void {
-    base.replaceChildren();
-    fill.replaceChildren();
-    const mk = () => {
+  let current = '';
+
+  function draw(heights: readonly number[]): void {
+    const mk = (): DocumentFragment => {
       const frag = document.createDocumentFragment();
-      const rand2 = waveSeed(String(id || 'seseri')); // same sequence for both layers
       for (let i = 0; i < WAVE_BARS; i++) {
-        const t = i / (WAVE_BARS - 1);
-        const swell = 0.4 + 0.6 * Math.abs(Math.sin(t * Math.PI + rand2() * 0.5));
-        const hgt = Math.max(0.14, Math.min(1, swell * (0.5 + rand2() * 0.75)));
         const bar = document.createElement('i');
-        bar.style.height = (hgt * 100).toFixed(1) + '%';
+        bar.style.height = (Math.max(0, Math.min(1, heights[i] ?? FLAT)) * 100).toFixed(1) + '%';
         frag.appendChild(bar);
       }
       return frag;
     };
-    base.appendChild(mk());
-    fill.appendChild(mk());
+    base.replaceChildren(mk());
+    fill.replaceChildren(mk());
+  }
+
+  function build(id: string): void {
+    current = id;
+    wrap.classList.remove('measured');
+    draw([]);
+  }
+
+  function setPeaks(id: string, peaks: readonly number[]): void {
+    if (id !== current || peaks.length !== WAVE_BARS) return;
+    wrap.classList.add('measured');
+    draw(peaks);
   }
 
   function setProgress(pctIn: number): void {
@@ -161,5 +160,5 @@ export function initWaveform(
     }
   });
 
-  return { build, setProgress, isScrubbing: () => scrubbing };
+  return { build, setPeaks, setProgress, isScrubbing: () => scrubbing };
 }

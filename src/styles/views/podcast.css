@@ -81,16 +81,66 @@
   flex-shrink: 0;
   align-self: start;
 }
+/* Subscribe is a labelled button, the one primary action in the header: filled
+   with the accent until pressed, then a quiet "subscribed" with a solid star. */
+.p-fav {
+  background: var(--accent-grad);
+  border-color: transparent;
+  color: var(--accent-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.p-fav:hover { background: var(--accent-grad); filter: brightness(1.06); }
+.p-fav .icon { inline-size: 16px; block-size: 16px; }
 .p-fav.faved {
+  background: var(--surface);
+  border-color: var(--border-ui);
   color: var(--accent-ink);
 }
+.p-fav.faved:hover { background: var(--surface2); filter: none; }
+
+/* ── the show's description ─────────────────────────────────────── */
+.p-about {
+  margin-block-end: var(--s-4);
+  max-inline-size: 68ch;
+}
+.p-about-text {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text2);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.p-about.open .p-about-text {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: none;
+}
+.p-about-toggle {
+  min-block-size: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.p-about-toggle:hover { text-decoration: underline; }
 /* At 320px the back button, the artwork and the two actions left the title
    about 48px, so most words did not fit and were cut mid-letter. The actions
    take their own line under the header instead. A third action (the intro and
    outro skip) cost the title another 44px, so the line now breaks wherever the
-   title would get less than the ~88px it had at 360px with two: measured, that
-   is every width below 404px. */
-@media (max-width: 403px) {
+   title would get less than the ~88px it had at 360px with two. Subscribe then
+   became a labelled button, wide enough that the title lost out below 560px,
+   so the line breaks at the same width as the episode rows. */
+@media (max-width: 559px) {
   .p-header { grid-template-columns: auto auto 1fr; }
   .p-header-actions { grid-column: 1 / -1; justify-self: end; }
 }
@@ -359,11 +409,43 @@ body:not(.is-playing) .ep-eq i {
   gap: var(--s-2);
   flex-shrink: 0;
 }
-/* At 320px three 44px actions plus their gaps leave the title column 68px, one
-   pixel run short of a 10-character date. Each icon keeps 26px of air without
-   the gap. */
-@media (max-width: 359px) {
-  .ep-actions { gap: 0; }
+/* On a phone the actions beside the title left it ~100px at 375px, so every
+   title was two clipped lines of three words. The title takes the whole row
+   instead, and the actions sit on the date line's right, which is short and
+   has the room. The number goes: the active row is marked by its colour.
+   `.ep-open` spans both grid rows and the actions are painted over its corner,
+   so the date line reserves their width and height rather than running under
+   them. */
+@media (max-width: 559px) {
+  .ep-item {
+    grid-template-rows: auto auto;
+    gap: 0;
+    padding-block: var(--s-2) 0;
+    contain-intrinsic-size: auto calc(var(--list-row-height) + 32px);
+  }
+  .ep-open {
+    grid-column: 1 / -1;
+    grid-row: 1 / 3;
+    grid-template-columns: 1fr;
+    padding-inline-start: var(--s-1);
+  }
+  .ep-num { display: none; }
+  .ep-date-dur {
+    min-block-size: 44px;
+    margin-block-start: 0;
+    /* A badge wraps to a second line here; centred as a block and padded, it
+       stays clear of the divider and the progress hairline under it. */
+    align-content: center;
+    padding-block: var(--s-1);
+    padding-inline-end: calc(3 * 44px + var(--s-3));
+  }
+  .ep-actions {
+    grid-column: 2;
+    grid-row: 2;
+    gap: 0;
+  }
+  .ep-dl-btn { margin-inline-start: 0; }
+  .ep-progress { inset-block-end: 1px; }
 }
 .ep-act {
   min-inline-size: 44px;

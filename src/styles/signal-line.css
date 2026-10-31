@@ -143,6 +143,10 @@
    main thread each frame. Paused, they cost nothing and resume in place. */
 .np-sheet:not(.open) .np-player.playing .signal-base i,
 .np-sheet:not(.open) .np-player.playing .signal-fill i { animation-play-state: paused; }
+/* Measured bars are the episode's real loudness; a pulse scaling them would
+   misreport it. The shimmer is for the flat line that has nothing to show yet. */
+.np-player .signal-scrub.measured .signal-base i:nth-child(n),
+.np-player .signal-scrub.measured .signal-fill i:nth-child(n) { animation: none; }
 
 /* ═══════════════════════ Mini transport dock ══════════════════════ */
 /* layout.css fixes the .mini-player position; the look lives here.

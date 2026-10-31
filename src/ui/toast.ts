@@ -26,6 +26,9 @@ export function initToast(): void {
 /** Non-blocking notification — replaces legacy alert(). */
 export function toast(message: string, kind: 'info' | 'error' = 'info', ms = 3500): void {
   const el = h('div', { className: `toast toast-${kind}` }, message);
+  // An error interrupts whatever is being read; the host's polite region would
+  // wait for a pause.
+  if (kind === 'error') el.setAttribute('role', 'alert');
   ensureHost().appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => {

@@ -270,6 +270,21 @@ const es: Lang = {
   topic_comedy: "Humor",
   topic_sport: "Deporte",
   topic_health: "Salud",
+  sub_add: "Suscribirse",
+  sub_on: "Suscrito",
+  home_empty_cta: "Buscar un podcast",
+  sort_auto: "Por programa (recomendado)",
+  sort_auto_sub: "Las series empiezan desde el principio y el resto por la más reciente",
+  unit_sec: (n) => `${n} s`,
+  skip_back_n: (n) => `Retroceder ${n} segundos`,
+  skip_fwd_n: (n) => `Avanzar ${n} segundos`,
+  sleep_extend: "Añadir 5 minutos",
+  p_about_more: "Mostrar más",
+  p_about_less: "Mostrar menos",
+  search_label: "Buscar podcasts",
+  filter_label: "Buscar episodios",
+  sync_code_label: "Código de vinculación",
+  wave_label: "Forma de onda de audio",
 };
 
 export default es;

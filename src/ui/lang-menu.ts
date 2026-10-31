@@ -83,6 +83,17 @@ export function createLangMenu(opts: { compact?: boolean } = {}): HTMLElement {
   }
 
   trigger.addEventListener('click', () => (isOpen() ? close() : open()));
+  // Tabbing away is leaving the menu: the list must not stay open over the
+  // page the focus has moved to. Tab is handled here too, so it closes even
+  // when the next stop is still inside the menu.
+  root.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') close();
+  });
+  root.addEventListener('focusout', (e) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && root.contains(next)) return;
+    close();
+  });
   pop.addEventListener('keydown', (e) => {
     const opts_ = [...pop.querySelectorAll<HTMLElement>('.lang-menu-opt')];
     const i = opts_.indexOf(document.activeElement as HTMLElement);

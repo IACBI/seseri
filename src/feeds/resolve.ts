@@ -18,6 +18,16 @@ interface FeedContents {
   notesDeferred: boolean;
   /** Episodes the feed contains; more than `episodes.length` when partial. */
   total: number;
+  about?: string;
+  serial?: boolean;
+}
+
+/** The show-level extras, checked: the Worker's JSON is input like any other. */
+function showExtras(about: unknown, serial: unknown): Pick<FeedContents, 'about' | 'serial'> {
+  return {
+    ...(typeof about === 'string' && about ? { about } : {}),
+    ...(serial === true ? { serial: true } : {}),
+  };
 }
 
 /**
@@ -33,8 +43,12 @@ interface FeedContents {
 async function loadFeedUrl(url: string, opts: ResolveOptions): Promise<FeedContents> {
   const parsedByWorker = await fetchParsedFeed(url, opts.signal);
   if (parsedByWorker) {
+    const { name, artist, art, about, serial } = parsedByWorker.meta;
     return {
-      ...parsedByWorker.meta,
+      name,
+      artist,
+      art,
+      ...showExtras(about, serial),
       episodes: parsedByWorker.episodes,
       notesDeferred: true,
       total: Math.max(parsedByWorker.total, parsedByWorker.episodes.length),
@@ -46,6 +60,7 @@ async function loadFeedUrl(url: string, opts: ResolveOptions): Promise<FeedConte
     name: parsed.title,
     artist: parsed.author,
     art: parsed.art,
+    ...showExtras(parsed.about, parsed.serial),
     episodes: parsed.episodes,
     notesDeferred: false,
     total: parsed.episodes.length,
@@ -98,6 +113,7 @@ async function withFullArchive(
     limited: archive.total > archive.episodes.length,
     total: archive.total,
     ...(archive.notesDeferred ? { notesDeferred: true } : {}),
+    ...showExtras(archive.about, archive.serial),
   };
 }
 
@@ -125,6 +141,7 @@ export async function resolveFeed(req: FeedRequest, opts: ResolveOptions): Promi
         limited: contents.total > contents.episodes.length,
         ...(contents.total > contents.episodes.length ? { total: contents.total } : {}),
         ...(contents.notesDeferred ? { notesDeferred: true } : {}),
+        ...showExtras(contents.about, contents.serial),
       };
     }
   }

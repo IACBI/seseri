@@ -270,6 +270,21 @@ const ja: Lang = {
   topic_comedy: "コメディ",
   topic_sport: "スポーツ",
   topic_health: "健康",
+  sub_add: "購読する",
+  sub_on: "購読中",
+  home_empty_cta: "番組を探す",
+  sort_auto: "番組ごと（おすすめ）",
+  sort_auto_sub: "シリーズは最初から、その他は新しいものから",
+  unit_sec: (n) => `${n}秒`,
+  skip_back_n: (n) => `${n}秒戻る`,
+  skip_fwd_n: (n) => `${n}秒進む`,
+  sleep_extend: "5分延長",
+  p_about_more: "もっと見る",
+  p_about_less: "閉じる",
+  search_label: "番組を検索",
+  filter_label: "エピソードを検索",
+  sync_code_label: "ペアリングコード",
+  wave_label: "音声の波形",
 };
 
 export default ja;

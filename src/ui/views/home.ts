@@ -26,6 +26,9 @@ import {
   type ContinueItem,
 } from '../data/continue-listening';
 import { requestFromFeedId } from '../../feeds/feed-id';
+import { TOPIC_KEYS } from '../../feeds/topics';
+import type { LangKey } from '../../i18n/types';
+import { rememberPreview } from '../feed-preview';
 
 export interface HomeViewDeps {
   openFeed(req: FeedRequest): void;
@@ -35,6 +38,8 @@ export interface HomeViewDeps {
   playEpisode(req: FeedRequest, trackId: string): void;
   /** Re-check the subscriptions now. Resolves when the sweep is done. */
   checkForNew(): Promise<void>;
+  /** Go to Search, with one topic's shows open when one is given. */
+  openSearch(topic?: LangKey): void;
 }
 
 export interface HomeView extends View {
@@ -81,8 +86,50 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
     });
   }
 
+  /** A heading, so a screen reader can jump between Home's sections. */
   function sectionLabel(key: 'home_continue' | 'favs_title' | 'home_new'): HTMLElement {
-    return h('div', { className: 'search-hint', dataset: { i18n: key } }, t(key));
+    return h('h2', { className: 'search-hint', dataset: { i18n: key } }, t(key));
+  }
+
+  /**
+   * A first visit used to be two lines of grey text and nothing to press. It
+   * now offers the two ways in: a search, and the same topics Search starts
+   * with, one tap from a list of shows.
+   *
+   * It stays while nothing is followed, not only while nothing has been heard:
+   * one episode played from a search left Home as a single resume row and no
+   * way to find a second show. `fresh` is whether the "nothing yet" line is
+   * still true.
+   */
+  function firstRun(fresh: boolean): HTMLElement {
+    const topics = h('div', { className: 'topic-row home-topics', attrs: { role: 'group' } });
+    for (const key of TOPIC_KEYS) {
+      topics.append(
+        h(
+          'button',
+          { className: 'p-mode topic-chip', type: 'button', on: { click: () => deps.openSearch(key) } },
+          t(key),
+        ),
+      );
+    }
+    return h(
+      'div',
+      { className: 'empty-state home-first-run' },
+      fresh ? h('h2', { className: 'home-first-title' }, t('home_empty')) : null,
+      fresh ? h('p', { className: 'empty-state-hint' }, t('home_empty_hint')) : null,
+      h(
+        'button',
+        {
+          className: 'btn btn-primary home-first-cta',
+          type: 'button',
+          on: { click: () => deps.openSearch() },
+        },
+        icon('ic-search'),
+        h('span', {}, t('home_empty_cta')),
+      ),
+      h('div', { className: 'search-hint' }, t('sec_browse')),
+      topics,
+    );
   }
 
   /**
@@ -198,7 +245,10 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
       artTile('home-sub-art', sub.art, SUB_TILE_PX),
       h('div', { className: 'home-sub-name' }, sub.name || sub.artist || '—'),
     );
-    activate(tile, () => deps.openFeed(req));
+    activate(tile, () => {
+      rememberPreview(sub.id, { name: sub.name, artist: sub.artist, art: sub.art });
+      deps.openFeed(req);
+    });
     return tile;
   }
 
@@ -248,20 +298,7 @@ export function initHomeView(deps: HomeViewDeps): HomeView {
       nodes.push(grid);
     }
 
-    if (!items.length && !subs.length) {
-      nodes.push(
-        h(
-          'div',
-          { className: 'empty-state' },
-          h('div', { dataset: { i18n: 'home_empty' } }, t('home_empty')),
-          h(
-            'div',
-            { className: 'empty-state-hint', dataset: { i18n: 'home_empty_hint' } },
-            t('home_empty_hint'),
-          ),
-        ),
-      );
-    }
+    if (!subs.length) nodes.push(firstRun(!items.length));
 
     sectionsEl.replaceChildren(...nodes);
   }

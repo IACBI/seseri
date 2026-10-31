@@ -44,6 +44,8 @@ import type { PlaybackController } from '../playback-controller';
 import { modalOpen } from '../modal';
 import { must } from '../shell';
 import { initWaveform, type WaveformController } from '../waveform';
+import { loadPeaks, type PeaksSource } from '../../player/peaks';
+import { transferAllowed } from '../../player/connection';
 
 export interface NowPlayingDeps {
   playback: PlaybackController;
@@ -99,9 +101,9 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
 
         <div class="np-transport">
           <button class="icon-btn np-tp" id="btnPrev" data-i18n-aria="btn_prev" aria-label="Önceki"><svg class="icon icon-flip" aria-hidden="true"><use href="#ic-prev"/></svg></button>
-          <button class="icon-btn np-tp" id="btnSkipBack" data-i18n-aria="s_skip_back" aria-label="Geri Atla"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-rewind"/><text class="skip-n" id="lblSkipBack" x="12" y="12" text-anchor="middle" dominant-baseline="central">15</text></svg></button>
+          <button class="icon-btn np-tp" id="btnSkipBack"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-rewind"/><text class="skip-n" id="lblSkipBack" x="12" y="12" text-anchor="middle" dominant-baseline="central">15</text></svg></button>
           <button class="np-play" id="btnPlay" data-i18n-aria="play" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
-          <button class="icon-btn np-tp" id="btnSkipFwd" data-i18n-aria="s_skip_fwd" aria-label="İleri Atla"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-forward"/><text class="skip-n" id="lblSkipFwd" x="12" y="12" text-anchor="middle" dominant-baseline="central">30</text></svg></button>
+          <button class="icon-btn np-tp" id="btnSkipFwd"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-forward"/><text class="skip-n" id="lblSkipFwd" x="12" y="12" text-anchor="middle" dominant-baseline="central">30</text></svg></button>
           <button class="icon-btn np-tp" id="btnNext" data-i18n-aria="btn_next" aria-label="Sonraki"><svg class="icon icon-flip" aria-hidden="true"><use href="#ic-next"/></svg></button>
         </div>
 
@@ -115,8 +117,8 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
             <span class="np-sec-cap" aria-hidden="true"><svg class="icon"><use href="#ic-moon"/></svg><span data-i18n="sleep_short">Uyku</span></span>
             <span class="np-sec-row">
               <select class="seri-select np-sel" id="sleepSel" data-i18n-aria="sleep_timer" aria-label="Uyku zamanlayıcısı (dk)"></select>
-              <span class="np-sleep-left mono" id="sleepLeft" data-i18n-aria="sleep_remaining" aria-label="Kalan uyku süresi" aria-live="off" hidden></span>
-              <button class="np-sleep-plus" id="sleepPlus" type="button" title="+5" hidden>+5</button>
+              <span class="np-sleep-left mono" id="sleepLeft" role="timer" data-i18n-aria="sleep_remaining" aria-label="Kalan uyku süresi" hidden></span>
+              <button class="np-sleep-plus" id="sleepPlus" type="button" hidden>+5</button>
             </span>
           </div>
           <div class="np-sec-ctl">
@@ -130,12 +132,12 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
 
         <details class="np-notes np-chapters" id="npChapters" hidden>
           <summary class="np-notes-toggle" id="npChaptersToggle">Bölüm işaretleri</summary>
-          <div class="np-chapter-list" id="npChapterList" role="list"></div>
+          <div class="np-chapter-list" id="npChapterList"></div>
         </details>
 
         <details class="np-notes np-transcript" id="npTranscript" hidden>
           <summary class="np-notes-toggle" data-i18n="np_transcript">Konuşma metni</summary>
-          <div class="np-transcript-body" id="npTranscriptBody" role="list"></div>
+          <div class="np-transcript-body" id="npTranscriptBody"></div>
         </details>
 
         <details class="np-notes" id="npNotes" hidden>
@@ -368,7 +370,7 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
         {
           className: 'np-chapter',
           type: 'button',
-          attrs: { role: 'listitem', 'aria-label': t('chapter_jump', title, time) },
+          attrs: { 'aria-label': t('chapter_jump', title, time) },
           on: {
             click: () => {
               pbSeekTo(chapter.startTime);
@@ -420,7 +422,9 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   function markChapter(index: number): void {
     if (index === activeChapter) return;
     chapterRows[activeChapter]?.classList.remove('active');
+    chapterRows[activeChapter]?.removeAttribute('aria-current');
     chapterRows[index]?.classList.add('active');
+    chapterRows[index]?.setAttribute('aria-current', 'true');
     activeChapter = index;
   }
 
@@ -432,7 +436,6 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
         {
           className: 'np-cue',
           type: 'button',
-          attrs: { role: 'listitem' },
           on: {
             click: () => {
               pbSeekTo(cue.start);
@@ -453,9 +456,11 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   function markCue(index: number): void {
     if (index === activeCue) return;
     cueRows[activeCue]?.classList.remove('active');
+    cueRows[activeCue]?.removeAttribute('aria-current');
     const row = cueRows[index];
     if (row) {
       row.classList.add('active');
+      row.setAttribute('aria-current', 'true');
       // Only while the panel is open: scrolling a collapsed container is
       // wasted work, and `scrollIntoView` on a hidden element can move the
       // page instead.
@@ -510,6 +515,32 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
 
   // ── playing session → title, waveform, nav buttons, notes ───────
   let lastTrackId: string | null | undefined;
+  /**
+   * The waveform is measured from the audio only once someone looks at it:
+   * sampling costs up to a megabyte, and a listener who never opens the sheet
+   * should not pay it for every episode they play.
+   */
+  let waveSrc: PeaksSource | null = null;
+  let peaksFor = '';
+  let peaksLoad: AbortController | null = null;
+  function measureWave(): void {
+    const src = waveSrc;
+    if (!src || peaksFor === src.id) return;
+    peaksFor = src.id;
+    peaksLoad?.abort();
+    const ctrl = new AbortController();
+    peaksLoad = ctrl;
+    void loadPeaks(src, {
+      signal: ctrl.signal,
+      allowNetwork: transferAllowed(settings().prefetchAudio),
+    })
+      .then((peaks) => {
+        if (peaks && !ctrl.signal.aborted) wave.setPeaks(src.id, peaks);
+      })
+      .catch(() => {
+        /* the line stays flat: nothing measured is better than a guess */
+      });
+  }
   function applyPlaying(s: PlayingSession | null): void {
     const label = nowPlayingLabel(s);
     const ep = s ? s.episodes[s.index] : undefined;
@@ -521,6 +552,11 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
       lastTrackId = trackId;
       wave.build(trackId || 'seseri');
       wave.setProgress(0);
+      peaksLoad?.abort();
+      peaksLoad = null;
+      peaksFor = '';
+      waveSrc = trackId && ep?.episodeUrl ? { id: trackId, url: ep.episodeUrl } : null;
+      if (isOpen()) measureWave();
       if (!s) {
         elTCur.textContent = '0:00';
         elTTot.textContent = '0:00';
@@ -748,6 +784,7 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
   function applySettings(s: Settings): void {
     lblSkipBack.textContent = String(s.skipBack);
     lblSkipFwd.textContent = String(s.skipForward);
+    applySkipLabels(s);
     refreshSpeed();
     // Toggling the preference takes effect without waiting for a track change.
     updateAmbient(s.ambientArt ? httpsOnly(nowPlayingLabel(playing())?.art) : '');
@@ -758,13 +795,30 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
     speedSel.value = String(speedFor(feedId));
     speedSel.classList.toggle('has-own', hasOwnSpeed(feedId));
   }
+  /** The skip buttons say how far they go, not just which way. */
+  function applySkipLabels(s: Settings): void {
+    btnSkipBack.setAttribute('aria-label', t('skip_back_n', s.skipBack));
+    btnSkipFwd.setAttribute('aria-label', t('skip_fwd_n', s.skipForward));
+  }
   settings.subscribe(applySettings);
   feedSpeedRevision.subscribe(refreshSpeed);
   applySettings(settings());
 
+  // Set from script, not data-i18n-aria: the sheet's title and the "+5" text are
+  // both the same action, so the label and the tooltip carry one string.
+  const sleepPlus = must<HTMLButtonElement>('sleepPlus');
+  function applySleepPlusLabel(): void {
+    const label = t('sleep_extend');
+    sleepPlus.setAttribute('aria-label', label);
+    sleepPlus.title = label;
+  }
+  applySleepPlusLabel();
+
   // ── language → dynamic labels ────────────────────────────────────
   currentLang.subscribe(() => {
     setPlayIcon(iconShowsPlaying);
+    applySkipLabels(settings());
+    applySleepPlusLabel();
     // The sleep control relabels itself (sleep-control.ts). The title can be a
     // localized "Episode N" placeholder, so re-derive it too.
     applyPlaying(playing());
@@ -803,6 +857,7 @@ export function initNowPlaying(deps: NowPlayingDeps): NowPlayingSheet {
     elTCur.textContent = fmtTime(cur);
     elTTot.textContent = fmtTime(dur);
     if (!wave.isScrubbing()) wave.setProgress(dur ? (cur / dur) * 100 : 0);
+    measureWave();
     el.inert = false;
     el.setAttribute('aria-modal', 'true');
     el.classList.add('open');

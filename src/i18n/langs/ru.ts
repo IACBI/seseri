@@ -286,6 +286,21 @@ const ru: Lang = {
   topic_comedy: "Юмор",
   topic_sport: "Спорт",
   topic_health: "Здоровье",
+  sub_add: "Подписаться",
+  sub_on: "Подписано",
+  home_empty_cta: "Найти подкаст",
+  sort_auto: "По подкасту (рекомендуется)",
+  sort_auto_sub: "Сериалы начинаются с начала, остальные — с новых",
+  unit_sec: (n) => `${n} с`,
+  skip_back_n: (n) => `Назад на ${n} с`,
+  skip_fwd_n: (n) => `Вперёд на ${n} с`,
+  sleep_extend: "Добавить 5 минут",
+  p_about_more: "Показать больше",
+  p_about_less: "Показать меньше",
+  search_label: "Поиск подкастов",
+  filter_label: "Поиск по выпускам",
+  sync_code_label: "Код сопряжения",
+  wave_label: "Звуковая волна",
 };
 
 export default ru;

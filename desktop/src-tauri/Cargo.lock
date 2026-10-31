@@ -2948,7 +2948,7 @@ dependencies = [
 
 [[package]]
 name = "seseri"
-version = "4.2.20"
+version = "4.2.21"
 dependencies = [
  "log",
  "tauri",

@@ -8,7 +8,7 @@ import { initMarquee } from './marquee';
 import { initSleepControl } from './sleep-control';
 import { initVolumeControl } from './volume-control';
 import { nowPlayingLabel, playing } from '../player/session';
-import { setSetting, settings } from '../state/settings';
+import { setSetting, settings, type Settings } from '../state/settings';
 import { SPEEDS, feedSpeedRevision, hasOwnSpeed, setFeedSpeed, speedFor } from '../state/feed-speed';
 import type { PlaybackController } from './playback-controller';
 import { must } from './shell';
@@ -153,14 +153,20 @@ export function initMiniPlayer(deps: { playback: PlaybackController; onOpen: () 
     speedSel.classList.toggle('has-own', hasOwnSpeed(feedId));
   };
 
-  settings.subscribe((S) => {
+  // Same labels as the sheet's skip buttons: the amount, not just the direction.
+  function applySkipLabels(S: Settings): void {
     lblBack.textContent = String(S.skipBack);
     lblFwd.textContent = String(S.skipForward);
+    btnBack.setAttribute('aria-label', t('skip_back_n', S.skipBack));
+    btnFwd.setAttribute('aria-label', t('skip_fwd_n', S.skipForward));
+  }
+  settings.subscribe((S) => {
+    applySkipLabels(S);
     refreshSpeed();
   });
+  currentLang.subscribe(() => applySkipLabels(settings()));
   feedSpeedRevision.subscribe(refreshSpeed);
-  lblBack.textContent = String(settings().skipBack);
-  lblFwd.textContent = String(settings().skipForward);
+  applySkipLabels(settings());
   refreshSpeed();
 
   // ── tap/drag-to-seek on the progress hairline ────────────────────
