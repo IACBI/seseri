@@ -225,8 +225,21 @@ const CORS = { 'access-control-allow-origin': '*' };
      * Put the playing episode deep in the list. It is the fifth from the end of
      * the feed, so newest-first leaves it near the top and oldest-first leaves
      * it at index 895 — past the window, which the order change just reset.
+     * Which order the list is in by now depends on the default (a non-serial
+     * show opens newest-first under "by podcast"), so it is read, not assumed:
+     * from oldest-first the toggle goes round twice, to change order all the
+     * same.
      */
-    await page.click('#sortToggle');
+    const oldestFirst = await page.$eval('.ep-name', (n) => n.textContent === 'Episode 1');
+    for (let i = 0; i < (oldestFirst ? 2 : 1); i++) {
+      const was = await page.$eval('.ep-name', (n) => n.textContent);
+      await page.click('#sortToggle');
+      await page.waitForFunction(
+        (w) => document.querySelector('.ep-name')?.textContent !== w,
+        { timeout: 10000 },
+        was,
+      );
+    }
     await page.waitForFunction(
       (n) => {
         const active = document.querySelector('.ep-item.active');
