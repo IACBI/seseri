@@ -22,11 +22,12 @@
     "smoke:offline": "node scripts/smoke-p3-offline.cjs",
     "smoke:mini": "node scripts/smoke-p5-mini.cjs",
     "smoke:chapters": "node scripts/smoke-chapters.cjs",
+    "smoke:trim": "node scripts/smoke-trim.cjs",
     "smoke:shownotes": "node scripts/smoke-shownotes.cjs",
     "smoke:longlist": "node scripts/smoke-longlist.cjs",
     "smoke:migrate": "node scripts/smoke-migrate.cjs",
     "smoke:sync": "node scripts/smoke-p6-sync.cjs",
-    "smoke": "vite build && npm run smoke:shell && npm run smoke:offline && npm run smoke:mini && npm run smoke:chapters && npm run smoke:shownotes && npm run smoke:longlist && npm run smoke:migrate && npm run smoke:sync"
+    "smoke": "vite build && npm run smoke:shell && npm run smoke:offline && npm run smoke:mini && npm run smoke:chapters && npm run smoke:trim && npm run smoke:shownotes && npm run smoke:longlist && npm run smoke:migrate && npm run smoke:sync"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

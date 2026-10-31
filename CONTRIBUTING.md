@@ -79,15 +79,16 @@ recovery watchdog, playback wiring.
 
 The headless smokes drive the built app in a real browser, which is the only
 place layout, playback and the service worker are actually exercised. They find
-a Chromium themselves and honour `SESERI_BROWSER`; CI runs all six on every
+a Chromium themselves and honour `SESERI_BROWSER`; CI runs all nine on every
 push.
 
 ```bash
-npm run smoke                       # all eight, in order — 94 assertions
+npm run smoke                       # all nine, in order — 104 assertions
 node scripts/smoke-shell.cjs        # boot, navigation, theme, language
 node scripts/smoke-p3-offline.cjs   # download → offline reload → playback
 node scripts/smoke-p5-mini.cjs      # mini dock, queue, back-navigation
 node scripts/smoke-chapters.cjs     # chapters, scrubber markers, transcript
+node scripts/smoke-trim.cjs         # per-show intro/outro skip on real playback
 node scripts/smoke-shownotes.cjs    # show notes fetch nothing they point at
 node scripts/smoke-longlist.cjs     # the render window over a 900-episode feed
 node scripts/smoke-migrate.cjs      # Apple ids → feed ids across the archive switch
