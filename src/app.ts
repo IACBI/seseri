@@ -142,13 +142,17 @@ export function boot(): void {
     openFeed: (req) => openFeed(req),
     resumeFeed: (req) => openFeed(req, { resume: true }),
     playEpisode: (req, trackId) => openEpisode(req, trackId),
+    openSearch: (topic) => {
+      goView('search');
+      if (topic) search.showTopic(topic);
+    },
     checkForNew: async () => {
       const result = await sweepSubscriptions(subscriptions(), { force: true });
       toast(...sweepMessage(result));
     },
   });
   // (Phase 3 wires search.restoreFocus into back-navigation focus hand-off.)
-  initSearchView({ openFeed: (req) => openFeed(req) });
+  const search = initSearchView({ openFeed: (req) => openFeed(req) });
   initLibraryView({ openFeed: (req) => openFeed(req) });
   const nowPlayingSheet = initNowPlaying({
     playback,
