@@ -390,6 +390,26 @@ opened from Apple move from Apple's ids to the feed's.
 - [ ] With the transcript open, open the same show from the list again (the feed
       refreshes) → the panel stays open and the text stays.
 
+## 21b. Skip intro and outro
+
+- [ ] The scissors in a show's header opens the dialog; both selects start at
+      **Off** for a show never set. A choice applies at once (no Save), and the
+      scissors turns amber and reads as pressed.
+- [ ] With an intro set, a **new** episode starts that many seconds in; one
+      resumed past the intro starts where it was left.
+- [ ] With an outro set, playing into the last N seconds ends the episode: it is
+      marked heard and the queue, auto-next or the end-of-episode sleep timer
+      takes over. With nothing next, the audio **stops** instead of playing the
+      credits.
+- [ ] Skipping or scrubbing **into** the outro plays it — the trim only acts on
+      playback that runs into it.
+- [ ] An episode shorter than intro + outro + one minute (a trailer) plays whole.
+- [ ] Settings → "Intro and outro skips" counts the shows; Reset clears them and
+      the scissors goes back to plain. The trims are in a JSON backup and come
+      back on restore.
+- [ ] At 320, 375 and 390px wide the three header actions sit on their own row
+      and the show title is not cut mid-word; from 404px they sit beside it.
+
 ## 22. Downloads, automatic downloads and clean-up
 
 - [ ] Starting a download shows a **real percentage** (not a spinner).
