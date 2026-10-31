@@ -300,3 +300,14 @@ export function requestPersistence(): void {
     /* unsupported */
   }
 }
+
+/** The downloaded audio itself, or null. For reading, not for playback. */
+export async function offlineAudioBlob(episodeId: string): Promise<Blob | null> {
+  try {
+    if (typeof caches === 'undefined' || !(await isDownloaded(episodeId))) return null;
+    const res = await (await caches.open(AUDIO_CACHE)).match(cacheKey(episodeId));
+    return res ? await res.blob() : null;
+  } catch {
+    return null;
+  }
+}
