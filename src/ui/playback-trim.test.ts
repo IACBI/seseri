@@ -50,7 +50,6 @@ let at: number;
 let paused: boolean;
 let seeks: number[];
 let pause: ReturnType<typeof vi.spyOn>;
-let play: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -88,10 +87,11 @@ beforeEach(() => {
     configurable: true,
     get: () => ({ length: 1, start: () => 0, end: () => DURATION }),
   });
-  play = vi.spyOn(audio, 'play').mockImplementation(() => {
+  vi.spyOn(audio, 'play').mockImplementation(() => {
     paused = false;
     return Promise.resolve();
   });
+  vi.spyOn(performance, 'now').mockImplementation(() => clock);
   pause = vi.spyOn(audio, 'pause').mockImplementation(() => {
     paused = true;
   });
@@ -99,8 +99,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  play.mockRestore();
-  pause.mockRestore();
+  vi.restoreAllMocks();
   for (const prop of ['currentTime', 'duration', 'paused', 'seekable']) {
     delete (audio as unknown as Record<string, unknown>)[prop];
   }
@@ -122,9 +121,21 @@ async function startFirst(): Promise<ReturnType<typeof createPlaybackController>
   return ctl;
 }
 
-/** One `timeupdate` at `sec`, past the engine's 250 ms throttle. */
+/** Wall clock for the engine's 250 ms `timeupdate` throttle, moved by hand. */
+let clock = 0;
+
+/** Playback reaching `sec`: a plain `timeupdate`, past the throttle. */
 async function tick(sec: number): Promise<void> {
   at = sec;
+  clock += 300;
+  audio.dispatchEvent(new Event('timeupdate'));
+  await Promise.resolve();
+}
+
+/** The listener jumping to `sec`: a skip, a scrub, or one frame of a drag. */
+async function seek(sec: number): Promise<void> {
+  at = sec;
+  clock += 16;
   audio.dispatchEvent(new Event('seeked'));
   await Promise.resolve();
 }
@@ -180,10 +191,52 @@ describe('the outro', () => {
   it('lets a seek into the outro play on', async () => {
     await startFirst();
     await tick(600);
-    await tick(DURATION - 30);
+    await seek(DURATION - 30);
+    await tick(DURATION - 29.75);
 
     expect(pause).not.toHaveBeenCalled();
     expect(isPlayed(first)).toBe(false);
+  });
+
+  it('lets a small scrub across the boundary play on', async () => {
+    await startFirst();
+    await tick(DURATION - 61);
+    await seek(DURATION - 59);
+    await tick(DURATION - 58.75);
+
+    expect(pause).not.toHaveBeenCalled();
+    expect(isPlayed(first)).toBe(false);
+  });
+
+  it('lets a waveform drag through the boundary play on', async () => {
+    await startFirst();
+    await tick(DURATION - 70);
+    // One seek per animation frame, each a fraction of a second apart.
+    for (let t = DURATION - 62; t <= DURATION - 55; t += 0.5) await seek(t);
+    await tick(DURATION - 54.75);
+
+    expect(pause).not.toHaveBeenCalled();
+    expect(isPlayed(first)).toBe(false);
+  });
+
+  it("ignores the element's own timeupdate for a seek still in progress", async () => {
+    await startFirst();
+    await tick(DURATION - 60.5);
+    Object.defineProperty(audio, 'seeking', { configurable: true, get: () => true });
+    await tick(DURATION - 59);
+    delete (audio as unknown as Record<string, unknown>)['seeking'];
+
+    expect(pause).not.toHaveBeenCalled();
+    expect(isPlayed(first)).toBe(false);
+  });
+
+  it('still fires when playback carries on past a scrub that stopped short of it', async () => {
+    await startFirst();
+    await seek(DURATION - 61);
+    await tick(DURATION - 60.25);
+    await tick(DURATION - 59.95);
+
+    expect(isPlayed(first)).toBe(true);
   });
 
   it('does not fire while paused', async () => {
