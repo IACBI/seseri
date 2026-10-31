@@ -27,7 +27,7 @@ import { DEFAULT_SETTINGS, setSetting, settings } from '../state/settings';
 vi.mock('./toast', () => ({ toast: vi.fn() }));
 
 /** `dated` limits how many items carry a pubDate (the rest have none). */
-function feedXml(title: string, ids: string[], dated = ids.length): string {
+function feedXml(title: string, ids: string[], dated = ids.length, channelExtra = ''): string {
   const items = ids
     .map(
       (id, i) => `<item>
@@ -38,7 +38,7 @@ function feedXml(title: string, ids: string[], dated = ids.length): string {
       </item>`,
     )
     .join('');
-  return `<?xml version="1.0"?><rss version="2.0"><channel><title>${title}</title>${items}</channel></rss>`;
+  return `<?xml version="1.0"?><rss version="2.0"><channel><title>${title}</title>${channelExtra}${items}</channel></rss>`;
 }
 
 const FEED_A = { url: 'https://feeds.example.com/a', id: 'rss:https://feeds.example.com/a' };
@@ -47,7 +47,11 @@ const FEED_B = { url: 'https://feeds.example.com/b', id: 'rss:https://feeds.exam
 /** Mostly undated: dates only on the newest item. */
 const FEED_SPARSE = { url: 'https://feeds.example.com/sparse', id: 'rss:https://feeds.example.com/sparse' };
 
+/** Declares itself serial. */
+const FEED_SERIAL = { url: 'https://feeds.example.com/serial', id: 'rss:https://feeds.example.com/serial' };
+
 const BODIES: Record<string, string> = {
+  [FEED_SERIAL.url]: feedXml('Serial', ['r1', 'r2', 'r3'], 3, '<itunes:type>serial</itunes:type>'),
   [FEED_A.url]: feedXml('Feed A', ['a1', 'a2', 'a3']),
   [FEED_B.url]: feedXml('Feed B', ['b1', 'b2']),
   [FEED_SPARSE.url]: feedXml('Sparse', ['s1', 's2', 's3', 's4', 's5'], 1),
@@ -79,8 +83,10 @@ beforeEach(() => {
       return xml ? new Response(xml, { status: 200 }) : new Response('', { status: 404 });
     }),
   );
-  // Feeds are fetched through the proxy chain, which is opt-in.
-  settings.set({ ...DEFAULT_SETTINGS, allowPublicProxies: true });
+  // Feeds are fetched through the proxy chain, which is opt-in. The tests below
+  // address episodes by position in an oldest-first list, so that order is
+  // pinned here rather than inherited from whatever the default is.
+  settings.set({ ...DEFAULT_SETTINGS, allowPublicProxies: true, defaultSort: 'asc' });
   localStorage.clear();
   clearQueue();
   playing.set(null);
@@ -169,6 +175,28 @@ describe('episode ordering', () => {
     // the undated majority as epoch 0 would fling them to one end of the list.
     await open(FEED_SPARSE.url, 5);
     expect(ctl.session().filtered.map((e) => e.trackId)).toEqual(['s5', 's4', 's3', 's2', 's1']);
+  });
+
+  describe('under the per-show default', () => {
+    beforeEach(() => setSetting('defaultSort', 'auto'));
+
+    it('opens an episodic show at its newest episode', async () => {
+      await open(FEED_A.url, 3);
+      expect(ctl.session().filtered.map((e) => e.trackId)).toEqual(['a3', 'a2', 'a1']);
+      expect(ctl.session().sortAsc).toBe(false);
+    });
+
+    it('opens a serial show at its first episode', async () => {
+      await open(FEED_SERIAL.url, 3);
+      expect(ctl.session().filtered.map((e) => e.trackId)).toEqual(['r1', 'r2', 'r3']);
+      expect(ctl.session().sortAsc).toBe(true);
+    });
+
+    it('leaves an explicit choice alone, serial or not', async () => {
+      setSetting('defaultSort', 'desc');
+      await open(FEED_SERIAL.url, 3);
+      expect(ctl.session().filtered.map((e) => e.trackId)).toEqual(['r3', 'r2', 'r1']);
+    });
   });
 });
 

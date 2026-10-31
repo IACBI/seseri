@@ -70,7 +70,8 @@ beforeEach(() => {
       return xml ? new Response(xml, { status: 200 }) : new Response('', { status: 404 });
     }),
   );
-  settings.set({ ...DEFAULT_SETTINGS, allowPublicProxies: true });
+  // Episodes are addressed by position in an oldest-first list.
+  settings.set({ ...DEFAULT_SETTINGS, allowPublicProxies: true, defaultSort: 'asc' });
   localStorage.clear();
   loadProgress();
   loadPlayed();
