@@ -166,13 +166,14 @@ same control.
 
 - [ ] ≥900px: a **permanent rail** on the left replaces the tab bar (Home/Search/Library/Settings); the active section is highlighted (`aria-current="page"`).
 - [ ] ≥900px: the mini dock sits to the right of the rail at full width (it does not cover the rail).
-- [ ] ≥900px: the button beside the wordmark **collapses the rail to icons**; labels hide, icons gain tooltips, the mini dock and content slide with it; the choice survives a reload (`aria-expanded` reflects it).
+- [ ] ≥900px: the button beside the wordmark **collapses the rail to icons**; labels hide, icons gain tooltips, the mini dock slides with it; the choice survives a reload (`aria-expanded` reflects it).
 - [ ] While collapsed, the collapse icon is **not drawn at all**; the rail holds only the brand mark and the icons.
 - [ ] Pointing at the rail opens it to full width (labels visible) but **the content does not move** — the panel sits over the page. Moving away closes it. Brushing past the edge must not make it flicker (opens after ~120 ms, closes after ~320 ms).
 - [ ] **Pressing the collapse button starts closing the rail at once** — even with the pointer still over it: no waiting, no sticking, no re-opening. Rail and content slide together (neither waits for the other). The peek does not open again until the pointer leaves the rail and comes back.
-- [ ] Expanding is just as smooth: the content slides along as the rail widens.
+- [ ] Expanding is just as smooth.
+- [ ] On a window ≥1100px wide the page **stays exactly where it is** whether the rail is collapsed, peeking or pinned open — pointing at the collapsed rail and then clicking it to pin it moves nothing. Only on a narrower window does collapsing slide the content left to give it room.
 - [ ] Clicking a destination (Home/Search/…) in the collapsed rail only goes there, and the rail stays collapsed; clicking **anywhere else** on the rail (the brand mark, empty space) pins it open.
-- [ ] Icons do not shift while the rail opens or closes; only its width and the labels change.
+- [ ] Icons do not shift while the rail opens, closes or is pinned — not sideways, and the destinations do not move up or down; only its width and the labels change.
 - [ ] Tabbing into the rail opens it; the invisible button over the brand mark is drawn when focused and carries an `aria-label`.
 - [ ] `[` opens and closes the rail from any view; **on a Turkish-Q keyboard the same physical key** (`ğ`) works too; it does nothing while typing in a text field, or below 900px. It appears in the shortcut list (`?`).
 - [ ] ≥900px: the language switcher on Home sits in the **window's** top-right corner, not the 720px reading column's, and does not slide under the first row.
