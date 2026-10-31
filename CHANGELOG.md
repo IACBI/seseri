@@ -16,6 +16,11 @@
   narrow window still slides the content when collapsing, since making room is
   what collapsing is for there. The shell smoke checks it.
 
+### Contributors
+
+- 𝓐.𝓒.𝓑
+- Claude (Anthropic), co-author
+
 ## 4.2.19 — 2026-10-31
 
 ### Privacy
