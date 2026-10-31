@@ -4,6 +4,16 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.18 — 2026-10-31
+
+### Fixes
+
+- **Scrubbing near the end no longer skips the credits by mistake.** With an
+  outro skip set, a short scrub or a drag on the waveform across the start of
+  the credits was read as playback reaching them: the episode ended, was
+  marked heard and the queue moved on. A seek is now told apart from playback,
+  so going into the credits by hand always plays them.
+
 ## 4.2.17 — 2026-10-31
 
 ### New
