@@ -4,6 +4,35 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.19 — 2026-10-31
+
+### Privacy
+
+- **Private feed tokens no longer reach the Worker's logs.** The app asks the
+  Worker for a feed with the feed's address in the query string, and a paid
+  feed's address carries the subscriber's token. With logging on, Cloudflare
+  kept that full URL. The Worker now redacts query strings from its logs, which
+  keep only the path and status of each request.
+- **The privacy policy describes the app as it is today.** It said the
+  typefaces load from Google Fonts (they are self-hosted) and that feeds go
+  through public proxies by default (those are off unless switched on, and
+  feeds go through Seseri's own server). It now also covers what the server
+  sees and logs, the rate-limit counter, the encrypted optional sync, and
+  IndexedDB and downloads on the device.
+
+### Fixes
+
+- The intro and outro dialog's two selects are 44px tall on desktop as well,
+  the project's minimum for a target; they were 36px there.
+
+### Docs
+
+- README, CONTRIBUTING, SECURITY and the release notes for maintainers were
+  checked against the code and corrected: the smoke count, the files a release
+  bumps, what fails on an `innerHTML` slip, when CI runs, the frames wording in
+  the CSP summary, and the `tests/` folder in the layout tree. The layout audit
+  now also measures the intro and outro dialog.
+
 ## 4.2.18 — 2026-10-31
 
 ### Fixes

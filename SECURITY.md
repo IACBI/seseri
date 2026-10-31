@@ -14,10 +14,11 @@ You can expect an initial response within a week.
 - **Client:** no accounts, no cookies — settings/progress live in
   `localStorage`, feed cache and download metadata in IndexedDB, downloaded
   audio in the Cache API. External requests go to `itunes.apple.com`, the
-  optional Seseri Worker, Google Fonts, and podcast hosts' own CDNs. The public CORS proxies
+  optional Seseri Worker, and podcast hosts' own CDNs; the typefaces are
+  self-hosted. The public CORS proxies
   (allorigins/codetabs/corsproxy) are **opt-in and off by default** — see
-  below. A strict Content Security Policy (no `'unsafe-inline'` scripts, no
-  frames at all) is declared in `index.html`; remote data is only inserted
+  below. A strict Content Security Policy (no `'unsafe-inline'` scripts; the app
+  embeds no frames) is declared in `index.html`; remote data is only inserted
   through a typed DOM builder. Values restored from `localStorage` are
   validated against an allow-list before reaching CSS custom properties or the
   media element.
@@ -64,7 +65,9 @@ You can expect an initial response within a week.
   subscriber token in the feed URL itself. Such URLs are never sent to the
   public CORS proxies — they go only to the app's own Worker, and the feed
   fails with an explanatory message if no Worker is configured. Ordinary public
-  feeds are unaffected.
+  feeds are unaffected. The Worker receives the feed URL in its query string,
+  so its logs are configured with `redact_query_string`: Cloudflare keeps the
+  path and status of each request, never the URL that carried the token.
 
 ## Cross-device sync
 
