@@ -8,7 +8,7 @@
  * out of quota is the downloads the listener chose to keep.
  */
 import { describe, expect, it } from 'vitest';
-import { feedsToEvict, type CachedFeed } from './db';
+import { estimateJsonChars, feedsToEvict, type CachedFeed } from './db';
 
 const NOW = 1_800_000_000_000;
 const DAY = 86_400_000;
@@ -132,5 +132,38 @@ describe('feedsToEvict — the real limits', () => {
     // The kept set is within one record of the budget: the loop admits the
     // record that crosses the line and evicts from there on.
     expect(keptBytes).toBeLessThanOrEqual(80 * MB + 2.3 * MB);
+  });
+});
+
+describe('estimateJsonChars', () => {
+  it('matches JSON.stringify exactly on text with nothing to escape', () => {
+    const value = {
+      a: 'plain',
+      n: 42,
+      f: 1.5,
+      b: true,
+      z: null,
+      skip: undefined,
+      list: [1, 'two', { three: [3] }],
+      empty: {},
+      none: [],
+    };
+    expect(estimateJsonChars(value)).toBe(JSON.stringify(value).length);
+  });
+
+  it('stays within a few percent on a real-shaped feed with HTML show notes', () => {
+    const episodes = Array.from({ length: 500 }, (_, i) => ({
+      trackId: `guid-${i}`,
+      trackName: `Episode ${i}: "Quotes" & ampersands`,
+      episodeUrl: `https://cdn.example.com/show/${i}.mp3?src=rss`,
+      releaseDate: new Date(Date.UTC(2020, 0, 1 + i)).toISOString(),
+      trackTimeMillis: 1_800_000 + i,
+      description:
+        `<p>Notes for ${i} with <a href="https://example.com/${i}">a link</a>.</p>`.repeat(8),
+    }));
+    const feed = { meta: { id: 'rss:https://feeds.example.com/x', name: 'X' }, episodes };
+    const real = JSON.stringify(feed).length;
+    const est = estimateJsonChars(feed);
+    expect(Math.abs(est - real) / real).toBeLessThan(0.05);
   });
 });

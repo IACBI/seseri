@@ -243,6 +243,37 @@ export const FEED_CACHE_LIMITS = {
   keepMin: FEED_KEEP_MIN,
 } as const;
 
+/**
+ * About as many characters as `JSON.stringify(value)` would produce, without
+ * producing them.
+ *
+ * The cache measured each feed by serialising it, which for a large archive
+ * built a second 18 MB string on the main thread only to read its length —
+ * the costliest single step of opening such a feed after the parse itself.
+ * This walks the same structure and adds up lengths instead. It ignores the
+ * escaping JSON would add, which is a few percent at most on feed text; the
+ * figure only has to be good enough to keep the store under its budget.
+ */
+export function estimateJsonChars(value: unknown): number {
+  if (typeof value === 'string') return value.length + 2;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).length;
+  if (value === null || typeof value !== 'object') return 4;
+  if (Array.isArray(value)) {
+    let n = 2 + Math.max(0, value.length - 1);
+    for (const v of value) n += estimateJsonChars(v);
+    return n;
+  }
+  let n = 2;
+  let fields = 0;
+  for (const [k, v] of Object.entries(value)) {
+    // JSON.stringify drops undefined members (and functions) entirely.
+    if (v === undefined || typeof v === 'function') continue;
+    n += k.length + 3 + estimateJsonChars(v);
+    fields++;
+  }
+  return n + Math.max(0, fields - 1);
+}
+
 function recordBytes(rec: Pick<CachedFeed, 'bytes'>): number {
   return typeof rec.bytes === 'number' && rec.bytes > 0 ? rec.bytes : 0;
 }
@@ -331,7 +362,7 @@ export async function putCachedFeed(feed: ResolvedFeed): Promise<void> {
       id: feed.meta.id,
       feed,
       fetchedAt: Date.now(),
-      bytes: JSON.stringify(feed).length,
+      bytes: estimateJsonChars(feed),
     };
     const tx = (await db()).transaction(['feeds', 'feedStats'], 'readwrite');
     void tx.objectStore('feeds').put(record);

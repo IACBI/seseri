@@ -25,10 +25,57 @@ function textWidth(text: string, font: string): number {
 }
 
 /**
+ * Bumped when a web font finishes loading: a label measured against the
+ * fallback face is the wrong width once the real one arrives.
+ */
+let fontGeneration = 0;
+if (typeof document !== 'undefined') {
+  document.fonts?.addEventListener?.('loadingdone', () => fontGeneration++);
+}
+
+/** What each select was last sized for, so an unchanged label costs nothing. */
+const fitted = new WeakMap<HTMLSelectElement, string>();
+const queued = new Map<HTMLSelectElement, number>();
+let frame = 0;
+
+/**
+ * Size `sel` on the next frame.
+ *
+ * Reading the computed style is what costs: called while a view is still
+ * writing its DOM, it forces the whole page's style to be resolved there and
+ * then. Measured opening a 6000-episode feed on a CPU slowed to a mid-range
+ * phone's, that one read inside the sleep control was a 121 ms stall. On the
+ * next frame the browser resolves style anyway, so the read rides along with
+ * it, and several calls in one frame collapse into one fit per select.
+ *
  * @param minPx Floor, so a one-glyph label ("—") still reads as a control.
  */
 export function fitSelect(sel: HTMLSelectElement, minPx = 0): void {
+  queued.set(sel, minPx);
+  if (frame) return;
+  if (typeof requestAnimationFrame !== 'function') {
+    flush();
+    return;
+  }
+  frame = requestAnimationFrame(flush);
+}
+
+function flush(): void {
+  frame = 0;
+  const batch = [...queued];
+  queued.clear();
+  for (const [sel, minPx] of batch) fitSelectNow(sel, minPx);
+}
+
+/**
+ * Size `sel` now. The sleep control calls in on every countdown tick with the
+ * label unchanged, which is skipped; the select's font comes from a fixed
+ * token, not from a setting, so the label is the only thing that moves it.
+ */
+export function fitSelectNow(sel: HTMLSelectElement, minPx = 0): void {
   const label = sel.options[sel.selectedIndex]?.text ?? '';
+  const key = `${fontGeneration}|${minPx}|${label}`;
+  if (fitted.get(sel) === key && sel.style.inlineSize) return;
   const cs = getComputedStyle(sel);
   const w = textWidth(label, `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`);
   if (!w) return; // no 2D context here — leave the intrinsic width alone
@@ -42,4 +89,5 @@ export function fitSelect(sel: HTMLSelectElement, minPx = 0): void {
     px(cs.borderInlineEndWidth);
   // +1 absorbs sub-pixel rounding and the letter-spacing canvas cannot see.
   sel.style.inlineSize = Math.max(minPx, Math.ceil(w + chrome) + 1) + 'px';
+  fitted.set(sel, key);
 }

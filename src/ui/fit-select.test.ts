@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { __resetMeasurerForTests, fitSelect } from './fit-select';
+import { __resetMeasurerForTests, fitSelect, fitSelectNow } from './fit-select';
 
 /**
  * jsdom has neither a 2D canvas nor resolved logical box properties, so both
@@ -48,11 +48,11 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe('fitSelect', () => {
+describe('fitSelectNow', () => {
   it('sizes to the selected option, not the widest one', () => {
     stubMeasurer();
     const sel = makeSelect(['—', 'End of episode']);
-    fitSelect(sel);
+    fitSelectNow(sel);
     // +1 absorbs sub-pixel rounding, per the implementation.
     expect(sel.style.inlineSize).toBe(`${GLYPH_PX + CHROME_PX + 1}px`);
   });
@@ -60,21 +60,74 @@ describe('fitSelect', () => {
   it('grows when a longer option is chosen', () => {
     stubMeasurer();
     const sel = makeSelect(['—', '30 min'], 1);
-    fitSelect(sel);
+    fitSelectNow(sel);
     expect(sel.style.inlineSize).toBe(`${6 * GLYPH_PX + CHROME_PX + 1}px`);
   });
 
   it('never goes under the floor', () => {
     stubMeasurer();
     const sel = makeSelect(['—']);
-    fitSelect(sel, 60);
+    fitSelectNow(sel, 60);
     expect(sel.style.inlineSize).toBe('60px');
   });
 
   it('leaves the intrinsic width alone when there is no 2D context', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     const sel = makeSelect(['End of episode']);
-    fitSelect(sel);
+    fitSelectNow(sel);
     expect(sel.style.inlineSize).toBe('');
+  });
+});
+
+describe('fitSelect', () => {
+  it('waits for the next frame, so a view writing its DOM is not forced into a style recalc', () => {
+    stubMeasurer();
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
+    const sel = makeSelect(['—']);
+
+    fitSelect(sel);
+    expect(getComputedStyle).not.toHaveBeenCalled();
+    expect(sel.style.inlineSize).toBe('');
+
+    frames.forEach((cb) => cb(0));
+    expect(sel.style.inlineSize).toBe(`${GLYPH_PX + CHROME_PX + 1}px`);
+  });
+
+  it('collapses several calls in one frame into one fit, with the latest floor', () => {
+    stubMeasurer();
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
+    const sel = makeSelect(['—']);
+
+    fitSelect(sel, 10);
+    fitSelect(sel, 20);
+    fitSelect(sel, 60);
+    expect(frames).toHaveLength(1);
+    frames.forEach((cb) => cb(0));
+
+    expect(getComputedStyle).toHaveBeenCalledTimes(1);
+    expect(sel.style.inlineSize).toBe('60px');
+  });
+});
+
+describe('fitSelectNow, repeated', () => {
+  it('skips the style read when the label has not changed, as on a countdown tick', () => {
+    stubMeasurer();
+    const sel = makeSelect(['—', '30 min']);
+    fitSelectNow(sel);
+    fitSelectNow(sel);
+    fitSelectNow(sel);
+    expect(getComputedStyle).toHaveBeenCalledTimes(1);
+  });
+
+  it('measures again once the label changes', () => {
+    stubMeasurer();
+    const sel = makeSelect(['—', '30 min']);
+    fitSelectNow(sel);
+    sel.selectedIndex = 1;
+    fitSelectNow(sel);
+    expect(getComputedStyle).toHaveBeenCalledTimes(2);
+    expect(sel.style.inlineSize).toBe(`${6 * GLYPH_PX + CHROME_PX + 1}px`);
   });
 });
