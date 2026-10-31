@@ -65,7 +65,7 @@ const MARKUP = `
   <h1 class="view-title" data-i18n="settings_heading">Ayarlar</h1>
 
   <section class="s-section">
-    <div class="s-section-title" data-i18n="s_playback">Oynatma</div>
+    <h2 class="s-section-title" data-i18n="s_playback">Oynatma</h2>
 
     <div class="s-row">
       <div>
@@ -141,7 +141,7 @@ const MARKUP = `
   </section>
 
   <section class="s-section">
-    <div class="s-section-title" data-i18n="s_appearance">Görünüm</div>
+    <h2 class="s-section-title" data-i18n="s_appearance">Görünüm</h2>
 
     <div class="s-row">
       <div><div class="s-label" id="lblAccent" data-i18n="s_accent">Vurgu Rengi</div></div>
@@ -190,12 +190,13 @@ const MARKUP = `
   </section>
 
   <section class="s-section">
-    <div class="s-section-title" data-i18n="s_list">Liste</div>
+    <h2 class="s-section-title" data-i18n="s_list">Liste</h2>
 
     <div class="s-row">
       <div><div class="s-label" data-i18n="s_default_sort">Varsayılan Sıralama</div></div>
       <select class="s-select" id="s_defaultSort">
-        <option value="asc" selected data-i18n="sort_asc">Eskiden → Yeniye</option>
+        <option value="auto" selected data-i18n="sort_auto">Podcast'e göre (önerilen)</option>
+        <option value="asc" data-i18n="sort_asc">Eskiden → Yeniye</option>
         <option value="desc" data-i18n="sort_desc">Yeniden → Eskiye</option>
       </select>
     </div>
@@ -245,7 +246,7 @@ const MARKUP = `
   </section>
 
   <section class="s-section">
-    <div class="s-section-title" data-i18n="s_privacy">Gizlilik</div>
+    <h2 class="s-section-title" data-i18n="s_privacy">Gizlilik</h2>
     <div class="s-row">
       <div>
         <div class="s-label" data-i18n="s_allow_proxies">Üçüncü taraf vekillerine izin ver</div>
@@ -259,7 +260,7 @@ const MARKUP = `
   </section>
 
   <section class="s-section">
-    <div class="s-section-title" data-i18n="s_lang_title">Dil / Language</div>
+    <h2 class="s-section-title" data-i18n="s_lang_title">Dil / Language</h2>
     <div class="s-row">
       <div><div class="s-label" data-i18n="s_lang_label">Arayüz Dili</div></div>
       <div id="s_lang"></div>
@@ -267,7 +268,7 @@ const MARKUP = `
   </section>
 
   <section class="s-section" id="s_syncSection" hidden>
-    <div class="s-section-title" data-i18n="s_sync">Cihazlar Arası Eşitleme</div>
+    <h2 class="s-section-title" data-i18n="s_sync">Cihazlar Arası Eşitleme</h2>
     <div class="s-row">
       <div><div class="s-label" data-i18n="s_sync_state">Durum</div></div>
       <span class="s-sublabel" id="syncStatus">—</span>
@@ -282,7 +283,8 @@ const MARKUP = `
     <div class="s-row" id="syncLinkRow" hidden>
       <input class="sync-input" id="syncCodeInput" type="text" autocomplete="off"
              spellcheck="false" autocapitalize="characters"
-             data-i18n-ph="s_sync_code_ph" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX">
+             data-i18n-ph="s_sync_code_ph" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+             data-i18n-aria="sync_code_label" aria-label="Eşleştirme kodu">
       <button class="s-btn" id="btnSyncLinkGo" data-i18n="btn_sync_link_go">Bağlan</button>
     </div>
     <div class="s-data-btns">
@@ -298,7 +300,7 @@ const MARKUP = `
   </section>
 
   <section class="s-section">
-    <div class="s-section-title" data-i18n="s_data">Veri</div>
+    <h2 class="s-section-title" data-i18n="s_data">Veri</h2>
     <div class="s-row">
       <div>
         <div class="s-label" data-i18n="s_storage">Depolama</div>
@@ -408,22 +410,35 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   });
   swatchWrap.append(...swatches);
 
-  // The switch has no text of its own: the row's label names it, and clicking
-  // that label (a 44px-tall row is a far easier target than the track) flips it.
+  // A switch or a select has no text of its own: the row's label names it. A
+  // switch's label also flips it (a 44px-tall row is a far easier target than
+  // the track).
   for (const row of el.querySelectorAll<HTMLElement>('.s-row')) {
-    const input = row.querySelector<HTMLInputElement>('.s-toggle input');
+    const control = row.querySelector<HTMLElement>('.s-toggle input, select.s-select');
     const label = row.querySelector<HTMLElement>('.s-label');
-    if (!input || !label) continue;
-    label.id ||= 'lbl_' + input.id;
-    input.setAttribute('aria-labelledby', label.id);
+    if (!control || !label) continue;
+    label.id ||= 'lbl_' + control.id;
+    control.setAttribute('aria-labelledby', label.id);
     const sub = row.querySelector<HTMLElement>('.s-sublabel');
     if (sub) {
-      sub.id ||= 'sub_' + input.id;
-      input.setAttribute('aria-describedby', sub.id);
+      sub.id ||= 'sub_' + control.id;
+      control.setAttribute('aria-describedby', sub.id);
     }
-    label.parentElement?.classList.add('s-row-text');
-    label.parentElement?.addEventListener('click', () => input.click());
+    const input = row.querySelector<HTMLInputElement>('.s-toggle input');
+    if (input) {
+      label.parentElement?.classList.add('s-row-text');
+      label.parentElement?.addEventListener('click', () => input.click());
+    }
   }
+
+  // "5s" is a suffix in English and "5 sn" in Turkish, so the unit is translated.
+  function renderSkipUnits(): void {
+    for (const sel of [sSkipBack, sSkipFwd]) {
+      for (const opt of sel.options) opt.textContent = t('unit_sec', Number(opt.value));
+    }
+  }
+  renderSkipUnits();
+  currentLang.subscribe(renderSkipUnits);
 
   function updateSwatchActive(): void {
     const active = normalizeAccent(settings().accentColor);

@@ -14,6 +14,7 @@ import { removeSubscription, subscriptions } from '../../storage/subscriptions';
 import { listDownloads } from '../../storage/db';
 import { removeDownload, storageInfo, type StorageInfo } from '../../player/offline';
 import { requestFromSubscription } from '../data/continue-listening';
+import { rememberPreview } from '../feed-preview';
 import { confirmDialog } from '../confirm';
 import { toast } from '../toast';
 import { h, icon } from '../h';
@@ -85,6 +86,11 @@ export function initLibraryView(deps: LibraryViewDeps): View {
   tabs.forEach((tabEl, i) => tabEl.addEventListener('keydown', (e) => onTabKey(e, i)));
 
   // ── subscriptions tab ────────────────────────────────────────────
+  /**
+   * The row is a plain container: the art and text are one button that opens
+   * the feed, and the star is a sibling button. A button cannot hold another
+   * control, so the star cannot sit inside the open target.
+   */
   function subRow(f: Subscription) {
     const star = h('button', {
       className: 'icon-btn faved',
@@ -92,33 +98,24 @@ export function initLibraryView(deps: LibraryViewDeps): View {
       title: t('fav_btn'),
       attrs: { 'aria-label': t('fav_btn'), 'aria-pressed': 'true' },
       on: {
-        click: async (e) => {
-          e.stopPropagation();
+        click: async () => {
           if (await confirmDialog('confirm_unsubscribe')) removeSubscription(f.id);
           // the subscriptions signal drives the re-render (see subscribe below)
         },
       },
     }, icon('ic-star', 'icon-fill'));
 
-    const activate = (): void => {
-      const req = requestFromSubscription(f);
-      if (req) deps.openFeed(req);
-    };
-
-    return h(
-      'div',
+    const open = h(
+      'button',
       {
-        className: 'row',
-        role: 'button',
-        tabIndex: 0,
+        className: 'lib-sub-open',
+        type: 'button',
         on: {
-          click: activate,
-          keydown: (e) => {
-            if (e.target !== e.currentTarget) return;
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              activate();
-            }
+          click: () => {
+            const req = requestFromSubscription(f);
+            if (!req) return;
+            rememberPreview(f.id, { name: f.name, artist: f.artist, art: f.art });
+            deps.openFeed(req);
           },
         },
       },
@@ -129,8 +126,9 @@ export function initLibraryView(deps: LibraryViewDeps): View {
         h('div', { className: 'row-name' }, f.name),
         f.artist ? h('div', { className: 'row-sub' }, f.artist) : null,
       ),
-      star,
     );
+
+    return h('div', { className: 'row lib-sub-row' }, open, star);
   }
 
   function renderSubs(): void {

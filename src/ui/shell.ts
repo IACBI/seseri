@@ -70,9 +70,9 @@ const MINI_PLAYER = `
   </div>
   <div class="mini-controls">
     <button class="icon-btn mini-tp mini-wide" id="miniPrev" data-i18n-aria="btn_prev" aria-label="Önceki" disabled><svg class="icon icon-flip" aria-hidden="true"><use href="#ic-prev"/></svg></button>
-    <button class="icon-btn mini-tp" id="miniBack" data-i18n-aria="s_skip_back" aria-label="Geri Atla"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-rewind"/><text class="skip-n" id="miniLblBack" x="12" y="12" text-anchor="middle" dominant-baseline="central">15</text></svg></button>
+    <button class="icon-btn mini-tp" id="miniBack"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-rewind"/><text class="skip-n" id="miniLblBack" x="12" y="12" text-anchor="middle" dominant-baseline="central">15</text></svg></button>
     <button class="mini-play" id="miniPlay" data-i18n-aria="play" aria-label="Oynat"><svg class="icon icon-fill" aria-hidden="true"><use href="#ic-play"/></svg></button>
-    <button class="icon-btn mini-tp" id="miniFwd" data-i18n-aria="s_skip_fwd" aria-label="İleri Atla"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-forward"/><text class="skip-n" id="miniLblFwd" x="12" y="12" text-anchor="middle" dominant-baseline="central">30</text></svg></button>
+    <button class="icon-btn mini-tp" id="miniFwd"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#ic-forward"/><text class="skip-n" id="miniLblFwd" x="12" y="12" text-anchor="middle" dominant-baseline="central">30</text></svg></button>
     <button class="icon-btn mini-tp mini-wide" id="miniNext" data-i18n-aria="btn_next" aria-label="Sonraki" disabled><svg class="icon icon-flip" aria-hidden="true"><use href="#ic-next"/></svg></button>
   </div>
   <div class="mini-secondary">
