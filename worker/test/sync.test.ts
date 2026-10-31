@@ -560,6 +560,45 @@ describe('creation limits', () => {
     expect(other.status).toBe(204);
   });
 
+  it('caps creations across a whole IPv6 /48, however many /64s it is split into', async () => {
+    const codes: number[] = [];
+    // Five /64s of one /48, each spending its whole per-address budget.
+    for (let net = 1; net <= 5; net++) {
+      for (let i = 0; i < 5; i++) {
+        const res = await syncCall('PUT', {
+          ip: `2001:db8:48:${net}::${i + 1}`,
+          ifMatch: '"0"',
+          body: blob(1),
+        });
+        codes.push(res.status);
+      }
+    }
+
+    expect(codes.filter((s) => s === 204)).toHaveLength(20);
+    expect(codes.slice(20)).toEqual([429, 429, 429, 429, 429]);
+    expect(await rowCount()).toBe(20);
+
+    const neighbour = await syncCall('PUT', {
+      ip: '2001:db8:49:1::1',
+      ifMatch: '"0"',
+      body: blob(1),
+    });
+    expect(neighbour.status).toBe(204);
+  });
+
+  it('does not let one address spend its /48’s allowance by hammering past its own', async () => {
+    for (let i = 0; i < 30; i++) {
+      await syncCall('PUT', { ip: '2001:db8:4a:1::1', ifMatch: '"0"', body: blob(1) });
+    }
+
+    const sibling = await syncCall('PUT', {
+      ip: '2001:db8:4a:2::1',
+      ifMatch: '"0"',
+      body: blob(1),
+    });
+    expect(sibling.status).toBe(204);
+  });
+
   it('refuses creation, rather than allowing it, when the limiter cannot be reached', async () => {
     const broken = {
       idFromName: () => {

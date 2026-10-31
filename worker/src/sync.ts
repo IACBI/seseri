@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from './env';
-import { clientKey, rateLimited } from './ratelimit';
+import { clientKey, networkKey, rateLimited } from './ratelimit';
 import { readCapped } from './safe-fetch';
 
 /**
@@ -51,6 +51,12 @@ const SYNC_ID_PER_MIN = 120;
  */
 const CREATE_PER_WINDOW = 5;
 const CREATE_WINDOW_MS = 60 * 60 * 1000;
+/**
+ * The same allowance for a whole IPv6 /48 (see `networkKey`), so a customer
+ * holding thousands of /64s still gets one budget. Four times the per-address
+ * one: a household behind a single /48 pairs a few devices, not dozens an hour.
+ */
+const CREATE_PER_NETWORK_WINDOW = 20;
 
 /**
  * Ceiling on the whole table, a backstop for what the per-address budget cannot
@@ -215,6 +221,22 @@ syncRoutes.put('/', async (c) => {
         'sync-create',
         clientKey(ip),
         CREATE_PER_WINDOW,
+        { windowMs: CREATE_WINDOW_MS },
+      ))
+    ) {
+      return c.json(RATE_LIMITED, 429, headers({ 'retry-after': '3600' }));
+    }
+    // Checked second, so an address hammering past its own budget is refused
+    // before it can spend the allowance of everyone else in its /48.
+    const net = ip ? networkKey(ip) : null;
+    if (
+      net &&
+      (await rateLimited(
+        c.env.LIMITERS,
+        c.env.SYNC_IP,
+        'sync-create-net',
+        net,
+        CREATE_PER_NETWORK_WINDOW,
         { windowMs: CREATE_WINDOW_MS },
       ))
     ) {

@@ -93,8 +93,11 @@ The threat model, stated plainly:
   service worker skips the route), and rows untouched for 180 days are swept.
 - **Creating a row needs no credential** (the id is whatever the caller
   invents), so it is limited separately from reads and updates. Each address
-  gets five creations an hour, counted in storage inside the limiter object —
-  an in-memory count would reset whenever an idle instance is evicted — and
+  gets five creations an hour, and an IPv6 /48 gets twenty between all of its
+  /64s — a VPS is routinely handed thousands of /64s, so a per-/64 budget alone
+  let one customer fill the table. Both are counted in storage inside the
+  limiter object — an in-memory count would reset whenever an idle instance is
+  evicted — and
   creation is refused, not allowed, while that object is unreachable. A row that
   was created and never written again (rev 1) is swept after 7 days instead of
   180; a device in real use pushes on every change and is never affected. A

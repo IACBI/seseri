@@ -127,6 +127,28 @@ export function clientKey(ip: string): string {
 }
 
 /**
+ * The IPv6 /48 an address sits in, or null for IPv4.
+ *
+ * A /64 is the right key for a per-minute budget, but not for one that buys
+ * storage: a single VPS is routinely handed a /56 (256 /64s) or a /48 (65,536),
+ * so a per-/64 creation budget let one customer fill the sync table. A /48 is
+ * the largest allocation an end site normally gets, so it caps one customer
+ * without lumping unrelated ones together. IPv4 has no equivalent — a /24 is
+ * shared by strangers behind CGNAT — so it gets no second key.
+ */
+export function networkKey(ip: string): string | null {
+  if (!ip.includes(':')) return null;
+  const groups = parseIpv6(ip.replace(/^\[|\]$/g, ''));
+  if (!groups) return null;
+  return (
+    groups
+      .slice(0, 3)
+      .map((g) => g.toString(16))
+      .join(':') + '::/48'
+  );
+}
+
+/**
  * Keys this isolate has been told to refuse, and until when. Bounded, so a
  * flood spread across many keys cannot grow it without limit; the cap is far
  * above the number of distinct clients one isolate serves in a minute.
