@@ -188,6 +188,12 @@ own site there. `SYNC_MAX_ROWS` and `SYNC_MAX_BYTES` (Worker vars, default
 50,000 rows and 1 GiB) cap the sync table; past them, new pairings are refused
 until the sweep frees room.
 
+Release tags also deploy the Worker through `.github/workflows/worker.yml`,
+once the repository has `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+secrets (the token needs the "Edit Cloudflare Workers" template plus D1 edit,
+for the migrations step). It runs the Worker's tests first and probes the
+deployed URL afterwards; a fork has to change that URL to its own.
+
 **Without a Worker, or when it cannot answer,** the app asks iTunes directly
 from the browser. Apple sometimes refuses requests from Cloudflare's servers;
 when the Worker reports that, the app goes to iTunes directly for the next 30
@@ -417,6 +423,12 @@ yalnızca `worker/src/index.ts`'deki `ALLOWED_ORIGINS` listesindeki adreslere
 yanıt verir; kendi siteni oraya ekle. `SYNC_MAX_ROWS` ve `SYNC_MAX_BYTES`
 (Worker değişkenleri, varsayılan 50.000 satır ve 1 GiB) eşitleme tablosunu
 sınırlar; aşılınca temizlik yer açana kadar yeni eşleştirme kabul edilmez.
+
+Repoda `CLOUDFLARE_API_TOKEN` ve `CLOUDFLARE_ACCOUNT_ID` secret'ları
+tanımlıysa her sürüm tag'i Worker'ı `.github/workflows/worker.yml` ile de
+yayınlar (token için "Edit Cloudflare Workers" şablonu ve migration adımı için
+D1 düzenleme izni gerekir). Önce Worker testlerini çalıştırır, yayından sonra
+canlı adresi yoklar; fork'ta o adresi kendininkiyle değiştirmen gerekir.
 
 **Worker yoksa ya da yanıt veremiyorsa** uygulama iTunes'a tarayıcıdan
 doğrudan gider. Apple zaman zaman Cloudflare sunucularından gelen istekleri
