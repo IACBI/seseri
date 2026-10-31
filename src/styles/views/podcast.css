@@ -86,8 +86,11 @@
 }
 /* At 320px the back button, the artwork and the two actions left the title
    about 48px, so most words did not fit and were cut mid-letter. The actions
-   take their own line under the header instead. */
-@media (max-width: 359px) {
+   take their own line under the header instead. A third action (the intro and
+   outro skip) cost the title another 44px, so the line now breaks wherever the
+   title would get less than the ~88px it had at 360px with two: measured, that
+   is every width below 404px. */
+@media (max-width: 403px) {
   .p-header { grid-template-columns: auto auto 1fr; }
   .p-header-actions { grid-column: 1 / -1; justify-self: end; }
 }
