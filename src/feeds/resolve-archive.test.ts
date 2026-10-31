@@ -173,6 +173,22 @@ describe('resolveFeed — the Apple archive switch', () => {
     }
   });
 
+  it('does not wait for a body that stalls after its headers', async () => {
+    // fetchWithTimeout lets go of the signal once headers arrive, so a stalled
+    // body never sees the abort: the deadline has to hold on its own.
+    vi.useFakeTimers();
+    try {
+      lookupPodcast.mockResolvedValue(appleLookup(12, 12));
+      fetchParsedFeed.mockImplementation(() => new Promise(() => undefined));
+      const pending = resolveFeed({ kind: 'itunes', id: ID }, {});
+      await vi.advanceTimersByTimeAsync(4000);
+      const feed = await pending;
+      expect(feed.episodes).toHaveLength(12);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('still propagates the listener moving on while reading a complete show', async () => {
     lookupPodcast.mockResolvedValue(appleLookup(12, 12));
     const ctrl = new AbortController();

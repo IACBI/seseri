@@ -101,18 +101,41 @@ async function readArchive(
       return null;
     }
   }
+  if (opts.signal?.aborted) throw new DOMException('aborted', 'AbortError');
+  /**
+   * Raced rather than only aborted: `fetchWithTimeout` lets go of its signal
+   * once the headers arrive, so a body that stalls after them would ignore the
+   * abort and hold the page past the deadline. The abort still goes out, to
+   * free whatever can be freed.
+   */
   const ctrl = new AbortController();
-  const forward = (): void => ctrl.abort();
-  opts.signal?.addEventListener('abort', forward, { once: true });
-  const timer = setTimeout(() => ctrl.abort(), deadlineMs);
-  try {
-    return await loadFeedUrl(feedUrl, { signal: ctrl.signal });
-  } catch (e) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let forward: (() => void) | undefined;
+  const deadline = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      ctrl.abort();
+      resolve(null);
+    }, deadlineMs);
+  });
+  const movedOn = new Promise<never>((_, reject) => {
+    forward = () => {
+      ctrl.abort();
+      reject(new DOMException('aborted', 'AbortError'));
+    };
+    opts.signal?.addEventListener('abort', forward, { once: true });
+  });
+  const read = loadFeedUrl(feedUrl, { signal: ctrl.signal }).catch((e: unknown) => {
     if (opts.signal?.aborted) throw e;
     return null;
+  });
+  try {
+    return await Promise.race([read, deadline, movedOn]);
   } finally {
     clearTimeout(timer);
-    opts.signal?.removeEventListener('abort', forward);
+    if (forward) opts.signal?.removeEventListener('abort', forward);
+    // Whichever lost the race must not surface as an unhandled rejection.
+    read.catch(() => undefined);
+    movedOn.catch(() => undefined);
   }
 }
 
