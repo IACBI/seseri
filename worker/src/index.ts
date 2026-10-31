@@ -328,6 +328,26 @@ interface ParsedDoc {
 }
 
 /**
+ * What a request needs to find one episode without reading the list.
+ *
+ * The list is every episode's fields — megabytes of JSON on a 20,000-episode
+ * archive — and `notesFor` used to parse all of it to locate one row: measured
+ * in the Workers runtime at a median 13 ms a request, over the free plan's
+ * 10 ms CPU allowance. The ids alone are a small fraction of that, and the
+ * episode itself comes from its chunk.
+ */
+interface ParsedIndex {
+  meta: ParsedDoc['meta'];
+  total: number;
+  build: string;
+  chunk: number;
+  /** `trackId` of every episode in list order. */
+  ids: string[];
+}
+
+type Row = Record<string, unknown>;
+
+/**
  * Each chunk is one `cache.put` on a miss, and every cache call is a
  * subrequest against a per-invocation cap (50 on the free plan). Small chunks
  * keep a notes lookup cheap; the cap on their number keeps a 20,000-episode
@@ -339,14 +359,20 @@ const chunkSize = (episodes: number): number =>
   Math.max(NOTES_CHUNK_MIN, Math.ceil(episodes / NOTES_CHUNKS_MAX));
 const PARSE_TTL = 15 * 60;
 
+/**
+ * v3: chunks hold whole episodes rather than notes alone, so a v2 list must not
+ * be paired with them; bumping every key lets the old entries expire unread.
+ */
 const listKey = (href: string): string =>
-  'https://cache.seseri/parse/v2?u=' + encodeURIComponent(href);
+  'https://cache.seseri/parse/v3?u=' + encodeURIComponent(href);
+const indexKey = (href: string): string =>
+  'https://cache.seseri/parse-index/v3?u=' + encodeURIComponent(href);
 /**
  * `build` is in the key so a chunk can only ever be read together with the list
- * that was written alongside it; chunks of an older build just expire unread.
+ * or index written alongside it; chunks of an older build just expire unread.
  */
 const notesKey = (href: string, build: string, chunk: number): string =>
-  `https://cache.seseri/parse-notes/v2?u=${encodeURIComponent(href)}&b=${build}&c=${chunk}`;
+  `https://cache.seseri/parse-notes/v3?u=${encodeURIComponent(href)}&b=${build}&c=${chunk}`;
 
 app.get('/v1/parse', async (c) => {
   const target = safeTarget(c.req.query('url'));
@@ -372,7 +398,7 @@ app.get('/v1/parse', async (c) => {
 
   const cacheable = !carriesCredential(target.href);
   /** Notes chunks of a freshly parsed feed, so this request need not re-read them. */
-  let built: { build: string; chunks: Array<Array<string | null>> } | undefined;
+  let built: { build: string; chunks: Row[][] } | undefined;
 
   const fetchAndParse = async (): Promise<Response> => {
     try {
@@ -387,34 +413,32 @@ app.get('/v1/parse', async (c) => {
       const kept = parsed.episodes.slice(0, PARSE_DOC_MAX_EPISODES);
       const build = crypto.randomUUID();
       const chunk = chunkSize(kept.length);
-      const chunks: Array<Array<string | null>> = [];
+      const chunks: Row[][] = [];
+      const ids: string[] = [];
       const episodes = kept.map((e, i) => {
-        const { description, ...rest } = e;
-        const note = typeof description === 'string' ? description : null;
-        (chunks[Math.floor(i / chunk)] ??= []).push(note);
+        (chunks[Math.floor(i / chunk)] ??= []).push(e as unknown as Row);
+        ids.push(e.trackId);
+        const { description: _notes, ...rest } = e;
         return rest;
       });
       built = { build, chunks };
+      const meta = { name: parsed.title, artist: parsed.author, art: parsed.art };
+      const total = parsed.episodes.length;
       if (cacheable) {
         const cache = caches.default;
-        chunks.forEach((chunk, n) =>
+        const store = (key: string, body: unknown): void =>
           c.executionCtx.waitUntil(
             cache.put(
-              new Request(notesKey(target.href, build, n), { method: 'GET' }),
-              Response.json(chunk, {
+              new Request(key, { method: 'GET' }),
+              Response.json(body, {
                 headers: { 'cache-control': `public, max-age=${PARSE_TTL}` },
               }),
             ),
-          ),
-        );
+          );
+        chunks.forEach((rows, n) => store(notesKey(target.href, build, n), rows));
+        store(indexKey(target.href), { meta, total, build, chunk, ids } satisfies ParsedIndex);
       }
-      return Response.json({
-        meta: { name: parsed.title, artist: parsed.author, art: parsed.art },
-        total: parsed.episodes.length,
-        build,
-        chunk,
-        episodes,
-      } satisfies ParsedDoc);
+      return Response.json({ meta, total, build, chunk, episodes } satisfies ParsedDoc);
     } catch (e) {
       // `invalid rss` is the parser's verdict on something that is not a feed,
       // which is the caller's URL being wrong rather than an upstream fault.
@@ -422,6 +446,60 @@ app.get('/v1/parse', async (c) => {
       return proxyError(c, e);
     }
   };
+
+  /** Whole episodes [from, to) of `build`, or undefined if a chunk has gone missing. */
+  const readRows = async (
+    build: string,
+    size: number,
+    from: number,
+    to: number,
+  ): Promise<Row[] | undefined> => {
+    const out: Row[] = [];
+    const first = Math.floor(from / size);
+    const last = Math.floor((to - 1) / size);
+    for (let n = first; n <= last; n++) {
+      let rows = built?.build === build ? built.chunks[n] : undefined;
+      if (!rows) {
+        const key = notesKey(target.href, build, n);
+        const hit = await caches.default.match(new Request(key, { method: 'GET' }));
+        if (!hit) return undefined;
+        rows = (await hit.json()) as Row[];
+      }
+      const lo = Math.max(from, n * size) - n * size;
+      const hi = Math.min(to, (n + 1) * size) - n * size;
+      out.push(...rows.slice(lo, hi));
+    }
+    return out;
+  };
+
+  const reply = (meta: ParsedDoc['meta'], total: number, episodes: Row[], cache: string) =>
+    c.json({ meta, total, offset, episodes }, 200, {
+      ...NOSNIFF,
+      // Sliced per request, and a private feed must never be stored anywhere.
+      'cache-control': cacheable ? 'private, max-age=300' : 'no-store',
+      'x-seseri-cache': cache,
+    });
+
+  /**
+   * Anything that wants notes is answered from the index and the chunks it
+   * needs, without parsing the list. Any piece missing (an evicted chunk, an
+   * index that expired first) falls through to the list path below, which
+   * re-parses when it has to and writes all of them again.
+   */
+  if (cacheable && (notesFor !== undefined || wantNotes)) {
+    const hit = await caches.default.match(new Request(indexKey(target.href), { method: 'GET' }));
+    if (hit) {
+      const idx = (await hit.json()) as ParsedIndex;
+      let at = offset;
+      let count = Math.max(0, Math.min(limit, idx.ids.length - offset));
+      if (notesFor !== undefined) {
+        at = idx.ids.indexOf(notesFor);
+        count = at < 0 ? 0 : 1;
+      }
+      const rows = count === 0 ? [] : await readRows(idx.build, idx.chunk, at, at + count);
+      if (rows) return reply(idx.meta, idx.total, rows, 'hit');
+    }
+  }
 
   /**
    * The cached list carries no show notes, and the notes live in separate
@@ -442,25 +520,10 @@ app.get('/v1/parse', async (c) => {
     d: ParsedDoc,
     from: number,
     to: number,
-  ): Promise<Array<string | null> | undefined> => {
-    const out: Array<string | null> = [];
-    const size = d.chunk;
-    const first = Math.floor(from / size);
-    const last = Math.floor((to - 1) / size);
-    for (let n = first; n <= last; n++) {
-      let chunk = built?.build === d.build ? built.chunks[n] : undefined;
-      if (!chunk) {
-        const key = notesKey(target.href, d.build, n);
-        const hit = await caches.default.match(new Request(key, { method: 'GET' }));
-        if (!hit) return undefined;
-        chunk = (await hit.json()) as Array<string | null>;
-      }
-      const lo = Math.max(from, n * size) - n * size;
-      const hi = Math.min(to, (n + 1) * size) - n * size;
-      out.push(...chunk.slice(lo, hi));
-    }
-    return out;
-  };
+  ): Promise<Array<string | null> | undefined> =>
+    (await readRows(d.build, d.chunk, from, to))?.map((r) =>
+      typeof r['description'] === 'string' ? r['description'] : null,
+    );
 
   /**
    * The episodes this request asks for, and where they start in `d`. One
@@ -514,12 +577,7 @@ app.get('/v1/parse', async (c) => {
       })
     : eps;
 
-  return c.json({ meta: doc.meta, total: doc.total, offset, episodes: window }, 200, {
-    ...NOSNIFF,
-    // Sliced per request, and a private feed must never be stored anywhere.
-    'cache-control': cacheable ? 'private, max-age=300' : 'no-store',
-    'x-seseri-cache': full.headers.get('x-seseri-cache') ?? 'bypass',
-  });
+  return reply(doc.meta, doc.total, window, full.headers.get('x-seseri-cache') ?? 'bypass');
 });
 
 app.route(SYNC_PREFIX, syncRoutes);

@@ -160,7 +160,7 @@ describe('GET /v1/parse', () => {
     ).join('');
     serve('/chunks.xml', `<rss><channel><title>T</title>${items}</channel></rss>`);
 
-    const listKey = 'https://cache.seseri/parse/v2?u=' + encodeURIComponent(HOST + '/chunks.xml');
+    const listKey = 'https://cache.seseri/parse/v3?u=' + encodeURIComponent(HOST + '/chunks.xml');
     // Spans the 50-episode chunk boundary.
     const page = (await (
       await call(parseUrl('/chunks.xml', '&offset=45&limit=10'))
@@ -187,10 +187,10 @@ describe('GET /v1/parse', () => {
     await call(parseUrl('/big.xml', '&notes=0'));
     const u = encodeURIComponent(HOST + '/big.xml');
     const doc = (await (
-      await caches.default.match(new Request('https://cache.seseri/parse/v2?u=' + u))
+      await caches.default.match(new Request('https://cache.seseri/parse/v3?u=' + u))
     )?.json()) as { build: string; chunk: number };
     const chunkAt = (c: number): Request =>
-      new Request(`https://cache.seseri/parse-notes/v2?u=${u}&b=${doc.build}&c=${c}`);
+      new Request(`https://cache.seseri/parse-notes/v3?u=${u}&b=${doc.build}&c=${c}`);
     expect(await caches.default.match(chunkAt(23))).toBeTruthy();
     expect(await caches.default.match(chunkAt(24))).toBeUndefined();
   });
@@ -201,10 +201,10 @@ describe('GET /v1/parse', () => {
     expect(first.headers.get('x-seseri-cache')).toBe('miss');
 
     const doc = (await (await caches.default.match(
-      new Request('https://cache.seseri/parse/v2?u=' + encodeURIComponent(HOST + '/evict.xml')),
+      new Request('https://cache.seseri/parse/v3?u=' + encodeURIComponent(HOST + '/evict.xml')),
     ))?.json()) as { build: string };
     const chunkKey =
-      'https://cache.seseri/parse-notes/v2?u=' +
+      'https://cache.seseri/parse-notes/v3?u=' +
       `${encodeURIComponent(HOST + '/evict.xml')}&b=${doc.build}&c=0`;
     expect(await caches.default.delete(new Request(chunkKey))).toBe(true);
 
@@ -233,10 +233,10 @@ describe('GET /v1/parse', () => {
     serve('/moved.xml', xml('a', 'b', 'c'));
     await call(parseUrl('/moved.xml', '&notes=0'));
     const doc = (await (
-      await caches.default.match(new Request('https://cache.seseri/parse/v2?u=' + u))
+      await caches.default.match(new Request('https://cache.seseri/parse/v3?u=' + u))
     )?.json()) as { build: string };
     await caches.default.delete(
-      new Request(`https://cache.seseri/parse-notes/v2?u=${u}&b=${doc.build}&c=0`),
+      new Request(`https://cache.seseri/parse-notes/v3?u=${u}&b=${doc.build}&c=0`),
     );
 
     // A new episode at the top shifts every index by one.
@@ -378,5 +378,70 @@ describe('GET /v1/parse', () => {
     serve(path, feed(1));
     const second = await call('/v1/parse?url=' + encodeURIComponent(HOST + path));
     expect(second.headers.get('x-seseri-cache')).toBe('bypass');
+
+    // Nor its index, which carries every episode id.
+    const u = encodeURIComponent(HOST + path);
+    expect(
+      await caches.default.match(new Request('https://cache.seseri/parse-index/v3?u=' + u)),
+    ).toBeUndefined();
+  });
+});
+
+describe('GET /v1/parse — the episode index', () => {
+  const u = (p: string): string => encodeURIComponent(HOST + p);
+
+  it('answers notesFor from the index and one chunk, without the list', async () => {
+    serve('/indexed.xml', feed(300, { notesChars: 30 }));
+    await call(parseUrl('/indexed.xml', '&notes=0'));
+    // With the list gone the only way to answer is the index; no upstream is
+    // registered, so a re-parse would fail the request.
+    expect(
+      await caches.default.delete(
+        new Request('https://cache.seseri/parse/v3?u=' + u('/indexed.xml')),
+      ),
+    ).toBe(true);
+
+    const res = await call(parseUrl('/indexed.xml', '&notesFor=g257'));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-seseri-cache')).toBe('hit');
+    const body = (await res.json()) as ParsedBody;
+    expect(body.total).toBe(300);
+    expect(body.meta.name).toBe('Parsed Pod');
+    expect(body.episodes).toHaveLength(1);
+    expect(body.episodes[0]).toMatchObject({ trackId: 'g257', trackName: 'Ep 257' });
+    expect((body.episodes[0] as Record<string, unknown>)['description']).toContain('xxx');
+  });
+
+  it('serves a page with notes from the index exactly as the list path does', async () => {
+    serve('/paged.xml', feed(130, { notesChars: 12 }));
+    const viaList = await (await call(parseUrl('/paged.xml', '&offset=40&limit=25'))).json();
+    const second = await call(parseUrl('/paged.xml', '&offset=40&limit=25'));
+    expect(second.headers.get('x-seseri-cache')).toBe('hit');
+    expect(await second.json()).toEqual(viaList);
+  });
+
+  it('answers an id the index does not hold with an empty list', async () => {
+    serve('/ids.xml', feed(4, { notesChars: 5 }));
+    await call(parseUrl('/ids.xml', '&notes=0'));
+    const res = await call(parseUrl('/ids.xml', '&notesFor=missing'));
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as ParsedBody).episodes).toEqual([]);
+  });
+
+  it('falls back to the list when a chunk the index points at is gone', async () => {
+    serve('/gone.xml', feed(3, { notesChars: 20 }));
+    await call(parseUrl('/gone.xml', '&notes=0'));
+    const idx = (await (
+      await caches.default.match(
+        new Request('https://cache.seseri/parse-index/v3?u=' + u('/gone.xml')),
+      )
+    )?.json()) as { build: string };
+    await caches.default.delete(
+      new Request(`https://cache.seseri/parse-notes/v3?u=${u('/gone.xml')}&b=${idx.build}&c=0`),
+    );
+
+    serve('/gone.xml', feed(3, { notesChars: 20 }));
+    const body = (await (await call(parseUrl('/gone.xml', '&notesFor=g1'))).json()) as ParsedBody;
+    expect((body.episodes[0] as Record<string, unknown>)['description']).toContain('xxx');
   });
 });
