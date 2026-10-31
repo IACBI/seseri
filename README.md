@@ -49,7 +49,8 @@ desktop, plus a full-screen **Now Playing** sheet.
 | **Automatic downloads** | optionally fetch new episodes of the shows you follow in the background, and optionally delete a download once the episode is finished — finished only, so nothing you are part-way through is removed |
 | **Play queue** | queue any episode as "up next"; the queue wins over list order |
 | **Mini player** | leaving a feed keeps playing; the dock carries skip/play controls (plus prev/next and speed on wide screens) and a seekable progress line, and opens the full **Now Playing** sheet. A title too long for the dock drifts end to end instead of ending in an ellipsis |
-| **Now Playing sheet** | full-screen at every size: play/pause, prev/next, skip, speed 0.5×–2.5×, volume, sleep timer, episode notes, chapters, transcript — around a drag-to-seek waveform |
+| **Now Playing sheet** | full-screen at every size: play/pause, prev/next, skip, speed 0.5×–2.5×, volume, sleep timer, episode notes, chapters, transcript — around a drag-to-seek waveform measured from the episode's own audio (flat when it cannot be measured, never made up) |
+| **Per-show order** | a serial opens at episode one, everything else at the newest; or pick one order for every show |
 | **Episode links** | share a link that opens on that episode, and from Now Playing at the moment you are at |
 | **Per-show speed** | a show can play at its own speed instead of the default; Settings lists the ones that do and resets them |
 | **Skip intro and outro** | per show, from the scissors on its page: every episode starts past the opening jingle and finishes before the closing credits, then the queue or the next episode carries on. A seek into the credits plays them; very short episodes play whole |
@@ -286,7 +287,8 @@ paneli var.
 | **Otomatik indirme** | takip ettiğin yayınların yeni bölümleri istersen arka planda iner; istersen bölüm bitince kopyası silinir — yalnızca bitenler, yarısında bıraktığın hiçbir şey silinmez |
 | **Kuyruk** | herhangi bir bölümü "sıradaki" yap; kuyruk, liste sırasından önce gelir |
 | **Mini oynatıcı** | feed'den çıkınca çalma sürer; alttaki çubukta atlama/oynatma düğmeleri (geniş ekranda önceki/sonraki ve hız) ve sarılabilir bir ilerleme çizgisi var, tam **Şimdi Çalıyor** panelini açar. Sığmayan başlık üç noktayla kesilmek yerine baştan sona kayar |
-| **Şimdi Çalıyor paneli** | her ekran boyutunda tam ekran: oynat/duraklat, önceki/sonraki, atlama, 0.5×–2.5× hız, ses düzeyi, uyku zamanlayıcısı, bölüm notları, bölüm işaretleri, konuşma metni — sürüklenerek sarılan bir dalga-formun çevresinde |
+| **Şimdi Çalıyor paneli** | her ekran boyutunda tam ekran: oynat/duraklat, önceki/sonraki, atlama, 0.5×–2.5× hız, ses düzeyi, uyku zamanlayıcısı, bölüm notları, bölüm işaretleri, konuşma metni — bölümün kendi sesinden ölçülen, sürüklenerek sarılan bir dalga-formun çevresinde (ölçülemezse düz kalır, uydurulmaz) |
+| **Podcast'e göre sıra** | dizi biçimindeki podcast birinci bölümden, diğerleri en yeniden açılır; istersen hepsi için tek bir sıra seç |
 | **Bölüm linkleri** | o bölümü açan bir link paylaş; Şimdi Çalıyor'dan paylaşırsan bulunduğun andan açılır |
 | **Yayın başına hız** | bir yayın varsayılan hız yerine kendi hızıyla çalabilir; Ayarlar bunları listeler ve sıfırlar |
 | **Giriş ve kapanışı atla** | yayının sayfasındaki makas simgesinden, yayın başına: her bölüm açılış müziğinin ardından başlar, kapanış jeneriğinden önce biter, sonra sıra ya da sonraki bölüm devam eder. Jeneriğe elle sararsan çalar; çok kısa bölümler baştan sona çalar |

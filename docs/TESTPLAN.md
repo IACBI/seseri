@@ -42,8 +42,10 @@ same control.
 
 ## 4. Subscriptions
 
-- [ ] Star a podcast → it appears as a card under **Library → Subscriptions**.
-- [ ] Unstar it → the card goes.
+- [ ] Press **Subscribe** on a podcast → the button reads "Subscribed" and the show
+      appears under **Library → Subscriptions**; the Downloads panel is not shown
+      under it.
+- [ ] Press it again (or the star in Library, after confirming) → the show goes.
 - [ ] Click a subscription card → the podcast opens and remembers the last-played episode (`pp_last_*`).
 - [ ] Subscribed podcasts also appear in the subscriptions grid on **Home**.
 
@@ -67,7 +69,11 @@ same control.
 - [ ] The seven accent colours (Amber/Copper/Signal Red/Moss/Teal/Sky/Lilac) change and apply across the UI; Amber is the default.
 - [ ] Opening with an accent colour saved by an old version (3.x) maps it to the nearest Sinyal colour (`normalizeAccent`), and the right swatch shows as active.
 - [ ] Font size and row height change.
-- [ ] The default sort works (Newest → Oldest / Oldest → Newest).
+- [ ] The default sort works: "By podcast" (the default) opens a serial at
+      episode one and any other show at the newest; Oldest first / Newest first
+      apply to every show.
+- [ ] Upgrading from 4.2.20 with the sort left at Oldest first → it reads "By
+      podcast". Choose Oldest first again, reload → it stays.
 - [ ] "Clear all progress" and "Clear all data" work, each behind the styled confirm dialog.
 - [ ] The storage row shows usage; "Delete downloads" works after confirming.
 
@@ -507,3 +513,25 @@ second transfer** and a deliberate cost (see the header of
       language's storefront.
 - [ ] Typing in the search box replaces the topics with results; clearing the
       box brings the topics back.
+
+## 27. The waveform, the podcast page and Home (4.2.21)
+
+- [ ] Open Now Playing on a streamed MP3 episode with prefetch allowed → the
+      line starts flat and, within a few seconds (up to a minute on a slow
+      host), becomes the episode's shape; quiet stretches are short bars and the
+      bars stop pulsing.
+- [ ] Reopen the same episode later → the shape appears at once, no requests.
+- [ ] A downloaded episode, in airplane mode → the shape is drawn from the copy.
+- [ ] Settings → "Prefetch audio" = never, a new streamed episode → the line
+      stays flat and no ranged audio requests appear in the Network tab.
+- [ ] An AAC (`.m4a`) episode → the line stays flat; nothing is invented.
+- [ ] Open a show from a search result → its name, artwork and episode count
+      are in the header before the episodes arrive.
+- [ ] A show with a description → three lines under the header; "Show more"
+      expands it and reads "Show less". A short one has no toggle.
+- [ ] At 375px the episode title takes the whole row; the three actions sit on
+      the date line; a "resume" badge wraps without touching the divider.
+- [ ] Home with no subscriptions (with or without something to resume) → a
+      "Find a podcast" button and the topic chips; a chip opens Search on it.
+- [ ] Settings on a device that is not paired → only "Start" and "Link" in the
+      sync section; no "Sync now" or "Delete server data".
