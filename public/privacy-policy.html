@@ -16,27 +16,28 @@
 
 <div class="lang">
   <h1>Gizlilik Politikası</h1>
-  <small>Son güncelleme: Haziran 2026</small>
+  <small>Son güncelleme: Ekim 2026</small>
 
   <h2>Veri Toplama</h2>
-  <p><strong>Seseri uygulaması hiçbir kişisel veri toplamaz, saklamaz veya paylaşmaz.</strong></p>
+  <p><strong>Seseri hesap istemez; kişisel veri toplamaz, satmaz veya paylaşmaz.</strong> Çerez, reklam ya da analitik aracı yoktur.</p>
 
-  <h2>İnternet Erişimi</h2>
-  <p>Uygulama internet bağlantısını yalnızca şu amaçla kullanır:</p>
+  <h2>Cihazınızda Saklananlar</h2>
+  <p>Abonelikler, dinleme ilerlemesi, sıra ve ayarlar tarayıcının <code>localStorage</code>'ında; besleme önbelleği IndexedDB'de; indirilen bölümler tarayıcının önbelleğinde, yalnızca <strong>cihazınızda</strong> durur. Ayarlar'daki sıfırlama hepsini siler.</p>
+
+  <h2>İnternet Bağlantısı</h2>
   <ul>
-    <li>Apple iTunes Arama API'si üzerinden podcast ve bölüm bilgilerini çekmek</li>
-    <li>Seçilen bölümlerin ses akışını oynatmak</li>
+    <li><strong>Arama:</strong> Apple'ın herkese açık iTunes Arama API'si, doğrudan ya da Seseri'nin sunucusu üzerinden.</li>
+    <li><strong>Beslemeler:</strong> Podcast beslemeleri Seseri'nin kendi sunucusu (Cloudflare Worker) üzerinden çekilir. Sunucu, istenen besleme adresini görür, ama bu adres kayıtlara yazılmaz: kayıtlar yalnızca isteğin yolunu ve sonucunu tutar.</li>
+    <li><strong>Ses, kapak, bölüm işaretleri, konuşma metni:</strong> Doğrudan podcast'in kendi sunucusundan gelir; o sunucu, her web sitesinde olduğu gibi IP adresinizi görür.</li>
+    <li><strong>Yazı tipleri</strong> uygulamanın kendi adresinden yüklenir; üçüncü taraf bir yazı tipi hizmeti kullanılmaz.</li>
   </ul>
-  <p>Bu işlemler sırasında kullanıcı kimliği, konum, cihaz bilgisi veya başka herhangi bir kişisel veri iletilmez.</p>
+  <p>Sunucu, kötüye kullanımı sınırlamak için ağ adresinizden tek yönlü türetilmiş bir kimlik altında kısa süreli bir istek sayacı tutar; adresinizin kendisi saklanmaz.</p>
 
-  <h2>Yerel Depolama</h2>
-  <p>Dinleme geçmişi, favoriler ve uygulama ayarları yalnızca <strong>cihazınızda</strong>, tarayıcının <code>localStorage</code>'ında saklanır. Bu veriler hiçbir sunucuya gönderilmez.</p>
+  <h2>Cihazlar Arası Eşitleme (isteğe bağlı)</h2>
+  <p>Eşitlemeyi açarsanız abonelikleriniz, ilerlemeniz ve sıranız gönderilmeden önce <strong>cihazınızda şifrelenir</strong> (AES-GCM). Anahtar yalnızca eşleştirme kodundan türetilir ve sunucuya hiç gitmez; sunucu okuyamadığı şifreli bir kopya saklar. Eşitlemeyi kapatıp kopyayı istediğiniz an silebilirsiniz; 180 gün kullanılmayan kopyalar kendiliğinden silinir.</p>
 
-  <h2>Üçüncü Taraf Hizmetler</h2>
-  <p>Uygulama, Apple Inc.'in herkese açık <a href="https://affiliate.itunes.apple.com/resources/documentation/itunes-store-web-service-search-api/" target="_blank" rel="noopener noreferrer">iTunes Arama API</a>'sini kullanmaktadır. Bu API'nin gizlilik koşulları Apple'a aittir.</p>
-  <p>Doğrudan RSS besleme URL'si girdiğinizde, besleme tarayıcı CORS kısıtlamaları nedeniyle herkese açık proxy hizmetleri (<a href="https://allorigins.win/" target="_blank" rel="noopener noreferrer">AllOrigins</a> veya <a href="https://corsproxy.io/" target="_blank" rel="noopener noreferrer">corsproxy.io</a>) üzerinden çekilir; bu hizmetler girdiğiniz besleme URL'sini görebilir.</p>
-  <p>URL'sinde bir abonelik anahtarı taşıyan özel (ücretli) beslemeler bu herkese açık proxy'lere <strong>hiçbir zaman</strong> gönderilmez; yalnızca uygulamanın kendi sunucusu üzerinden çekilir. Böyle bir besleme, sunucu yapılandırılmamışsa yüklenmez ve nedenini açıklayan bir hata gösterir.</p>
-  <p>Arayüz yazı tipleri <a href="https://fonts.google.com/" target="_blank" rel="noopener noreferrer">Google Fonts</a> üzerinden yüklenir; bu sırada Google IP adresinizi görebilir. Bölüm ses dosyaları doğrudan ilgili podcast'in sunucusundan oynatılır.</p>
+  <h2>Herkese Açık Proxy'ler (varsayılan olarak kapalı)</h2>
+  <p>Ayarlar'dan açarsanız ve Seseri'nin sunucusuna ulaşılamazsa, beslemeler herkese açık proxy hizmetleri (<a href="https://allorigins.win/" target="_blank" rel="noopener noreferrer">AllOrigins</a>, <a href="https://codetabs.com/" target="_blank" rel="noopener noreferrer">CodeTabs</a>, <a href="https://corsproxy.io/" target="_blank" rel="noopener noreferrer">corsproxy.io</a>) üzerinden çekilebilir; bu hizmetler besleme adresini görür. Adresinde abonelik anahtarı taşıyan özel (ücretli) beslemeler bu proxy'lere <strong>hiçbir zaman</strong> gönderilmez.</p>
 
   <h2>İletişim</h2>
   <p>Sorularınız için: <a href="mailto:bozdogancanahmet@gmail.com">bozdogancanahmet@gmail.com</a></p>
@@ -44,27 +45,28 @@
 
 <div class="lang lang-en">
   <h1>Privacy Policy</h1>
-  <small>Last updated: June 2026</small>
+  <small>Last updated: October 2026</small>
 
   <h2>Data Collection</h2>
-  <p><strong>Seseri does not collect, store, or share any personal data.</strong></p>
+  <p><strong>Seseri needs no account and does not collect, sell or share personal data.</strong> There are no cookies, ads or analytics.</p>
+
+  <h2>What Stays on Your Device</h2>
+  <p>Subscriptions, listening progress, the queue and settings live in the browser's <code>localStorage</code>; the feed cache in IndexedDB; downloaded episodes in the browser's cache — <strong>only on your device</strong>. Reset in Settings removes all of it.</p>
 
   <h2>Internet Access</h2>
-  <p>The app uses internet access solely for the following purposes:</p>
   <ul>
-    <li>Fetching podcast and episode information via the Apple iTunes Search API</li>
-    <li>Streaming audio for selected episodes</li>
+    <li><strong>Search:</strong> Apple's public iTunes Search API, directly or through Seseri's server.</li>
+    <li><strong>Feeds:</strong> podcast feeds are fetched through Seseri's own server (a Cloudflare Worker). It sees the feed address it is asked for, but does not log it: logs keep only the path and outcome of each request.</li>
+    <li><strong>Audio, artwork, chapters and transcripts</strong> come straight from each podcast's own host, which sees your IP address as any website does.</li>
+    <li><strong>Typefaces</strong> are served from the app's own address; no third-party font service is used.</li>
   </ul>
-  <p>No user identity, location, device information, or any other personal data is transmitted during these operations.</p>
+  <p>To limit abuse, the server keeps a short-lived request counter under an id derived one way from your network address; the address itself is not stored.</p>
 
-  <h2>Local Storage</h2>
-  <p>Listening history, favorites, and app settings are stored <strong>only on your device</strong>, in the browser's <code>localStorage</code>. This data is never sent to any server.</p>
+  <h2>Cross-Device Sync (optional)</h2>
+  <p>If you turn sync on, your subscriptions, progress and queue are <strong>encrypted on your device</strong> (AES-GCM) before they leave it. The key is derived from your pairing code alone and never reaches the server, which stores a copy it cannot read. You can turn sync off and delete that copy at any time; copies unused for 180 days are deleted automatically.</p>
 
-  <h2>Third-Party Services</h2>
-  <p>The app uses Apple Inc.'s public <a href="https://affiliate.itunes.apple.com/resources/documentation/itunes-store-web-service-search-api/" target="_blank" rel="noopener noreferrer">iTunes Search API</a>. That API's privacy terms belong to Apple.</p>
-  <p>When you enter a direct RSS feed URL, the feed is fetched through public proxy services (<a href="https://allorigins.win/" target="_blank" rel="noopener noreferrer">AllOrigins</a> or <a href="https://corsproxy.io/" target="_blank" rel="noopener noreferrer">corsproxy.io</a>) due to browser CORS restrictions; these services can see the feed URL you enter.</p>
-  <p>Private (paid) feeds that carry a subscriber token in their URL are <strong>never</strong> sent to those public proxies — they are fetched only through the app's own backend. Such a feed will refuse to load, with an explanatory message, if no backend is configured.</p>
-  <p>Interface fonts are loaded from <a href="https://fonts.google.com/" target="_blank" rel="noopener noreferrer">Google Fonts</a>, which may see your IP address in the process. Episode audio is streamed directly from each podcast's own host.</p>
+  <h2>Public Proxies (off by default)</h2>
+  <p>If you switch them on in Settings and Seseri's server cannot be reached, feeds may be fetched through public proxy services (<a href="https://allorigins.win/" target="_blank" rel="noopener noreferrer">AllOrigins</a>, <a href="https://codetabs.com/" target="_blank" rel="noopener noreferrer">CodeTabs</a>, <a href="https://corsproxy.io/" target="_blank" rel="noopener noreferrer">corsproxy.io</a>), which can see the feed address. Private (paid) feeds that carry a subscriber token in their address are <strong>never</strong> sent to them.</p>
 
   <h2>Contact</h2>
   <p>For questions: <a href="mailto:bozdogancanahmet@gmail.com">bozdogancanahmet@gmail.com</a></p>
