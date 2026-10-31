@@ -270,6 +270,21 @@ const ar: Lang = {
   topic_comedy: "كوميديا",
   topic_sport: "رياضة",
   topic_health: "صحة",
+  sub_add: "اشتراك",
+  sub_on: "مشترك",
+  home_empty_cta: "ابحث عن بودكاست",
+  sort_auto: "حسب البرنامج (موصى به)",
+  sort_auto_sub: "البرامج المتسلسلة تبدأ من البداية، والبقية من الأحدث",
+  unit_sec: (n) => `${n} ث`,
+  skip_back_n: (n) => `رجوع ${n} ثانية`,
+  skip_fwd_n: (n) => `تقدّم ${n} ثانية`,
+  sleep_extend: "إضافة 5 دقائق",
+  p_about_more: "عرض المزيد",
+  p_about_less: "عرض أقل",
+  search_label: "ابحث عن البودكاست",
+  filter_label: "ابحث في الحلقات",
+  sync_code_label: "رمز الإقران",
+  wave_label: "شكل موجة الصوت",
 };
 
 export default ar;
