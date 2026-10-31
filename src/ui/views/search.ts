@@ -329,6 +329,10 @@ export function initSearchView(deps: SearchViewDeps): SearchView {
     name: 'search',
     showTopic(key) {
       input.value = '';
+      // As clearing the box by hand does: a search still in flight would
+      // otherwise settle later and write its empty or error state over the topic.
+      searchAbort?.abort();
+      idle();
       showBrowse();
       // openTopicNamed toggles, and a second tap on the same chip closes it.
       if (openTopic !== key) openTopicNamed(key);
