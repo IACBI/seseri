@@ -239,6 +239,15 @@ block at the end: every exemption is counted there.
       measurement drew zero refusals out of 200 — the counter was per machine.)
 - [ ] Changing address within one IPv6 /64 does not open a new budget; a
       different /64 does.
+- [ ] Sync pairing: twenty new pairings an hour across one IPv6 /48 succeed,
+      whichever /64s they come from, and the next one gets `429`; a pairing
+      from another /48 still succeeds.
+- [ ] Show notes on a long archive (The Daily): opening an episode's notes is
+      a `/v1/parse?notesFor=` answered with `x-seseri-cache: hit`, and the
+      notes belong to that episode.
+- [ ] Pushing a `v*` tag runs the **Worker** workflow: tests, D1 migrations,
+      deploy, then the probe step green. Without the Cloudflare secrets it
+      stops at its first step with a message naming them.
 - [ ] Against an upstream that stops answering half-way, `/v1/feed` returns 504
       within 30 s and the client falls back — it does not wait forever.
 - [ ] `?resume=1` → the last opened feed opens (the store shortcut).

@@ -4,6 +4,40 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.16 — 2026-10-31
+
+### Security
+
+- **Sync pairing is capped per IPv6 /48, not only per /64.** A server rented
+  with a /56 or /48 counted as hundreds or thousands of addresses, enough to
+  fill the sync table and lock everyone out of new pairings. One /48 now gets
+  twenty new pairings an hour between all of its addresses.
+- **The browser-enforced HTML check reads markup as the browser does.** The
+  Trusted Types policy matched text patterns, which `<svg/onload=…>` and an
+  entity-encoded `javascript:` slipped past. It now parses the markup and
+  refuses any handler attribute or script URL in what was actually built. No
+  feed data reaches that check today; it is the net under future mistakes.
+
+### Speed
+
+- **Show notes on long archives come back in a fraction of the time.** The
+  Worker found one episode's notes by reading the whole cached list — 13 ms
+  per request on a 20,000-episode archive, over Cloudflare's free CPU
+  allowance. It now keeps a small index and answers in 3 ms.
+- **When the Worker has dropped a show's notes from its cache,** it rebuilds
+  them once instead of on every request for the next quarter hour, and never
+  attaches one episode's notes to another.
+- **Opening a very large feed without the Worker stutters less:** two
+  full-page stalls during the first render are gone (measured on an 18 MB
+  feed: long-task time down a third, the longest frozen frame from 159 to
+  99 ms).
+
+### Release tooling
+
+- Release tags now deploy the Worker too, after its tests, and check the live
+  URL afterwards. Until now a Worker fix waited for someone to deploy it by
+  hand.
+
 ## 4.2.15 — 2026-10-31
 
 ### The dock
