@@ -31,6 +31,7 @@ import {
   feedSpeedRevision,
   speedFor,
 } from '../../state/feed-speed';
+import { clearFeedTrims, feedTrimCount, feedTrimRevision } from '../../state/feed-trim';
 import { clearProgress, saveProgressNow } from '../../storage/progress';
 import { hardReset } from '../../storage/reset';
 import { exportBackup, restoreBackup } from '../../storage/backup';
@@ -89,6 +90,14 @@ const MARKUP = `
         <div class="s-sublabel" id="feedSpeedInfo"></div>
       </div>
       <button class="s-btn" id="btnResetFeedSpeeds" data-i18n="btn_reset_feed_speeds">Sıfırla</button>
+    </div>
+
+    <div class="s-row">
+      <div>
+        <div class="s-label" data-i18n="s_feed_trims">Giriş/kapanış atlamaları</div>
+        <div class="s-sublabel" id="feedTrimInfo"></div>
+      </div>
+      <button class="s-btn" id="btnResetFeedTrims" data-i18n="btn_reset_feed_trims">Sıfırla</button>
     </div>
 
     <div class="s-row">
@@ -346,6 +355,8 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   const feedSpeedInfoEl = pick<HTMLDivElement>('feedSpeedInfo');
   const feedCacheUsageEl = pick<HTMLDivElement>('feedCacheUsage');
   const resetSpeedsBtn = pick<HTMLButtonElement>('btnResetFeedSpeeds');
+  const feedTrimInfoEl = pick<HTMLDivElement>('feedTrimInfo');
+  const resetTrimsBtn = pick<HTMLButtonElement>('btnResetFeedTrims');
 
   /**
    * The per-show speeds are set while listening, from the Now Playing sheet, so
@@ -364,6 +375,20 @@ export function initSettingsView(deps: SettingsViewDeps): View {
   feedSpeedRevision.subscribe(refreshFeedSpeeds);
   currentLang.subscribe(refreshFeedSpeeds);
   refreshFeedSpeeds();
+
+  // Set from each show's page; this is the one place they are undone together.
+  function refreshFeedTrims(): void {
+    const n = feedTrimCount();
+    feedTrimInfoEl.textContent = t('s_feed_trims_sub', n);
+    resetTrimsBtn.disabled = n === 0;
+  }
+  resetTrimsBtn.addEventListener('click', () => {
+    clearFeedTrims();
+    toast(t('toast_feed_trims_reset'));
+  });
+  feedTrimRevision.subscribe(refreshFeedTrims);
+  currentLang.subscribe(refreshFeedTrims);
+  refreshFeedTrims();
 
   // ── accent swatches (now dynamic from ACCENT_SWATCHES) ───────────
   const swatches = ACCENT_SWATCHES.map(({ hex, name }) => {

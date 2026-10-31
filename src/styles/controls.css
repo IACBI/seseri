@@ -479,7 +479,8 @@
    without this the control reads as the global setting and the listener has no
    way to tell that this one show is different. */
 .seri-select.has-own,
-.mini-sel.has-own {
+.mini-sel.has-own,
+.icon-btn.p-trim.has-own {
   color: var(--accent-ink);
   border-color: color-mix(in srgb, var(--accent-ink) 55%, transparent);
 }

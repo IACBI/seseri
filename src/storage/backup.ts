@@ -31,6 +31,7 @@ export const BACKUP_KEYS = [
   'pp_played',
   'pp_played_rm',
   'pp_feed_speed',
+  'pp_feed_trim',
 ] as const;
 
 /**
