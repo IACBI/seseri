@@ -86,6 +86,48 @@ function breakBootScript() {
       [...fonts.external, ...fonts.remoteLinks].join(' '),
     );
 
+    // ── 1b. the sidebar does not move the page ──────────────────────
+    // Collapsed, peeking and expanded must all leave the column, the icons
+    // and the destinations where they were. Transitions are switched off so
+    // each read is the settled value, not a frame of the slide.
+    await page.setViewport({ width: 1280, height: 800 });
+    const geometry = await page.evaluate(async () => {
+      const off = document.createElement('style');
+      off.textContent = '*{transition:none!important;animation:none!important}';
+      document.head.appendChild(off);
+      const nav = document.querySelector('.app-nav');
+      const btn = document.querySelector('.nav-collapse');
+      const frame = () => new Promise((r) => setTimeout(r, 50));
+      const read = () => {
+        const view = [...document.querySelectorAll('.view')].find((v) => !v.hidden);
+        const item = document.querySelector('.nav-item');
+        return [
+          Math.round(view.querySelector('.view-inner').getBoundingClientRect().left),
+          Math.round(item.querySelector('.icon').getBoundingClientRect().left),
+          Math.round(item.getBoundingClientRect().top),
+        ].join(',');
+      };
+      const expanded = read();
+      btn.click();
+      await frame();
+      const collapsed = document.body.classList.contains('nav-collapsed');
+      const rail = read();
+      nav.classList.add('nav-peek');
+      const peek = read();
+      nav.classList.remove('nav-peek');
+      btn.click();
+      await frame();
+      off.remove();
+      return { collapsed, expanded, rail, peek };
+    });
+    await page.setViewport({ width: 900, height: 800 });
+    ok('the collapse toggle collapses the rail', geometry.collapsed);
+    ok(
+      'collapsing, peeking and expanding leave the page in place',
+      geometry.rail === geometry.expanded && geometry.peek === geometry.expanded,
+      `expanded=${geometry.expanded} rail=${geometry.rail} peek=${geometry.peek}`,
+    );
+
     // Seed every store the reset is supposed to empty.
     await page.evaluate(async () => {
       localStorage.setItem('pp_settings', JSON.stringify({ theme: 'oled' }));

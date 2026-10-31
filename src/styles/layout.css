@@ -171,6 +171,9 @@ symbol * {
     align-items: center;
     gap: var(--s-3);
     padding: var(--s-2) var(--s-3) var(--s-5);
+    /* The toggle's 32px, held whether it is in the row or laid over it, so
+       collapsing does not lift every destination below by a few pixels. */
+    min-block-size: calc(32px + var(--s-2) + var(--s-5));
     color: var(--text);
   }
   /* flex-shrink: the wordmark stays in the flow while the rail is narrow, and
@@ -190,7 +193,9 @@ symbol * {
     flex-direction: row;
     justify-content: flex-start;
     gap: var(--s-3);
-    padding: 0 var(--s-3);
+    /* 17px lines the icon up with the brand mark's centre, in both widths, so
+       expanding the rail does not shift the icons under the pointer. */
+    padding: 0 var(--s-3) 0 17px;
     font-size: var(--fs-md);
     inline-size: 100%;
   }
@@ -200,8 +205,15 @@ symbol * {
   /* settings pinned to the bottom of the rail */
   .nav-items .nav-spring { flex: 1; }
 
+  /* The column keeps the place it has beside the open rail for as long as
+     the window has room for it, so collapsing, peeking and expanding never
+     move the page. The offset grows as the rail shrinks, on the same curve,
+     and gives way only where the widest column (860px) would not fit — on a
+     narrow window, room is what collapsing is for. */
   .view {
     padding-block-end: calc(var(--mini-h) + env(safe-area-inset-bottom, 0px) + var(--s-4));
+    padding-inline-start: clamp(0px, 100% - 860px, var(--nav-w-full) - var(--nav-w));
+    transition: padding-inline-start var(--d-base) var(--ease-out);
   }
   .view-inner { padding: var(--s-6) var(--s-6); }
 
@@ -248,9 +260,7 @@ symbol * {
   }
 
   /* Icons keep their exact place whether the panel is peeking or not — only
-     the width and the labels change — so nothing slides under the pointer.
-     17px lines the icons up with the brand mark's own centre. */
-  body.nav-collapsed .nav-item { padding-inline: 17px var(--s-3); }
+     the width and the labels change — so nothing slides under the pointer. */
   body.nav-collapsed .nav-label,
   body.nav-collapsed .nav-brand-name {
     white-space: nowrap;
