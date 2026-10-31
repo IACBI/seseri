@@ -535,3 +535,7 @@ second transfer** and a deliberate cost (see the header of
       "Find a podcast" button and the topic chips; a chip opens Search on it.
 - [ ] Settings on a device that is not paired → only "Start" and "Link" in the
       sync section; no "Sync now" or "Delete server data".
+- [ ] Search "Serial", open it (Apple lists all its episodes) → it opens at
+      "Ep. 1" with the sort label on oldest first, and its description shows.
+- [ ] Start a search on a slow connection, go Home before it answers, tap a
+      topic → Search shows that topic's shows and stays on them.
