@@ -1028,6 +1028,15 @@ const SCENARIOS = [
     },
   },
   {
+    name: 'podcast-trim',
+    async run(page) {
+      await openPodcast(page);
+      await page.evaluate(() => document.getElementById('trimBtn').click());
+      await page.waitForSelector('dialog.trim-dialog[open].open', { timeout: 5000 });
+      return { roots: ['dialog.trim-dialog[open]'], fullyVisible: true };
+    },
+  },
+  {
     name: 'queue',
     async run(page) {
       await sheetOpen(page);

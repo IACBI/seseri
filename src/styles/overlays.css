@@ -110,7 +110,8 @@ body:has(.np-sheet.open) .toast-host {
   margin-block-end: var(--s-3);
 }
 .trim-label { color: var(--text); font-size: var(--fs-md); }
-.trim-sel { min-inline-size: 7.5em; }
+/* The dialog has the room, so the 44px target rule holds on desktop too. */
+.trim-sel { min-inline-size: 7.5em; min-block-size: 44px; }
 .trim-hint { margin-block: var(--s-4); font-size: var(--fs-sm); }
 
 /* ─ Offline banner ─
