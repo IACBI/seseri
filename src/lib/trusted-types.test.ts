@@ -1,7 +1,23 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { allowedScriptUrl, unsafeMarkup } from './trusted-types';
 
 describe('unsafeMarkup', () => {
+  // Each of these passed the text-only check: the verdict has to come from
+  // what the parser builds.
+  it.each([
+    '<svg/onload=alert(1)>',
+    '<img src="x"/onerror=alert(1)>',
+    '<a href="java&#x73;cript:alert(1)">x</a>',
+    '<a href="&#106;avascript:alert(1)">x</a>',
+    '<a href="java&#9;script:alert(1)">x</a>',
+    '<a href="vbscript:msgbox(1)">x</a>',
+    '<svg><a xlink:href="&#x6a;avascript:x()"><text>x</text></a></svg>',
+    '<template><img src="x"/onerror=alert(1)></template>',
+  ])('refuses the parsed form of %s', (html) => {
+    expect(unsafeMarkup(html)).toBe(true);
+  });
+
   it.each([
     '<img src=x onerror=alert(1)>',
     '<svg onload="x()">',
