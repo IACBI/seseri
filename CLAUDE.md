@@ -111,7 +111,9 @@ install screenshots, which users actually see).
 Patch numbers step one at a time to 99, then roll the minor (`4.1.99` → `4.2.0`).
 
 1. Bump `package.json`, `desktop/package.json`,
-   `desktop/src-tauri/tauri.conf.json` and the two lockfiles' top-level version.
+   `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml`, the
+   `seseri` entry in `desktop/src-tauri/Cargo.lock` and the two npm lockfiles'
+   top-level version. `tests/unit/version-sync.test.ts` fails if any disagree.
 2. Add a `CHANGELOG.md` section; update `README.md` (both languages) and
    `docs/TESTPLAN.md` for anything that changed behaviour.
 3. Commit as `release: X.Y.Z — …`, push, then push tag `vX.Y.Z`.

@@ -34,7 +34,7 @@ npm run verify       # lint + typecheck + unit tests + build + worker checks
 - **Feed data never reaches the DOM as markup.** Anything from a feed, a search
   result or a URL goes through `h()` or `textContent`. `innerHTML` is allowed
   only for a static constant with nothing interpolated into it — ESLint fails
-  the build on interpolation, concatenation, `insertAdjacentHTML` and `eval`.
+  `npm run lint` (part of `npm run verify`) on interpolation, concatenation, `insertAdjacentHTML` and `eval`.
   Show notes are reduced to text plus https-only links first
   (`src/feeds/show-notes.ts`).
 - **i18n is compile-time checked.** A user-visible string means a key in
@@ -80,7 +80,7 @@ recovery watchdog, playback wiring.
 The headless smokes drive the built app in a real browser, which is the only
 place layout, playback and the service worker are actually exercised. They find
 a Chromium themselves and honour `SESERI_BROWSER`; CI runs all nine on every
-push.
+push to `main` and every pull request.
 
 ```bash
 npm run smoke                       # all nine, in order — 104 assertions
