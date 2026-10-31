@@ -64,7 +64,9 @@ You can expect an initial response within a week.
   subscriber token in the feed URL itself. Such URLs are never sent to the
   public CORS proxies — they go only to the app's own Worker, and the feed
   fails with an explanatory message if no Worker is configured. Ordinary public
-  feeds are unaffected.
+  feeds are unaffected. The Worker receives the feed URL in its query string,
+  so its logs are configured with `redact_query_string`: Cloudflare keeps the
+  path and status of each request, never the URL that carried the token.
 
 ## Cross-device sync
 
