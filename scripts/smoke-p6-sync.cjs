@@ -246,6 +246,14 @@ async function scrubSeconds(page, minSeconds = 0) {
 
     await openSettings(a);
     ok('sync section is available', await a.$('#s_syncSection') !== null);
+    // An unpaired device offers only "start" and "link". The paired-only
+    // controls are `hidden`, and a `display` rule once overrode that and showed
+    // "Delete server data" to a device that had nothing on the server.
+    const unpaired = await a.evaluate(() =>
+      ['syncCodeRow', 'btnSyncNow', 'btnSyncCopy', 'btnSyncUnlink', 'btnSyncForget']
+        .filter((id) => document.getElementById(id)?.checkVisibility()),
+    );
+    ok('an unpaired device shows no paired-only controls', unpaired.length === 0, unpaired.join(','));
 
     await a.click('#btnSyncStart');
     await a.waitForFunction(() => /\S/.test(document.getElementById('syncCode')?.textContent || ''), { timeout: 10000 });

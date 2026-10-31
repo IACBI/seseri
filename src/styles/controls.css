@@ -1,8 +1,11 @@
 /* Shared control kit: buttons, selects, toggles, inputs, generic list rows,
    state boxes, skeletons, badges. View CSS composes these — do not fork. */
 
-/* ─ Buttons ─ */
-.btn {
+/* ─ Buttons ─
+   `.s-btn` is the same button under the name the settings and confirm markup
+   still uses. One rule for both, so the two cannot drift apart again. */
+.btn,
+.s-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -19,8 +22,10 @@
   cursor: pointer;
   transition: background var(--d-fast) var(--ease-smooth), border-color var(--d-fast) var(--ease-smooth), transform var(--d-fast) var(--ease-smooth);
 }
-.btn:hover { background: var(--surface2); border-color: var(--border-ui); }
-.btn:active { transform: scale(0.98); }
+.btn:hover,
+.s-btn:hover { background: var(--surface2); border-color: var(--border-ui); }
+.btn:active,
+.s-btn:active { transform: scale(0.98); }
 .btn-primary {
   background: var(--accent-grad);
   border-color: transparent;
@@ -28,30 +33,24 @@
   font-weight: 600;
 }
 .btn-primary:hover { background: var(--accent-grad); filter: brightness(1.06); }
-.btn.danger { color: var(--red); border-color: var(--red); }
-.btn.danger:hover { background: color-mix(in srgb, var(--red) 12%, var(--surface)); }
-
-/* legacy alias kept for ported markup (settings/confirm buttons) */
-.s-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-2);
-  min-height: 44px;
-  padding: 0 var(--s-4);
-  border: 1px solid var(--border-ui);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: var(--fs-md);
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--d-fast) var(--ease-smooth), border-color var(--d-fast) var(--ease-smooth);
-}
-.s-btn:hover { background: var(--surface2); }
+.btn.danger,
 .s-btn.danger { color: var(--red); border-color: var(--red); }
+.btn.danger:hover,
 .s-btn.danger:hover { background: color-mix(in srgb, var(--red) 12%, var(--surface)); }
+/* A disabled button has to look it: at full strength with a hand cursor, a
+   "Reset" with nothing to reset read as broken when it did nothing. */
+.btn:disabled,
+.s-btn:disabled,
+.icon-btn:disabled,
+.retry-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+.btn:disabled:hover,
+.s-btn:disabled:hover { background: var(--surface); }
+.btn-primary:disabled:hover { background: var(--accent-grad); }
 
 /* Icon-only button */
 .icon-btn {
@@ -310,6 +309,8 @@
   margin: var(--s-5) 0 var(--s-2);
   padding-inline: var(--s-3);
 }
+/* Home's section labels are headings now; the base h2 face must not leak in. */
+h2.search-hint { font-family: inherit; }
 
 /* ─ State boxes (loading / empty / error) ─ */
 .empty-state {

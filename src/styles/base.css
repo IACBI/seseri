@@ -1,6 +1,13 @@
 /* Reset, a11y, icon system, typography, body. */
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
+/* `hidden` means hidden. The UA's `[hidden] { display: none }` loses to any
+   author rule that sets `display`, and this app sets it on almost everything —
+   the Library's Downloads panel showed under Subscriptions, and an unpaired
+   device showed "Sync now" and "Delete server data". Fixed once, here, rather
+   than one selector at a time. */
+[hidden] { display: none !important; }
+
 /* Respect reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -239,6 +239,28 @@ function breakBootScript() {
     );
     ok('no download records survived', downloads === 0, `records=${downloads}`);
     ok('the app boots again after the wipe', true);
+
+    // ── 4. `hidden` hides, in every view ───────────────────────────
+    // Last: walking the views opens the database, which the seeding above
+    // must find closed.
+    // The UA's `[hidden] { display: none }` loses to any author `display`
+    // rule; that showed the Downloads panel under Subscriptions for good.
+    const shownHidden = await page.evaluate(async () => {
+      const frame = () => new Promise((r) => setTimeout(r, 150));
+      const found = [];
+      for (const id of ['navHome', 'navSearch', 'navLibrary', 'navSettings']) {
+        document.getElementById(id).click();
+        await frame();
+        const view = [...document.querySelectorAll('.view')].find((v) => !v.hidden);
+        for (const el of view.querySelectorAll('[hidden]')) {
+          if (el.checkVisibility()) found.push(`${id}:${el.id || el.className}`);
+        }
+      }
+      document.getElementById('navHome').click();
+      await frame();
+      return found;
+    });
+    ok('no element marked hidden is shown, in any view', shownHidden.length === 0, shownHidden.join(' '));
   } catch (e) {
     ok('smoke run', false, e.message);
   } finally {
