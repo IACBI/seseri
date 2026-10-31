@@ -239,6 +239,12 @@ checklist is [docs/TESTPLAN.md](docs/TESTPLAN.md).
 └── docs/                  # test plan, store guide, reference screenshots
 ```
 
+#### Contributors
+
+- **𝓐.𝓒.𝓑** — author and maintainer
+- **Claude** (Anthropic) — co-author; credited with `Co-Authored-By` on the
+  commits it wrote
+
 ### License
 
 [MIT](LICENSE) © 2026 **𝓐.𝓒.𝓑** — bozdogancanahmet@gmail.com. Privacy policy:
@@ -476,6 +482,12 @@ listesi [docs/TESTPLAN.md](docs/TESTPLAN.md)'de.
 ├── tests/                 # cross-package checks: desktop CSP, version sync
 └── docs/                  # test plan, store guide, reference screenshots
 ```
+
+#### Katkıda bulunanlar
+
+- **𝓐.𝓒.𝓑** — yazar ve bakımcı
+- **Claude** (Anthropic) — ortak yazar; yazdığı commit'lerde `Co-Authored-By`
+  ile anılır
 
 ### Lisans
 
