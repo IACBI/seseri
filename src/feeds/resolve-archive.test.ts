@@ -120,14 +120,93 @@ describe('resolveFeed — the Apple archive switch', () => {
     ]);
   });
 
-  it('does not go looking when Apple returned the whole show', async () => {
+  it("reads a complete show's feed for its type and description, keeping Apple's list", async () => {
+    // Apple carries neither, and "by podcast" ordering needs to know a serial:
+    // without this a serial with under 300 episodes opened newest-first.
     lookupPodcast.mockResolvedValue(appleLookup(12, 12));
+    fetchParsedFeed.mockResolvedValue({
+      ...archive(12),
+      meta: { ...archive(12).meta, about: 'Start at episode one.', serial: true },
+    });
 
     const feed = await resolveFeed({ kind: 'itunes', id: ID }, {});
 
     expect(feed.episodes).toHaveLength(12);
+    expect(feed.episodes[0]?.trackId).toBe('1000');
+    expect(feed.meta.name).toBe('The Show');
+    expect(feed.serial).toBe(true);
+    expect(feed.about).toBe('Start at episode one.');
+    expect(applyEpisodeRemap).not.toHaveBeenCalled();
+  });
+
+  it("opens a complete show on Apple's list when its feed cannot be read", async () => {
+    lookupPodcast.mockResolvedValue(appleLookup(12, 12));
+    fetchParsedFeed.mockResolvedValue(null);
+    fetchTextProxied.mockRejectedValue(new Error('fetch failed'));
+
+    const feed = await resolveFeed({ kind: 'itunes', id: ID }, {});
+
+    expect(feed.episodes).toHaveLength(12);
+    expect(feed.serial).toBeUndefined();
+  });
+
+  it('does not let a slow feed hold a complete show', async () => {
+    vi.useFakeTimers();
+    try {
+      lookupPodcast.mockResolvedValue(appleLookup(12, 12));
+      // A host that never answers, except to the abort.
+      fetchParsedFeed.mockImplementation(
+        (_url: string, signal?: AbortSignal) =>
+          new Promise((_, reject) =>
+            signal?.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            ),
+          ),
+      );
+      const pending = resolveFeed({ kind: 'itunes', id: ID }, {});
+      await vi.advanceTimersByTimeAsync(4000);
+      const feed = await pending;
+      expect(feed.episodes).toHaveLength(12);
+      expect(feed.serial).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still propagates the listener moving on while reading a complete show', async () => {
+    lookupPodcast.mockResolvedValue(appleLookup(12, 12));
+    const ctrl = new AbortController();
+    fetchParsedFeed.mockImplementation(
+      (_url: string, signal?: AbortSignal) =>
+        new Promise((_, reject) =>
+          signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          ),
+        ),
+    );
+    const pending = resolveFeed({ kind: 'itunes', id: ID }, { signal: ctrl.signal });
+    await Promise.resolve();
+    ctrl.abort();
+    await expect(pending).rejects.toThrow('aborted');
+  });
+
+  it('skips the feed of a complete show when asked to (the background sweep)', async () => {
+    lookupPodcast.mockResolvedValue(appleLookup(12, 12));
+    const feed = await resolveFeed({ kind: 'itunes', id: ID }, { showExtras: false });
+    expect(feed.episodes).toHaveLength(12);
     expect(fetchParsedFeed).not.toHaveBeenCalled();
     expect(fetchTextProxied).not.toHaveBeenCalled();
+  });
+
+  it('keeps the type and description when the archive is no longer than Apple', async () => {
+    lookupPodcast.mockResolvedValue(appleLookup(41, 2676));
+    fetchParsedFeed.mockResolvedValue({
+      ...archive(20),
+      meta: { ...archive(20).meta, serial: true },
+    });
+    const feed = await resolveFeed({ kind: 'itunes', id: ID }, {});
+    expect(feed.episodes).toHaveLength(41);
+    expect(feed.serial).toBe(true);
   });
 
   it('does not go looking when Apple gives no feed url', async () => {
