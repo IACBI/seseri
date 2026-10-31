@@ -372,7 +372,7 @@ app.get('/v1/parse', async (c) => {
 
   const cacheable = !carriesCredential(target.href);
   /** Notes chunks of a freshly parsed feed, so this request need not re-read them. */
-  let built: Array<Array<string | null>> | undefined;
+  let built: { build: string; chunks: Array<Array<string | null>> } | undefined;
 
   const fetchAndParse = async (): Promise<Response> => {
     try {
@@ -394,7 +394,7 @@ app.get('/v1/parse', async (c) => {
         (chunks[Math.floor(i / chunk)] ??= []).push(note);
         return rest;
       });
-      built = chunks;
+      built = { build, chunks };
       if (cacheable) {
         const cache = caches.default;
         chunks.forEach((chunk, n) =>
@@ -435,18 +435,22 @@ app.get('/v1/parse', async (c) => {
 
   if (full.status !== 200) return full;
 
-  const doc = (await full.json()) as ParsedDoc;
+  let doc = (await full.json()) as ParsedDoc;
 
-  /** Notes for episodes [from, to) of the list, or undefined if a chunk has gone missing. */
-  const readNotes = async (from: number, to: number): Promise<Array<string | null> | undefined> => {
+  /** Notes for episodes [from, to) of `d`, or undefined if a chunk has gone missing. */
+  const readNotes = async (
+    d: ParsedDoc,
+    from: number,
+    to: number,
+  ): Promise<Array<string | null> | undefined> => {
     const out: Array<string | null> = [];
-    const size = doc.chunk;
+    const size = d.chunk;
     const first = Math.floor(from / size);
     const last = Math.floor((to - 1) / size);
     for (let n = first; n <= last; n++) {
-      let chunk = built?.[n];
+      let chunk = built?.build === d.build ? built.chunks[n] : undefined;
       if (!chunk) {
-        const key = notesKey(target.href, doc.build, n);
+        const key = notesKey(target.href, d.build, n);
         const hit = await caches.default.match(new Request(key, { method: 'GET' }));
         if (!hit) return undefined;
         chunk = (await hit.json()) as Array<string | null>;
@@ -459,35 +463,56 @@ app.get('/v1/parse', async (c) => {
   };
 
   /**
-   * Attach notes to `eps` (which start at list index `from`). If the chunks
-   * were evicted before the list, re-parse once and read them from memory.
+   * The episodes this request asks for, and where they start in `d`. One
+   * episode by id, notes included, is a single chunk read: no re-parse of the
+   * feed and no parse of anyone else's notes.
    */
-  const withNotes = async (from: number, eps: Array<Record<string, unknown>>) => {
-    if (eps.length === 0) return eps;
-    let notes = await readNotes(from, from + eps.length);
-    if (!notes) {
-      await fetchAndParse();
-      notes = await readNotes(from, from + eps.length);
+  const select = (d: ParsedDoc): { from: number; eps: Array<Record<string, unknown>> } => {
+    if (notesFor !== undefined) {
+      const at = d.episodes.findIndex((e) => e['trackId'] === notesFor);
+      const ep = d.episodes[at];
+      return ep ? { from: at, eps: [ep] } : { from: 0, eps: [] };
     }
-    return eps.map((e, i) => {
-      const d = notes?.[i];
-      return typeof d === 'string' ? { ...e, description: d } : e;
-    });
+    return { from: offset, eps: d.episodes.slice(offset, offset + limit) };
   };
 
-  /**
-   * One episode by id, notes included: a single chunk read, so no re-parse of
-   * the feed and no parse of anyone else's notes.
-   */
-  let window: Array<Record<string, unknown>>;
-  if (notesFor !== undefined) {
-    const at = doc.episodes.findIndex((e) => e['trackId'] === notesFor);
-    const ep = doc.episodes[at];
-    window = ep ? await withNotes(at, [ep]) : [];
-  } else {
-    window = doc.episodes.slice(offset, offset + limit);
-    if (wantNotes) window = await withNotes(offset, window);
+  let { from, eps } = select(doc);
+  let notes: Array<string | null> | undefined = [];
+  if ((notesFor !== undefined || wantNotes) && eps.length > 0) {
+    notes = await readNotes(doc, from, from + eps.length);
+    if (!notes) {
+      /**
+       * The chunks were evicted before their list. Re-parse once — and serve
+       * from, and cache, the document that re-parse produced. Reading the new
+       * chunks against the old list put one episode's notes on another
+       * whenever the feed had gained an item in between, and leaving the old
+       * list cached sent every later request down this same path, a full
+       * upstream fetch and parse each, until the list itself expired.
+       */
+      const fresh = await fetchAndParse();
+      if (fresh.status === 200) {
+        doc = (await fresh.json()) as ParsedDoc;
+        if (cacheable) {
+          c.executionCtx.waitUntil(
+            caches.default.put(
+              new Request(listKey(target.href), { method: 'GET' }),
+              Response.json(doc, {
+                headers: { 'cache-control': `public, max-age=${PARSE_TTL}` },
+              }),
+            ),
+          );
+        }
+        ({ from, eps } = select(doc));
+        notes = eps.length > 0 ? await readNotes(doc, from, from + eps.length) : [];
+      }
+    }
   }
+  const window = notes?.length
+    ? eps.map((e, i) => {
+        const d = notes?.[i];
+        return typeof d === 'string' ? { ...e, description: d } : e;
+      })
+    : eps;
 
   return c.json({ meta: doc.meta, total: doc.total, offset, episodes: window }, 200, {
     ...NOSNIFF,

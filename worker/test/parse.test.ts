@@ -212,6 +212,38 @@ describe('GET /v1/parse', () => {
     const res = await call(parseUrl('/evict.xml', '&notesFor=g2'));
     const body = (await res.json()) as ParsedBody;
     expect((body.episodes[0] as Record<string, unknown>)['description']).toContain('xxx');
+
+    // The re-parse replaced the cached list, so the next request finds its
+    // chunks without going upstream — no interceptor is registered for it.
+    const again = await call(parseUrl('/evict.xml', '&notesFor=g1'));
+    expect(again.status).toBe(200);
+    const next = (await again.json()) as ParsedBody;
+    expect((next.episodes[0] as Record<string, unknown>)['description']).toContain('xxx');
+  });
+
+  it('keeps each episode’s own notes when the feed changed before a re-parse', async () => {
+    const item = (id: string): string =>
+      `<item><title>${id}</title><guid>${id}</guid>` +
+      `<enclosure url="https://cdn.example.com/${id}.mp3" type="audio/mpeg"/>` +
+      `<description>notes of ${id}</description></item>`;
+    const xml = (...ids: string[]): string =>
+      `<rss><channel><title>T</title>${ids.map(item).join('')}</channel></rss>`;
+    const u = encodeURIComponent(HOST + '/moved.xml');
+
+    serve('/moved.xml', xml('a', 'b', 'c'));
+    await call(parseUrl('/moved.xml', '&notes=0'));
+    const doc = (await (
+      await caches.default.match(new Request('https://cache.seseri/parse/v2?u=' + u))
+    )?.json()) as { build: string };
+    await caches.default.delete(
+      new Request(`https://cache.seseri/parse-notes/v2?u=${u}&b=${doc.build}&c=0`),
+    );
+
+    // A new episode at the top shifts every index by one.
+    serve('/moved.xml', xml('new', 'a', 'b', 'c'));
+    const one = (await (await call(parseUrl('/moved.xml', '&notesFor=b'))).json()) as ParsedBody;
+    expect(one.episodes[0]?.trackId).toBe('b');
+    expect((one.episodes[0] as Record<string, unknown>)['description']).toBe('notes of b');
   });
 
   it('answers an unknown episode id with an empty list, not an error', async () => {
