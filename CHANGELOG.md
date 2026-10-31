@@ -4,6 +4,22 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.22 — 2026-10-31
+
+### Fixed
+
+- **A serial opened from Search starts at episode one again.** Apple's
+  listing says nothing about whether a show is a serial, and the app read the
+  show's own feed only when Apple's list was cut short — so a serial of up to
+  300 episodes opened newest-first under the new "by podcast" order. Its feed
+  is now read for the show type and description whenever Apple gives one,
+  with a four-second limit so a slow host never holds the page. The background
+  check for new episodes skips that read and keeps what opening the show
+  learned.
+- **A topic opened from Home is not overwritten by an earlier search.** A
+  slow search left running when a topic was tapped could finish afterwards and
+  replace the topic's shows with its own "no results" or error.
+
 ## 4.2.21 — 2026-10-31
 
 ### Changed

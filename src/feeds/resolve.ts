@@ -6,6 +6,12 @@ import { parseRss } from './rss-parser';
 
 export interface ResolveOptions {
   signal?: AbortSignal;
+  /**
+   * False skips reading the feed of a complete Apple listing just for the
+   * show's description and type. The background sweep wants new episodes
+   * only, and would otherwise fetch every such subscription's feed each pass.
+   */
+  showExtras?: boolean;
 }
 
 /** Episodes and channel metadata from a feed URL, however we can get them. */
@@ -68,27 +74,80 @@ async function loadFeedUrl(url: string, opts: ResolveOptions): Promise<FeedConte
 }
 
 /**
- * Replace a truncated Apple listing with the show's own archive.
+ * How long a complete Apple listing waits for its feed. The feed is read only
+ * for the show's description and type there, so a slow host must not hold the
+ * page: past this the show opens without them, as it did before.
+ */
+const EXTRAS_DEADLINE_MS = 4000;
+
+/**
+ * The show's own feed, or null when it cannot be read.
  *
  * Everything here is best-effort on purpose: a feed host that is down, a feed
  * that no longer parses, or public proxies the user has not opted into must
- * leave the listener with the short list rather than with an error. The only
- * outcome that changes anything is a longer archive we could actually read.
+ * leave the listener with Apple's list rather than with an error. An abort is
+ * the user moving on and propagates; running out of `deadlineMs` does not.
+ */
+async function readArchive(
+  feedUrl: string,
+  opts: ResolveOptions,
+  deadlineMs?: number,
+): Promise<FeedContents | null> {
+  if (deadlineMs === undefined) {
+    try {
+      return await loadFeedUrl(feedUrl, opts);
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') throw e;
+      return null;
+    }
+  }
+  if (opts.signal?.aborted) throw new DOMException('aborted', 'AbortError');
+  /**
+   * Raced rather than only aborted: `fetchWithTimeout` lets go of its signal
+   * once the headers arrive, so a body that stalls after them would ignore the
+   * abort and hold the page past the deadline. The abort still goes out, to
+   * free whatever can be freed.
+   */
+  const ctrl = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let forward: (() => void) | undefined;
+  const deadline = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      ctrl.abort();
+      resolve(null);
+    }, deadlineMs);
+  });
+  const movedOn = new Promise<never>((_, reject) => {
+    forward = () => {
+      ctrl.abort();
+      reject(new DOMException('aborted', 'AbortError'));
+    };
+    opts.signal?.addEventListener('abort', forward, { once: true });
+  });
+  const read = loadFeedUrl(feedUrl, { signal: ctrl.signal }).catch((e: unknown) => {
+    if (opts.signal?.aborted) throw e;
+    return null;
+  });
+  try {
+    return await Promise.race([read, deadline, movedOn]);
+  } finally {
+    clearTimeout(timer);
+    if (forward) opts.signal?.removeEventListener('abort', forward);
+    // Whichever lost the race must not surface as an unhandled rejection.
+    read.catch(() => undefined);
+    movedOn.catch(() => undefined);
+  }
+}
+
+/**
+ * Replace a truncated Apple listing with the show's own archive, when the
+ * archive is longer. The only outcome that changes the list is a longer
+ * archive we could actually read.
  */
 async function withFullArchive(
   apple: { meta: ResolvedFeed['meta']; episodes: Episode[]; total: number },
-  feedUrl: string,
-  opts: ResolveOptions,
+  archive: FeedContents,
 ): Promise<ResolvedFeed | null> {
-  let archive: FeedContents;
-  try {
-    archive = await loadFeedUrl(feedUrl, opts);
-  } catch (e) {
-    // An abort is the user moving on and must propagate; anything else is just
-    // a route that did not work.
-    if ((e as Error).name === 'AbortError') throw e;
-    return null;
-  }
   if (archive.episodes.length <= apple.episodes.length) return null;
 
   // The same episode is a numeric `trackId` to Apple and a `<guid>` in the
@@ -122,11 +181,19 @@ export async function resolveFeed(req: FeedRequest, opts: ResolveOptions): Promi
   switch (req.kind) {
     case 'itunes': {
       const { meta, episodes, limited, total, feedUrl } = await lookupPodcast(req.id, opts.signal);
-      if (limited && feedUrl) {
-        const full = await withFullArchive({ meta, episodes, total }, feedUrl, opts);
+      const apple: ResolvedFeed = { meta, episodes, limited, ...(total ? { total } : {}) };
+      if (!feedUrl || (!limited && opts.showExtras === false)) return apple;
+      // Apple's listing carries neither the show's description nor whether it
+      // is a serial, and "by podcast" ordering needs the latter, so the feed is
+      // read even when Apple's list is complete — on a deadline then, since
+      // the list itself does not depend on it.
+      const archive = await readArchive(feedUrl, opts, limited ? undefined : EXTRAS_DEADLINE_MS);
+      if (!archive) return apple;
+      if (limited) {
+        const full = await withFullArchive({ meta, episodes, total }, archive);
         if (full) return full;
       }
-      return { meta, episodes, limited, ...(total ? { total } : {}) };
+      return { ...apple, ...showExtras(archive.about, archive.serial) };
     }
     case 'rss': {
       const contents = await loadFeedUrl(req.url, opts);

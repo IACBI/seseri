@@ -15,11 +15,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Episode, ResolvedFeed, Subscription } from './types';
 
 const resolveFeed = vi.hoisted(() => vi.fn());
-const putCachedFeed = vi.hoisted(() => vi.fn(async () => undefined));
+const putCachedFeed = vi.hoisted(() => vi.fn(async (_feed: ResolvedFeed) => undefined));
+const getCachedFeed = vi.hoisted(() =>
+  vi.fn(async (_id: string): Promise<{ feed: ResolvedFeed } | undefined> => undefined),
+);
 const startDownload = vi.hoisted(() => vi.fn(async () => 'ok'));
 
 vi.mock('./resolve', () => ({ resolveFeed }));
-vi.mock('../storage/db', () => ({ putCachedFeed }));
+vi.mock('../storage/db', () => ({ putCachedFeed, getCachedFeed }));
 vi.mock('../player/download-jobs', () => ({ startDownload }));
 
 import {
@@ -75,6 +78,7 @@ beforeEach(() => {
   clearInbox();
   resolveFeed.mockReset();
   putCachedFeed.mockClear();
+  getCachedFeed.mockReset();
   startDownload.mockClear();
   settings.set({ ...DEFAULT_SETTINGS });
 });
@@ -383,7 +387,27 @@ describe('warming the cache', () => {
   it('stores every feed it fetched, so opening the show is instant', async () => {
     resolveFeed.mockResolvedValue(feed('f1', episodes(2)));
     await sweepSubscriptions([sub('f1')], { now: NOW });
-    expect(putCachedFeed).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(putCachedFeed).toHaveBeenCalledTimes(1));
+  });
+
+  it('asks for episodes only, not the show-level extras', async () => {
+    resolveFeed.mockResolvedValue(feed('f1', episodes(2)));
+    await sweepSubscriptions([sub('f1')], { now: NOW });
+    expect(resolveFeed.mock.calls[0]?.[1]).toMatchObject({ showExtras: false });
+  });
+
+  it('keeps the description and show type that opening the show stored', async () => {
+    // Otherwise a serial would paint newest-first from the cache after a sweep.
+    getCachedFeed.mockResolvedValue({
+      feed: { ...feed('f1', episodes(1)), about: 'A show about things', serial: true },
+    });
+    resolveFeed.mockResolvedValue(feed('f1', episodes(2)));
+    await sweepSubscriptions([sub('f1')], { now: NOW });
+    await vi.waitFor(() => expect(putCachedFeed).toHaveBeenCalledTimes(1));
+    const stored = putCachedFeed.mock.calls[0]![0];
+    expect(stored.episodes).toHaveLength(2);
+    expect(stored.about).toBe('A show about things');
+    expect(stored.serial).toBe(true);
   });
 });
 

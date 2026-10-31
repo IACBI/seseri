@@ -22,12 +22,12 @@
  * 600-episode archive arriving as 600 "new episodes" is not news, it is a wall.
  */
 
-import type { Episode, FeedRequest, Subscription } from './types';
+import type { Episode, FeedRequest, ResolvedFeed, Subscription } from './types';
 import { requestFromFeedId } from './feed-id';
 import { t } from '../i18n';
 import { chronological } from './order';
 import { resolveFeed } from './resolve';
-import { putCachedFeed } from '../storage/db';
+import { getCachedFeed, putCachedFeed } from '../storage/db';
 import { refreshSubscription } from '../storage/subscriptions';
 import { isPlayed } from '../storage/played';
 import { local } from '../storage/local';
@@ -227,6 +227,23 @@ async function autoDownload(found: ReadonlyArray<{ ep: Episode; feedId: string }
 }
 
 /**
+ * Cache a sweep's answer without losing what opening the show learned.
+ *
+ * The sweep skips the description and show type (see `showExtras`), and the
+ * cached copy is what a show paints first when opened — so writing its answer
+ * as is would turn a serial back into newest-first until the network caught up.
+ */
+async function keepExtrasAndCache(resolved: ResolvedFeed): Promise<void> {
+  if (resolved.about === undefined || resolved.serial === undefined) {
+    const prior = (await getCachedFeed(resolved.meta.id).catch(() => null))?.feed;
+    if (resolved.about === undefined && prior?.about)
+      resolved = { ...resolved, about: prior.about };
+    if (resolved.serial === undefined && prior?.serial) resolved = { ...resolved, serial: true };
+  }
+  await putCachedFeed(resolved);
+}
+
+/**
  * Check one feed. Returns the items it added, or null when the feed could not
  * be read at all.
  *
@@ -248,11 +265,11 @@ async function checkFeed(sub: Subscription, now: number): Promise<InboxItem[] | 
   const ctrl = new AbortController();
   const deadline = setTimeout(() => ctrl.abort(), FEED_DEADLINE_MS);
   try {
-    const resolved = await resolveFeed(req, { signal: ctrl.signal });
+    const resolved = await resolveFeed(req, { signal: ctrl.signal, showExtras: false });
     episodes = resolved.episodes;
     feedName = resolved.meta.name || feedName;
     feedArt = resolved.meta.art || feedArt;
-    void putCachedFeed(resolved);
+    void keepExtrasAndCache(resolved);
     // Subscriptions made before the feed address was kept learn it here, on
     // the first sweep, without the listener having to open each show.
     refreshSubscription(resolved.meta);

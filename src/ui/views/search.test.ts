@@ -22,8 +22,15 @@ vi.mock('../../feeds/itunes', async (importOriginal) => ({
   searchPodcasts,
 }));
 
+const topicShows = vi.hoisted(() => vi.fn());
+vi.mock('../../feeds/topics', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../feeds/topics')>()),
+  topicShows,
+}));
+
+import { TOPIC_KEYS } from '../../feeds/topics';
 import { renderShell } from '../shell';
-import { initSearchView } from './search';
+import { initSearchView, type SearchView } from './search';
 
 const ROW: SearchResult = {
   collectionId: 1234567,
@@ -35,6 +42,7 @@ const ROW: SearchResult = {
 let input: HTMLInputElement;
 let button: HTMLButtonElement;
 let list: HTMLElement;
+let view: SearchView;
 
 function search(term: string): void {
   input.value = term;
@@ -53,7 +61,9 @@ beforeEach(() => {
   );
   document.body.innerHTML = '<div id="app"></div>';
   renderShell(document.getElementById('app') as HTMLElement);
-  initSearchView({ openFeed: () => undefined });
+  topicShows.mockReset();
+  topicShows.mockResolvedValue([ROW]);
+  view = initSearchView({ openFeed: () => undefined });
   input = document.getElementById('searchInput') as HTMLInputElement;
   button = document.getElementById('searchBtn') as HTMLButtonElement;
   list = document.getElementById('resultsList') as HTMLElement;
@@ -90,6 +100,27 @@ describe('a search that never answers', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(list.textContent).toContain('Found It');
+    expect(button.disabled).toBe(false);
+  });
+});
+
+describe('a topic opened from Home while a search is still running', () => {
+  it('is not overwritten when that search comes back empty', async () => {
+    search('something slow');
+    const earlier = pending[0]!;
+
+    view.showTopic(TOPIC_KEYS[0]!);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(list.querySelector('.topic-chip[aria-pressed="true"]')).not.toBeNull();
+    expect(list.querySelectorAll('.row')).toHaveLength(1);
+
+    // The search that was left behind answers "nothing found" afterwards.
+    earlier.resolve([]);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(earlier.signal.aborted).toBe(true);
+    expect(list.querySelectorAll('.row')).toHaveLength(1);
+    expect(list.textContent).not.toContain('…');
     expect(button.disabled).toBe(false);
   });
 });
