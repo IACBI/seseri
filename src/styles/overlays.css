@@ -101,6 +101,18 @@ body:has(.np-sheet.open) .toast-host {
   font-variant-numeric: tabular-nums;
 }
 
+/* Show intro/outro skip: two labelled selects in the confirm dialog's shell. */
+.trim-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-block-end: var(--s-3);
+}
+.trim-label { color: var(--text); font-size: var(--fs-md); }
+.trim-sel { min-inline-size: 7.5em; }
+.trim-hint { margin-block: var(--s-4); font-size: var(--fs-sm); }
+
 /* ─ Offline banner ─
    In the flow, first in the body's column, so the app frame gives up the strip's
    height instead of the strip lying over the top ~30px of the page — which

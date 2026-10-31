@@ -80,6 +80,11 @@ jobs:
         env:
           SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
 
+      - name: Intro and outro skip
+        run: npm run smoke:trim
+        env:
+          SESERI_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
+
       - name: Show notes never fetch what they point at
         run: npm run smoke:shownotes
         env:

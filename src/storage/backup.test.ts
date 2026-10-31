@@ -27,6 +27,7 @@ function seedSyncedDevice(): void {
   localStorage.setItem('pp_played', JSON.stringify({ '111': NOW }));
   localStorage.setItem('pp_played_rm', JSON.stringify({ '222': NOW }));
   localStorage.setItem('pp_feed_speed', JSON.stringify({ f1: 1.5 }));
+  localStorage.setItem('pp_feed_trim', JSON.stringify({ f1: { intro: 30, outro: 15 } }));
 }
 
 /** What a backup taken before sync existed looks like: values, no stamps. */
@@ -133,6 +134,19 @@ describe('per-show speeds', () => {
 
     expect(restoreBackup(file)).toBe(true);
     expect(JSON.parse(localStorage.getItem('pp_feed_speed') ?? '{}')).toEqual({ f1: 1.5 });
+  });
+});
+
+describe('per-show intro and outro skips', () => {
+  it('travel with the backup like the speeds do', () => {
+    seedSyncedDevice();
+    const file = exportBackup();
+    localStorage.clear();
+
+    expect(restoreBackup(file)).toBe(true);
+    expect(JSON.parse(localStorage.getItem('pp_feed_trim') ?? '{}')).toEqual({
+      f1: { intro: 30, outro: 15 },
+    });
   });
 });
 

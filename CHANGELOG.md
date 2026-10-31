@@ -4,6 +4,32 @@
 > reaching 100 rolls into the minor instead — `4.1.99` → `4.2.0`. Releases are
 > not semver-major-bumped for feature work.
 
+## 4.2.17 — 2026-10-31
+
+### New
+
+- **Skip a show's intro and outro.** The scissors on a show's page sets how
+  much of the opening and the closing to skip, from 5 seconds to 3 minutes, and
+  it applies to every episode of that show. A new episode starts past the
+  jingle; one resumed further in starts where it was left. Playing into the
+  credits ends the episode as running out of audio does — marked heard, then
+  the queue, auto-next or the end-of-episode sleep timer — and when nothing
+  comes next the credits stop instead of playing on. Skipping into the credits
+  on purpose plays them, and an episode too short for the trims (a trailer)
+  plays whole. Settings counts the shows that skip and resets them; the JSON
+  backup carries them.
+
+### Fixes
+
+- On phones narrower than 404px the show's action buttons move to their own
+  row, so the title is no longer cut mid-word next to them.
+
+### Release tooling
+
+- The Worker deploy secrets now live on the `worker-production` environment,
+  which only `main` and release tags can use. A new headless check plays real
+  audio through the intro and outro skip on every push.
+
 ## 4.2.16 — 2026-10-31
 
 ### Security

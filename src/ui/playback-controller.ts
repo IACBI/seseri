@@ -64,6 +64,7 @@ import {
 } from '../state/queue';
 import { settings, type Settings } from '../state/settings';
 import { feedSpeedRevision, speedFor } from '../state/feed-speed';
+import { crossedOutro, startPastIntro, trimFor } from '../state/feed-trim';
 import { refreshSubscription } from '../storage/subscriptions';
 import { consumeSleepAtEpisodeEnd } from '../player/sleep-timer';
 import { PRIVATE_FEED_ERROR } from '../feeds/credential-url';
@@ -253,6 +254,8 @@ export function createPlaybackController(): PlaybackController {
    * its `timeupdate` would save the old episode's position under the new id.
    */
   let loadedTrackId: string | null = null;
+  /** The previous `timeupdate` position, so the outro check can tell a tick from a seek. */
+  let lastTick = 0;
   /** One-shot: consumed by the next feed that paints. See resumeLastPlayed. */
   let resumeOnPaint = false;
   /** One-shot: the episode to start once the feed paints. See openAndPlay. */
@@ -577,6 +580,7 @@ export function createPlaybackController(): PlaybackController {
     audio.src = safe;
     audio.load();
     loadedTrackId = id;
+    lastTick = 0;
     if (!isBlob) {
       // Streaming from the network — start pulling a local copy alongside it.
       // A blob source is already local, so there is nothing to prefetch.
@@ -648,12 +652,16 @@ export function createPlaybackController(): PlaybackController {
         resumeTo(target);
         return;
       }
+      let from = 0;
       if (S.resumePos) {
         const saved = getProgress(id);
         if (saved > RESUME_FLOOR_SEC && isFinite(audio.duration) && saved < audio.duration - 2) {
-          resumeTo(saved);
+          from = saved;
         }
       }
+      // A resume is left where it was; only a start inside the intro moves.
+      const target = startPastIntro(from, audio.duration, trimFor(playing()?.feedId));
+      if (target > 0) resumeTo(target);
     };
     if (audio.readyState >= 2) applyPrefs();
     else audio.addEventListener('canplay', applyPrefs, { once: true });
@@ -1006,6 +1014,34 @@ export function createPlaybackController(): PlaybackController {
     },
   });
 
+  /**
+   * The episode is over: by running out of audio, or by reaching the show's
+   * outro. Mark it heard before anything else decides what happens next. A
+   * feed that publishes no duration has no percentage to derive this from, so
+   * this is the only signal it will ever get — and the sleep timer below can
+   * end the turn early.
+   */
+  function finishEpisode(): void {
+    const ended = playing();
+    if (ended) {
+      notePlaybackEnded(ended.trackId);
+      void cleanUpAfterPlayed(ended.trackId);
+    }
+    // "Sleep at end of episode" must win over both the queue and auto-next.
+    if (consumeSleepAtEpisodeEnd()) return;
+    const p = playing();
+    if (!p) return;
+    // Queue wins over plain list order, and may point at another feed.
+    const nextQueued = dequeueNext({ feedId: p.feedId, trackId: p.trackId });
+    if (nextQueued) {
+      void playQueueItem(nextQueued);
+      return;
+    }
+    if (settings().autoNext && p.index < p.episodes.length - 1) {
+      playAt(p, p.index + 1, true);
+    }
+  }
+
   // ── engine wiring ────────────────────────────────────────────────
   onEngine((e) => {
     switch (e.type) {
@@ -1025,41 +1061,35 @@ export function createPlaybackController(): PlaybackController {
         }
         break;
       }
-      case 'ended': {
-        const ended = playing();
-        /**
-         * Mark it heard before anything else decides what happens next. A feed
-         * that publishes no duration has no percentage to derive this from, so
-         * running out of audio is the only signal it will ever get — and the
-         * sleep timer below can end the turn early.
-         */
-        if (ended) {
-          notePlaybackEnded(ended.trackId);
-          void cleanUpAfterPlayed(ended.trackId);
-        }
-        // "Sleep at end of episode" must win over both the queue and auto-next.
-        if (consumeSleepAtEpisodeEnd()) break;
-        const p = playing();
-        if (!p) break;
-        // Queue wins over plain list order, and may point at another feed.
-        const nextQueued = dequeueNext({ feedId: p.feedId, trackId: p.trackId });
-        if (nextQueued) {
-          void playQueueItem(nextQueued);
-          break;
-        }
-        if (settings().autoNext && p.index < p.episodes.length - 1) {
-          playAt(p, p.index + 1, true);
-        }
+      case 'ended':
+        finishEpisode();
         break;
-      }
       case 'timeupdate': {
         const p = playing();
+        const prevTick = lastTick;
+        lastTick = e.current;
         if (p && p.trackId === loadedTrackId && e.current > RESUME_FLOOR_SEC) {
           setProgress(p.trackId, e.current);
         }
         // The real rate, not the stored preference: a speed change applied to
         // the element must move the lock-screen bar with it.
         setMediaPosition(e.current, e.duration, audio.playbackRate);
+        /**
+         * Running into the show's outro ends the episode as if the audio had:
+         * marked heard, then the sleep timer, the queue and auto-next decide
+         * what comes next. Paused first, so that when nothing does, the credits
+         * do not keep playing behind a finished episode.
+         */
+        if (
+          p &&
+          p.trackId === loadedTrackId &&
+          !audio.paused &&
+          crossedOutro(prevTick, e.current, e.duration, trimFor(p.feedId))
+        ) {
+          noteUserIntent(false);
+          pbPause();
+          finishEpisode();
+        }
         break;
       }
       case 'error':

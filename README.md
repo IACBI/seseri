@@ -52,6 +52,7 @@ desktop, plus a full-screen **Now Playing** sheet.
 | **Now Playing sheet** | full-screen at every size: play/pause, prev/next, skip, speed 0.5×–2.5×, volume, sleep timer, episode notes, chapters, transcript — around a drag-to-seek waveform |
 | **Episode links** | share a link that opens on that episode, and from Now Playing at the moment you are at |
 | **Per-show speed** | a show can play at its own speed instead of the default; Settings lists the ones that do and resets them |
+| **Skip intro and outro** | per show, from the scissors on its page: every episode starts past the opening jingle and finishes before the closing credits, then the queue or the next episode carries on. A seek into the credits plays them; very short episodes play whole |
 | **Sleep timer** | presets or any duration, or stop at the end of the episode; live countdown, **+5 min**, gentle fade-out, pauses with playback and survives a reload |
 | **Sharp artwork** | each surface requests the right rendition, so covers are never upscaled from a thumbnail; the Now Playing background can take the cover's dominant colour |
 | **Volume** | a slider in Now Playing on every device, and in the dock from 1024px up; mute keeps the level you chose. Hidden on iOS, where the page may not set it |
@@ -189,8 +190,8 @@ own site there. `SYNC_MAX_ROWS` and `SYNC_MAX_BYTES` (Worker vars, default
 until the sweep frees room.
 
 Release tags also deploy the Worker through `.github/workflows/worker.yml`,
-once the repository has `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
-secrets (the token needs the "Edit Cloudflare Workers" template plus D1 edit,
+once its `worker-production` environment has `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` secrets (the token needs the "Edit Cloudflare Workers" template plus D1 edit,
 for the migrations step). It runs the Worker's tests first and probes the
 deployed URL afterwards; a fork has to change that URL to its own.
 
@@ -220,7 +221,7 @@ checklist is [docs/TESTPLAN.md](docs/TESTPLAN.md).
 │   │                      # archive paging, Apple→feed id remap, new episodes, show notes
 │   ├── player/            # audio engine, recovery, prefetch, downloads, chapters,
 │   │                      # transcripts, sleep timer, media session
-│   ├── state/             # signals: settings, queue, per-show speed, sleep timer
+│   ├── state/             # signals: settings, queue, per-show speed and trims, sleep timer
 │   ├── storage/           # localStorage keys, IndexedDB, OPML, backup
 │   ├── sync/              # pairing code, encryption, merge, transport
 │   ├── ui/                # views, router, playback controller, shell and widgets
@@ -287,6 +288,7 @@ paneli var.
 | **Şimdi Çalıyor paneli** | her ekran boyutunda tam ekran: oynat/duraklat, önceki/sonraki, atlama, 0.5×–2.5× hız, ses düzeyi, uyku zamanlayıcısı, bölüm notları, bölüm işaretleri, konuşma metni — sürüklenerek sarılan bir dalga-formun çevresinde |
 | **Bölüm linkleri** | o bölümü açan bir link paylaş; Şimdi Çalıyor'dan paylaşırsan bulunduğun andan açılır |
 | **Yayın başına hız** | bir yayın varsayılan hız yerine kendi hızıyla çalabilir; Ayarlar bunları listeler ve sıfırlar |
+| **Giriş ve kapanışı atla** | yayının sayfasındaki makas simgesinden, yayın başına: her bölüm açılış müziğinin ardından başlar, kapanış jeneriğinden önce biter, sonra sıra ya da sonraki bölüm devam eder. Jeneriğe elle sararsan çalar; çok kısa bölümler baştan sona çalar |
 | **Uyku zamanlayıcısı** | hazır süreler ya da istediğin süre, veya bölüm sonunda dur; canlı geri sayım, **+5 dk**, sesi yavaşça kısarak kapanma; duraklatınca durur, sayfa yenilenince kaybolmaz |
 | **Net kapak görselleri** | her yüzey doğru çözünürlüğü ister, kapak küçük bir görselden büyütülmez; Şimdi Çalıyor arka planı kapağın baskın rengini alabilir |
 | **Ses düzeyi** | her cihazda Şimdi Çalıyor'da, 1024px'ten itibaren alttaki çubukta da bir sürgü; sessize almak seçtiğin seviyeyi korur. iOS'ta gizlidir, orada sayfanın sesi ayarlamasına izin verilmez |
@@ -424,8 +426,8 @@ yanıt verir; kendi siteni oraya ekle. `SYNC_MAX_ROWS` ve `SYNC_MAX_BYTES`
 (Worker değişkenleri, varsayılan 50.000 satır ve 1 GiB) eşitleme tablosunu
 sınırlar; aşılınca temizlik yer açana kadar yeni eşleştirme kabul edilmez.
 
-Repoda `CLOUDFLARE_API_TOKEN` ve `CLOUDFLARE_ACCOUNT_ID` secret'ları
-tanımlıysa her sürüm tag'i Worker'ı `.github/workflows/worker.yml` ile de
+`worker-production` ortamında `CLOUDFLARE_API_TOKEN` ve
+`CLOUDFLARE_ACCOUNT_ID` secret'ları tanımlıysa her sürüm tag'i Worker'ı `.github/workflows/worker.yml` ile de
 yayınlar (token için "Edit Cloudflare Workers" şablonu ve migration adımı için
 D1 düzenleme izni gerekir). Önce Worker testlerini çalıştırır, yayından sonra
 canlı adresi yoklar; fork'ta o adresi kendininkiyle değiştirmen gerekir.
@@ -456,7 +458,7 @@ listesi [docs/TESTPLAN.md](docs/TESTPLAN.md)'de.
 │   │                      # archive paging, Apple→feed id remap, new episodes, show notes
 │   ├── player/            # audio engine, recovery, prefetch, downloads, chapters,
 │   │                      # transcripts, sleep timer, media session
-│   ├── state/             # signals: settings, queue, per-show speed, sleep timer
+│   ├── state/             # signals: settings, queue, per-show speed and trims, sleep timer
 │   ├── storage/           # localStorage keys, IndexedDB, OPML, backup
 │   ├── sync/              # pairing code, encryption, merge, transport
 │   ├── ui/                # views, router, playback controller, shell and widgets

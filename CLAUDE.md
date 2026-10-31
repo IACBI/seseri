@@ -82,11 +82,12 @@ is also a Chromium but refuses to launch under CDP on this machine, reporting
 passes.
 
 ```bash
-npm run smoke                       # the eight below, in order — 94 assertions
+npm run smoke                       # the nine below, in order — 104 assertions
 node scripts/smoke-shell.cjs        # boot, navigation, theme, language
 node scripts/smoke-p3-offline.cjs   # download → offline reload → playback
 node scripts/smoke-p5-mini.cjs      # dock, queue, back-navigation
 node scripts/smoke-chapters.cjs     # chapter list, scrubber markers, transcript
+node scripts/smoke-trim.cjs         # per-show intro/outro skip on real playback
 node scripts/smoke-shownotes.cjs    # show notes fetch nothing they point at
 node scripts/smoke-longlist.cjs     # the render window over a 900-episode feed
 node scripts/smoke-migrate.cjs      # Apple ids → feed ids, on state the app wrote
@@ -118,8 +119,9 @@ Patch numbers step one at a time to 99, then roll the minor (`4.1.99` → `4.2.0
    Fill it in with Turkish and English sections, then publish.
 5. **The tag deploys the Worker** (`.github/workflows/worker.yml`): tests,
    D1 migrations, `wrangler deploy`, then a probe from the runner. It needs the
-   `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets and
-   fails at its first step without them. Pushing to `main` still deploys only
+   `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets on the
+   `worker-production` environment (which admits only `main` and `v*` tags)
+   and fails at its first step without them. Pushing to `main` still deploys only
    the Pages site, so a Worker fix between releases waits for the next tag —
    or run the workflow by hand (`gh workflow run worker.yml`), or deploy from
    this machine:

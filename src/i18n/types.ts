@@ -238,6 +238,18 @@ export interface Lang {
   s_feed_speeds_sub: LangFn;
   btn_reset_feed_speeds: string;
   toast_feed_speeds_reset: string;
+  trim_btn: string;
+  trim_title: string;
+  trim_hint: string;
+  trim_intro: string;
+  trim_outro: string;
+  trim_off: string;
+  /** A trim length in seconds, as the select shows it: "30 s", "1 min 30 s". */
+  trim_len: LangFn;
+  s_feed_trims: string;
+  s_feed_trims_sub: LangFn;
+  btn_reset_feed_trims: string;
+  toast_feed_trims_reset: string;
   dl_cancel: string;
   dl_cancelled: string;
   dl_progress: LangFn;

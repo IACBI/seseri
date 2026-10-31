@@ -20,6 +20,7 @@ import { local } from './storage/local';
 import { loadSubscriptions, subscriptions } from './storage/subscriptions';
 import { loadQueue } from './state/queue';
 import { loadFeedSpeeds } from './state/feed-speed';
+import { loadFeedTrims } from './state/feed-trim';
 import { loadSettings, saveSettings, settings, type Settings } from './state/settings';
 import type { FeedRequest } from './feeds/types';
 import { bindI18nDom } from './ui/i18n-dom';
@@ -71,6 +72,7 @@ export function boot(): void {
   loadQueue();
   loadInbox();
   loadFeedSpeeds();
+  loadFeedTrims();
   const S = settings();
   applyTheme(S.theme);
   applyAccent(S.accentColor);

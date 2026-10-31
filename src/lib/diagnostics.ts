@@ -25,6 +25,7 @@ import { settings } from '../state/settings';
 import { storageInfo } from '../player/offline';
 import { subscriptions } from '../storage/subscriptions';
 import { feedSpeedCount } from '../state/feed-speed';
+import { feedTrimCount } from '../state/feed-trim';
 
 function mb(bytes: number): string {
   return (bytes / 1024 / 1024).toFixed(1) + ' MB';
@@ -59,6 +60,7 @@ export async function collectDiagnostics(): Promise<string> {
     `saved positions: ${Object.keys(progress.prog).length}`,
     `played marks: ${Object.keys(heard.played).length} + ${Object.keys(heard.unplayed).length} reset`,
     `per-show speeds: ${feedSpeedCount()}`,
+    `per-show trims: ${feedTrimCount()}`,
     `downloads: ${storage.downloadCount} (${mb(storage.downloadBytes)})`,
     `feed cache: ${feeds.count} feeds (~${mb(feeds.bytes)})`,
     `origin storage: ${mb(storage.usageBytes)} of ${mb(storage.quotaBytes)}`,

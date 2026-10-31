@@ -5,7 +5,7 @@
  * Ported from `git show ed59840:src/ui/screens/player.ts` (list/header half),
  * re-skinned onto the "Sinyal" design system.
  * Element IDs kept for the smoke-test contract: backBtn, pThumb, pTitle,
- * pAuthor, pEpCount, favBtn, shareBtn, dot, statusText, sortToggle, sortInfo,
+ * pAuthor, pEpCount, favBtn, trimBtn, shareBtn, dot, statusText, sortToggle, sortInfo,
  * filterInput, epList.
  */
 
@@ -29,6 +29,8 @@ import { queue, queuePositions } from '../../state/queue';
 import { settings, type Settings } from '../../state/settings';
 import { isSubscribed, toggleSubscription } from '../../storage/subscriptions';
 import { confirmDialog } from '../confirm';
+import { openShowTrim } from '../show-trim';
+import { feedTrimRevision, hasOwnTrim } from '../../state/feed-trim';
 import { toast } from '../toast';
 
 export interface PodcastViewDeps {
@@ -60,6 +62,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
         </div>
         <div class="p-header-actions">
           <button class="icon-btn p-fav" id="favBtn" data-i18n-aria="fav_btn" aria-label="Abonelik ekle/çıkar"><svg class="icon" aria-hidden="true"><use href="#ic-star"/></svg></button>
+          <button class="icon-btn p-trim" id="trimBtn" data-i18n-aria="trim_btn" aria-label="Giriş ve kapanışı atla"><svg class="icon" aria-hidden="true"><use href="#ic-trim"/></svg></button>
           <button class="icon-btn p-share" id="shareBtn" data-i18n-aria="share_btn" aria-label="Linki paylaş"><svg class="icon" aria-hidden="true"><use href="#ic-share"/></svg></button>
         </div>
       </div>
@@ -88,6 +91,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
   const countEl = q('pEpCount');
   const favBtn = q<HTMLButtonElement>('favBtn');
   const shareBtn = q<HTMLButtonElement>('shareBtn');
+  const trimBtn = q<HTMLButtonElement>('trimBtn');
   const dotEl = q('dot');
   const statusTextEl = q('statusText');
   const sortToggle = q<HTMLButtonElement>('sortToggle');
@@ -532,6 +536,7 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
     thumbEl.classList.toggle('has-art', !!art);
     countEl.textContent = String(s.episodes.length);
     syncFav(!!(meta && isSubscribed(meta.id)));
+    syncTrim();
 
     dotEl.className = 'dot ' + s.status.kind;
     statusTextEl.textContent = s.status.message;
@@ -629,6 +634,18 @@ export function initPodcastView(deps: PodcastViewDeps): PodcastView {
       syncFav(isSubscribed(meta.id));
     }
   });
+
+  /** Lit while this show skips anything, so a skip that surprises has a visible cause. */
+  function syncTrim(): void {
+    const on = hasOwnTrim(playback.session().meta?.id);
+    trimBtn.classList.toggle('has-own', on);
+    trimBtn.setAttribute('aria-pressed', String(on));
+  }
+  trimBtn.addEventListener('click', () => {
+    const meta = playback.session().meta;
+    if (meta) openShowTrim(meta.id);
+  });
+  feedTrimRevision.subscribe(syncTrim);
 
   shareBtn.addEventListener('click', () => {
     const meta = playback.session().meta;

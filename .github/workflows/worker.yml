@@ -4,9 +4,11 @@
 # only the Pages site, so a Worker fix sat in the repository looking shipped
 # while production still ran the old code.
 #
-# Needs two repository secrets: CLOUDFLARE_API_TOKEN (the "Edit Cloudflare
-# Workers" template plus Account · D1 · Edit, for the migrations step) and
-# CLOUDFLARE_ACCOUNT_ID. Wrangler comes from worker/package-lock.json rather
+# Needs two secrets on the `worker-production` environment: CLOUDFLARE_API_TOKEN
+# (the "Edit Cloudflare Workers" template plus Account · D1 · Edit, for the
+# migrations step) and CLOUDFLARE_ACCOUNT_ID. The environment only admits
+# `main` and `v*` tags, so a workflow edited on another branch cannot reach the
+# token. Wrangler comes from worker/package-lock.json rather
 # than a third-party action, so the version that deploys is the one the tests
 # ran against.
 name: Worker
@@ -49,7 +51,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::Set the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets."
+            echo "::error::Set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID on the worker-production environment."
             exit 1
           fi
 
